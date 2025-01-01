@@ -22,10 +22,10 @@ func SqlConn() (*sql.DB, error) {
 	}
 
 	cfg := mysql.Config{
-		User:   "root",
+		User:   os.Getenv("DBUSER"),
 		Passwd: os.Getenv("DBPASS"),
 		Net:    "tcp",
-		Addr:   "db:3306",
+		Addr:   "127.0.0.1:3306",
 		DBName: "db",
 	}
 

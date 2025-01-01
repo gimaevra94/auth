@@ -2,7 +2,7 @@ package mailsendler
 
 import (
 	"fmt"
-	"math/rand/v2"
+	"math/rand"
 	"net/smtp"
 	"strconv"
 )
@@ -10,7 +10,7 @@ import (
 var Authcode_str string
 
 func MailSendler(email string) {
-	authcode := rand.IntN(10000 - 1000)
+	authcode := rand.Intn(10000)
 	Authcode_str = strconv.Itoa(authcode)
 	msg := []byte("Код для входа: " + Authcode_str)
 

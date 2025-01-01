@@ -9,20 +9,17 @@ services:
     profiles: 
       - dev
     networks:
-      - auth_net
+      - net
     volumes:
       - /c/Users/gimaevra94/Documents/git/auth/email_auth/app/web:/app/web
-    depends_on:
-      db:
-        condition: service_healthy
 
   db:
     image: gimaevra94/db:latest
     container_name: db
     hostname: db
     environment:
-       MYSQL_ROOT_PASSWORD: ${DBPASS}
-       MYSQL_DATABASE: db
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: db
     volumes:
       - db:/db
     ports: 
@@ -30,15 +27,11 @@ services:
     profiles:
       - dev
     networks:
-      - auth_net
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      timeout: 5s
-      retries: 3
+      - net
 
 volumes:
   db:
 
 networks:
-  auth_net:
+  net:
     driver: bridge

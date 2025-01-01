@@ -12,19 +12,19 @@ func main() {
 	var email string
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "app/web/index.html")
+		http.ServeFile(w, r, "web/index.html")
 	})
 
 	http.HandleFunc("/email_send", func(w http.ResponseWriter, r *http.Request) {
 		email = r.FormValue("email")
 		mailsendler.MailSendler(email)
-		http.ServeFile(w, r, "app/web/codesendform.html")
+		http.ServeFile(w, r, "web/codesendform.html")
 	})
 
 	http.HandleFunc("/code_send", func(w http.ResponseWriter, r *http.Request) {
 		code := r.FormValue("code")
 		if code != mailsendler.Authcode_str {
-			http.ServeFile(w, r, "app/web/wrongcode.html")
+			http.ServeFile(w, r, "web/wrongcode.html")
 		} else {
 			db, err := database.SqlConn()
 			if err != nil {
@@ -33,16 +33,16 @@ func main() {
 			}
 
 			database.EmailAdd(database.Users{Email: email}, db)
-			http.ServeFile(w, r, "app/web/home.html")
+			http.ServeFile(w, r, "web/home.html")
 		}
 	})
 
 	http.HandleFunc("/back_to_input", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "app/web/codesendform.html")
+		http.ServeFile(w, r, "web/codesendform.html")
 	})
 
 	http.HandleFunc("/code_not_arrived", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "app/web/codesendform.html")
+		http.ServeFile(w, r, "web/codesendform.html")
 		mailsendler.MailSendler(email)
 	})
 
