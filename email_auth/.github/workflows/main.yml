@@ -25,7 +25,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile.db
+          file: email_auth/Docker/Dockerfile.db
           push: true
           platforms: linux/amd64,linux/arm64
           tags: ${{ vars.DOCKER_USERNAME }}/db:latest
@@ -34,7 +34,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile.app
+          file: email_auth/Docker/Dockerfile.app
           push: true
           platforms: linux/amd64,linux/arm64
           tags: ${{ vars.DOCKER_USERNAME }}/app:latest
