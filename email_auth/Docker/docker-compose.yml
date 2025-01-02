@@ -4,6 +4,9 @@ services:
     image: gimaevra94/app:latest
     container_name: app
     hostname: app
+    environment:
+       DB_PASSWORD_FILE: /run/secrets/db_password
+       DB_USER: root
     ports:
       - 8000:8000
     profiles: 
@@ -15,13 +18,15 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    secrets:
+      - db_password
 
   db:
     image: gimaevra94/db:latest
     container_name: db
     hostname: db
     environment:
-       MYSQL_ROOT_PASSWORD: ${DBPASS}
+       MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_password
        MYSQL_DATABASE: db
     volumes:
       - db:/db
@@ -35,6 +40,8 @@ services:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       timeout: 5s
       retries: 3
+    secrets:
+      - db_password
 
 volumes:
   db:
@@ -42,3 +49,7 @@ volumes:
 networks:
   auth_net:
     driver: bridge
+
+secrets:
+  db_password:
+    file: ./db_password.txt

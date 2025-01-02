@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/joho/godotenv"
 )
 
 type Users struct {
@@ -16,14 +16,14 @@ type Users struct {
 }
 
 func SqlConn() (*sql.DB, error) {
-	err := godotenv.Load()
+	password, err := os.ReadFile("/run/secrets/db_password")
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	cfg := mysql.Config{
 		User:   "root",
-		Passwd: os.Getenv("DBPASS"),
+		Passwd: strings.TrimSpace(string(password)),
 		Net:    "tcp",
 		Addr:   "db:3306",
 		DBName: "db",
