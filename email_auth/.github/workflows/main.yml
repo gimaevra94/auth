@@ -41,5 +41,5 @@ jobs:
 
       - name: Build and push with Docker Compose
         run: |
-          docker compose -f email_auth/Docker/docker-compose.yaml build
-          docker compose -f email_auth/Docker/docker-compose.yaml push
+          docker compose -f email_auth/Docker/docker-compose.yml build
+          docker compose -f email_auth/Docker/docker-compose.yml push
