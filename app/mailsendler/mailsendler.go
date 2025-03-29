@@ -1,57 +1,38 @@
 package mailsendler
 
 import (
-	"fmt"
 	"log"
 	"math/rand"
 	"net/smtp"
 	"os"
-	"regexp"
 	"strconv"
 	"time"
 )
 
-var Authcode_str string
-var r *rand.Rand
+func MailSendler(email string) (string, error) {
 
-func init() {
-	r = rand.New(rand.NewSource(time.Now().UnixNano()))
-}
-
-func MailSendler(input string) {
-	authcode := r.Intn(9000) + 1000
-	Authcode_str = strconv.Itoa(authcode)
-
-	msg := []byte("Код для входа: " + Authcode_str)
+	random := rand.New(rand.NewSource(time.Now().UnixNano()))
+	mscodeItn := random.Intn(9000) + 1000
+	mscode := strconv.Itoa(mscodeItn)
+	msg := []byte("Код для входа: " + mscode)
 	username := "gimaev.vending@ya.ru"
 
 	password, err := os.ReadFile("db_password.txt")
 	if err != nil {
-		log.Fatal(err)
+		log.Println("db_password reading failed: ", err)
+		return mscode, err
 	}
 
 	host := "smtp.yandex.ru"
 	auth := smtp.PlainAuth("", username, string(password), host)
-
 	addr := "smtp.yandex.ru:587"
 	from := "gimaev.vending@ya.ru"
-	to := []string{input}
+	to := []string{email}
 
 	err = smtp.SendMail(addr, auth, from, to, msg)
 	if err != nil {
-		fmt.Printf("SendMail: %v", err)
-		return
+		log.Println("Failed to send user verification email: ", err)
+		return mscode, err
 	}
-}
-
-func IsValidEmail(input string) bool {
-	regex := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$`
-	re := regexp.MustCompile(regex)
-	return re.MatchString(input)
-}
-
-func IsValidCode(input string) bool {
-	regex := `^\d{4}$`
-	re := regexp.MustCompile(regex)
-	return re.MatchString(input)
+	return mscode, err
 }

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,minimum-scale=1,maximum-scale=10">
+    <title>Your title</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+    <div class="content-wrapper">
+        <div class="container clearfix">
+            <main class="content">
+                <p style="text-align: left; font-size: 30px; margin: 0;">enter login and password</p>
+                <form method="POST" action="sign_in_data_sending">
+                    <input type="text" name="login" required /><br><br>
+                    <input type="password" name="password" required /><br><br>
+                    <input type="checkbox" name="remember" /> Remember me<br><br>
+                    <input type="submit" value="log in" />
+                    <p style="text-align: left; font-size: 15px; margin: 0;">or</p>
+                    <input type="submit" value="log in with google" />
+                </form>
+            </main>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -14,7 +14,7 @@ services:
     networks:
       - net
     volumes:
-      - /c/Users/gimaevra94/Documents/git/auth/app/web:/app/web
+      - /c/Users/gimaevra94/Documents/git/auth/email_auth/app/web:/app/web
     depends_on:
       db:
         condition: service_healthy

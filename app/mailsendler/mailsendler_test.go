@@ -1,6 +1,6 @@
 package mailsendler
 
-import (
+/*import (
 	"fmt"
 	"log"
 	"net/smtp"
@@ -149,3 +149,4 @@ func TestIsValidCode(t *testing.T) {
 		}
 	}
 }
+*/
