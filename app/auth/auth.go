@@ -1,4 +1,4 @@
-package sessionmanager
+package auth
 
 import (
 	"database/sql"
@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/gimaevra94/auth/app/consts"
+	"github.com/gimaevra94/auth/app/constsandstructs"
 	"github.com/gimaevra94/auth/app/database"
 	"github.com/gimaevra94/auth/app/mailsendler"
 	"github.com/gimaevra94/auth/app/validator"
@@ -17,10 +17,11 @@ import (
 var store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET_KEY")))
 
 func SignUpRouter() {
-	http.HandleFunc(consts.SignUpURL, signUp)
-	http.HandleFunc(consts.DataSendURL, CodeSend)
-	http.HandleFunc(consts.CodeSendURL, codeCheck)
-	http.HandleFunc(consts.HomeURL, Home)
+	http.HandleFunc(constsandstructs.SignUpURL, signUp)
+	http.HandleFunc(constsandstructs.DataSendURL, CodeSend)
+	http.HandleFunc(constsandstructs.CodeSendURL, codeCheck)
+	http.HandleFunc(constsandstructs.UserAddURL, userAdd)
+	http.HandleFunc(constsandstructs.HomeURL, Home)
 }
 
 func Home(w http.ResponseWriter, r *http.Request) {
@@ -31,14 +32,10 @@ func signUp(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "sign-up.html")
 }
 
-func signIn(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "sign-in.html")
-}
-
 func CodeSend(w http.ResponseWriter, r *http.Request) {
 	validatedLoginInput, err := validator.IsValidInput(w, r)
 	if err != nil {
-		http.ServeFile(w, r, consts.RequestErrorHTML)
+		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
 		log.Println("IsValidInput failed: ", err)
 	}
 
@@ -48,7 +45,7 @@ func CodeSend(w http.ResponseWriter, r *http.Request) {
 			email := validatedLoginInput.GetEmail()
 			mscode, err := mailsendler.MailSendler(email)
 			if err != nil {
-				http.ServeFile(w, r, consts.RequestErrorHTML)
+				http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
 				log.Println("MailSendler failed: ", err)
 			}
 
@@ -57,27 +54,24 @@ func CodeSend(w http.ResponseWriter, r *http.Request) {
 			session.Values["mscode"] = mscode
 			err = session.Save(r, w)
 			if err != nil {
-				http.ServeFile(w, r, consts.RequestErrorHTML)
+				http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
 				log.Println("Saveing mscode in session failed", err)
 			}
 
 			jsonData, err := json.Marshal(validatedLoginInput)
 			if err != nil {
-				http.ServeFile(w, r, consts.RequestErrorHTML)
+				http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
 				log.Println("validatedLoginInput serialize failed", err)
 			}
 
 			session.Values["validatedLoginInput"] = string(jsonData)
 			err = session.Save(r, w)
 			if err != nil {
-				http.ServeFile(w, r, consts.RequestErrorHTML)
-				log.Println("Saveing validatedLoginInput in session failed")
+				http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+				log.Println("Saveing validatedLoginInput in session failed",err)
 			}
-
-			http.Redirect(w, r, consts.CodeSendURL, http.StatusFound)
 		}
 	}
-
 	http.ServeFile(w, r, "userallreadyexist.html")
 	log.Println("User allready exist: ", err)
 }
@@ -88,7 +82,7 @@ func codeCheck(w http.ResponseWriter, r *http.Request) {
 	userCode := r.FormValue("code")
 	mscode, ok := sessions.Values["mscode"].(string)
 	if !ok {
-		http.ServeFile(w, r, consts.RequestErrorHTML)
+		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
 		log.Println("mscode not found in session")
 	}
 
@@ -97,22 +91,30 @@ func codeCheck(w http.ResponseWriter, r *http.Request) {
 		log.Println("userCode does not equal msCode")
 	}
 
+	http.Redirect(w, r, constsandstructs.UserAddURL, http.StatusFound)
+}
+
+func userAdd(w http.ResponseWriter, r *http.Request) {
 	jsonData, ok := sessions.Values["validatedLoginInput"].(string)
 	if !ok {
-		http.ServeFile(w, r, consts.RequestErrorHTML)
+		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
 		log.Println("validatedLoginInput not found in session")
 	}
 
-	var validatedLoginInput validator.Users
+	var validatedLoginInput constsandstructs.Users
 	err := json.Unmarshal([]byte(jsonData), validatedLoginInput)
 	if err != nil {
-		http.ServeFile(w, r, consts.RequestErrorHTML)
+		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
 		log.Println("validatedLoginInput deserialization failed")
 	}
 
-	err := database.UserAddInDB(w, r, validatedLoginInput)
-	if err!=nil{
-		http.ServeFile(w,r,consts.RequestErrorHTML)
+	err = database.UserAdd(w, r, validatedLoginInput)
+	if err != nil {
+		if err == sql.ErrNoRows {
+
+		}
+
+		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
 		log.Println("")
 	}
 }

@@ -16,11 +16,22 @@
                 <form method="POST" action="/data_send">
                     <input type="text" name="login" required /><br><br>
                     <input type="password" name="password" required /><br><br>
-                    <input type="checkbox" name="remember" /> Remember me<br><br>
                     <input type="email" name="email" required /><br><br>
+                    <input type="checkbox" name="remember" /> Remember me<br><br>
                     <input type="submit" value="registrate" />
                     <p style="text-align: left; font-size: 15px; margin: 0;">or</p>
-                    <input type="submit" value="log in with google" />
+                </form>
+                <form method="POST" action="/login_with_google">
+                    <input type="submit" value="login with google" />
+                </form><br><br>
+                <p style="text-align: left; font-size: 30px; margin: 0;">enter code</p>
+                <form method="POST" action="/code_send">
+                    <input type="number" name="code" required /><br><br>
+                    <input type="submit" value="send" />
+                </form>
+                <br><br>
+                <form method="POST" action="/code_not_arrived">
+                    <input type="submit" value="code not arrived" />
                 </form>
             </main>
         </div>

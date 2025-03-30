@@ -8,41 +8,9 @@ import (
 	"os"
 	"regexp"
 
-	"github.com/gimaevra94/auth/app/consts"
+	"github.com/gimaevra94/auth/app/constsandstructs"
 	"github.com/golang-jwt/jwt"
 )
-
-type users struct {
-	Email    string `json:"email"`
-	Login    string `json:"login"`
-	Password string `json:"password"`
-}
-
-func NewUsers(email, login, password string) Users {
-	return &users{
-		Email:    email,
-		Login:    login,
-		Password: password,
-	}
-}
-
-func (v *users) GetEmail() string {
-	return v.Email
-}
-
-func (v *users) GetLogin() string {
-	return v.Login
-}
-
-func (v *users) GetPassword() string {
-	return v.Password
-}
-
-type Users interface {
-	GetEmail() string
-	GetLogin() string
-	GetPassword() string
-}
 
 func IsValidToken(r *http.Request, cookie string) error {
 	token := r.Header.Get("auth")
@@ -63,24 +31,44 @@ func IsValidToken(r *http.Request, cookie string) error {
 	return nil
 }
 
-func IsValidInput(w http.ResponseWriter, r *http.Request) (Users, error) {
+func IsValidInput(w http.ResponseWriter,
+	r *http.Request) (constsandstructs.Users, error) {
+
+	email := r.FormValue("email")
+	if email == "" {
+		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+		log.Println("email missing in FormValue")
+	}
+
+	login := r.FormValue("login")
+	if login == "" {
+		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+		log.Println("login missing in FormValue")
+	}
+
+	password := r.FormValue("password")
+	if password == "" {
+		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+		log.Println("password missing in FormValue")
+	}
+
+	validatedLoginInput := constsandstructs.NewUsers(
+		email,
+		login,
+		password,
+	)
+
 	loginInput := map[string]string{
-		"email":    r.FormValue("email"),
-		"login":    r.FormValue("login"),
-		"password": r.FormValue("password"),
+		"email":    email,
+		"login":    login,
+		"password": password,
 	}
 
 	regexes := map[string]string{
-		"email":    consts.EmailRegex,
-		"login":    consts.LoginRegex,
-		"password": consts.PasswordRegex,
+		"email":    constsandstructs.EmailRegex,
+		"login":    constsandstructs.LoginRegex,
+		"password": constsandstructs.PasswordRegex,
 	}
-
-	validatedLoginInput := NewUsers(
-		loginInput["email"],
-		loginInput["login"],
-		loginInput["password"],
-	)
 
 	var (
 		errEmpty  = errors.New("value is empty")
@@ -92,12 +80,12 @@ func IsValidInput(w http.ResponseWriter, r *http.Request) (Users, error) {
 		errRegex)
 	if err != nil {
 		if errors.Is(err, errEmpty) {
-			http.ServeFile(w, r, consts.RequestErrorHTML)
+			http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
 			log.Println("Data loss when getting from: ", err)
 			return validatedLoginInput, err
 
 		} else if errors.Is(err, errRegex) {
-			http.ServeFile(w, r, consts.RequestErrorHTML)
+			http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
 			log.Println("Data loss when getting from: ", err)
 			return validatedLoginInput, err
 
