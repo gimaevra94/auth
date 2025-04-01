@@ -6,17 +6,24 @@ import (
 
 	"github.com/gimaevra94/auth/app/auth"
 	"github.com/gimaevra94/auth/app/constsandstructs"
+	"github.com/gimaevra94/auth/app/database"
 	"github.com/gimaevra94/auth/app/validator"
 )
 
 func main() {
-	auth.SignUpRouter()
-	http.HandleFunc("/", authentication)
+	err := database.DBConn()
+	if err != nil {
+		log.Fatal("Failed to start database: ", err)
+	}
+	defer database.DB.Close()
 
-	err := http.ListenAndServe(":8080", nil)
+	err = http.ListenAndServe(":8080", nil)
 	if err != nil {
 		log.Fatal("Failed to start server: ", err)
 	}
+
+	auth.SignUpRouter()
+	http.HandleFunc("/", authentication)
 }
 
 func authentication(w http.ResponseWriter, r *http.Request) {

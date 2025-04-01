@@ -10,6 +10,7 @@ import (
 	"github.com/gimaevra94/auth/app/constsandstructs"
 	"github.com/gimaevra94/auth/app/database"
 	"github.com/gimaevra94/auth/app/mailsendler"
+	"github.com/gimaevra94/auth/app/tokenizer"
 	"github.com/gimaevra94/auth/app/validator"
 	"github.com/gorilla/sessions"
 )
@@ -19,8 +20,7 @@ var store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET_KEY")))
 func SignUpRouter() {
 	http.HandleFunc(constsandstructs.SignUpURL, signUp)
 	http.HandleFunc(constsandstructs.DataSendURL, CodeSend)
-	http.HandleFunc(constsandstructs.CodeSendURL, codeCheck)
-	http.HandleFunc(constsandstructs.UserAddURL, userAdd)
+	http.HandleFunc(constsandstructs.CodeSendURL, codeCheckUserAdd)
 	http.HandleFunc(constsandstructs.HomeURL, Home)
 }
 
@@ -68,7 +68,7 @@ func CodeSend(w http.ResponseWriter, r *http.Request) {
 			err = session.Save(r, w)
 			if err != nil {
 				http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
-				log.Println("Saveing validatedLoginInput in session failed",err)
+				log.Println("Saveing validatedLoginInput in session failed", err)
 			}
 		}
 	}
@@ -76,7 +76,7 @@ func CodeSend(w http.ResponseWriter, r *http.Request) {
 	log.Println("User allready exist: ", err)
 }
 
-func codeCheck(w http.ResponseWriter, r *http.Request) {
+func codeCheckUserAdd(w http.ResponseWriter, r *http.Request) {
 	sessions, _ := store.Get(r, "auth-session")
 
 	userCode := r.FormValue("code")
@@ -91,10 +91,6 @@ func codeCheck(w http.ResponseWriter, r *http.Request) {
 		log.Println("userCode does not equal msCode")
 	}
 
-	http.Redirect(w, r, constsandstructs.UserAddURL, http.StatusFound)
-}
-
-func userAdd(w http.ResponseWriter, r *http.Request) {
 	jsonData, ok := sessions.Values["validatedLoginInput"].(string)
 	if !ok {
 		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
@@ -111,10 +107,8 @@ func userAdd(w http.ResponseWriter, r *http.Request) {
 	err = database.UserAdd(w, r, validatedLoginInput)
 	if err != nil {
 		if err == sql.ErrNoRows {
-
+			rememberBool := r.FormValue("remember")
+			err := tokenizer.TokenWriter(w, r, validatedLoginInput, rememberBool)
 		}
-
-		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
-		log.Println("")
 	}
 }

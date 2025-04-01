@@ -34,22 +34,31 @@ func IsValidToken(r *http.Request, cookie string) error {
 func IsValidInput(w http.ResponseWriter,
 	r *http.Request) (constsandstructs.Users, error) {
 
+	var (
+		errEmpty  = errors.New("value is empty")
+		errValidr = errors.New("validation failed")
+		errRegex  = errors.New("regex key not matching")
+	)
+
 	email := r.FormValue("email")
 	if email == "" {
 		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
 		log.Println("email missing in FormValue")
+		return nil, errEmpty
 	}
 
 	login := r.FormValue("login")
 	if login == "" {
 		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
 		log.Println("login missing in FormValue")
+		return nil, errEmpty
 	}
 
 	password := r.FormValue("password")
 	if password == "" {
 		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
 		log.Println("password missing in FormValue")
+		return nil, errEmpty
 	}
 
 	validatedLoginInput := constsandstructs.NewUsers(
@@ -69,12 +78,6 @@ func IsValidInput(w http.ResponseWriter,
 		"login":    constsandstructs.LoginRegex,
 		"password": constsandstructs.PasswordRegex,
 	}
-
-	var (
-		errEmpty  = errors.New("value is empty")
-		errValidr = errors.New("validation failed")
-		errRegex  = errors.New("regex key not matching")
-	)
 
 	err := inputValidator(loginInput, regexes, errEmpty, errValidr,
 		errRegex)
@@ -102,19 +105,19 @@ func inputValidator(loginInput map[string]string,
 	regexes map[string]string, errEmpty error, errValidr error,
 	errRegex error) error {
 
-	for field, value := range loginInput {
+	for key, value := range loginInput {
 		if value == "" {
-			return fmt.Errorf("%s: %w", field, errEmpty)
+			return fmt.Errorf("%s: %w", key, errEmpty)
 		}
 
-		regex := regexes[field]
+		regex := regexes[key]
 		if regex == "" {
-			return fmt.Errorf("%s: %w", field, errRegex)
+			return fmt.Errorf("%s: %w", key, errRegex)
 		}
 
-		re := regexp.MustCompile(regex)
-		if !re.MatchString(regex) {
-			return fmt.Errorf("%s: %w", field, errValidr)
+		re := regexp.MustCompile(value)
+		if !re.MatchString(value) {
+			return fmt.Errorf("%s: %w", key, errValidr)
 		}
 	}
 	return nil

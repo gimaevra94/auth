@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/gimaevra94/auth/app/validator"
+	"github.com/gimaevra94/auth/app/constsandstructs"
 	"github.com/golang-jwt/jwt"
 )
 
@@ -36,57 +36,57 @@ func authConfWithoutExp(w http.ResponseWriter,
 }
 
 // Функция для генерации JWT токена
-func GenerateAndSignedToken(user string,
-	rememberBool bool) (string, time.Time, error) {
-	var token *jwt.Token
-	var tokenLifeTime time.Duration
-	tokenLifeTime = 24 * time.Hour
+func GenerateAndSignedToken(user string) (string, time.Time, error) {
+
+	tokenLifeTime := 24 * time.Hour
 	exp := time.Now().Add(tokenLifeTime)
-	token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user": user, // Имя пользователя
-		"exp":  exp,  // Время истечения токена (24 часа)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user": user,
+		"exp":  exp,
 	})
-	SignedToken, err := token.SignedString([]byte(os.Getenv("JWT_SECRET"))) // Используем секретный ключ
+	SignedToken, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
 	return SignedToken, exp, err
 }
 
-func GenerateAndSignedTokenWitoutExp(user string,
-	rememberBool bool) (string, error) {
-	var token *jwt.Token
-	token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+func GenerateAndSignedTokenWitoutExp(user string) (string, error) {
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user": user,
 	})
-	SignedToken, err := token.SignedString([]byte(os.Getenv("JWT_SECRET"))) // Используем секретный ключ
+	SignedToken, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
 	return SignedToken, err
 }
 
-func TokenWriter(w http.ResponseWriter, users validator.Users,
-	rememberBool bool) error {
+func TokenWriter(w http.ResponseWriter, r *http.Request,
+	users constsandstructs.Users,
+	rememberBool string) error {
 	login := users.GetLogin()
 
-	if !rememberBool {
-		login := users.GetLogin()
-		token, exp, err := GenerateAndSignedToken(login, rememberBool)
+	if rememberBool != "on" {
+		token, exp, err := GenerateAndSignedToken(login)
 		if err != nil {
-			log.Println("tokenizer.GenerateAndSignedToken: ", err)
-		} else {
-			w.Header().Set("Authorization", "Bearer"+token)
-			w.Write([]byte(token))
-			cookie := authConf(w, token, exp)
-			http.SetCookie(w, &cookie)
+			http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+			log.Println("Failed token signed: ", err)
 		}
-		return err
-	} else {
-		token, err := GenerateAndSignedTokenWitoutExp(login,
-			rememberBool)
-		if err != nil {
-			log.Println("tokenizer.GenerateAndSignedToken: ", err)
-		} else {
-			w.Header().Set("Authorization", "Bearer"+token)
-			w.Write([]byte(token))
-			cookie := authConfWithoutExp(w, token)
-			http.SetCookie(w, &cookie)
-		}
+
+		w.Header().Set("Authorization", "Bearer"+token)
+		w.Write([]byte(token))
+		cookie := authConf(w, token, exp)
+		http.SetCookie(w, &cookie)
+
 		return err
 	}
+
+	token, err := GenerateAndSignedTokenWitoutExp(login)
+	if err != nil {
+		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+		log.Println("Failed token signed: ", err)
+	}
+
+	w.Header().Set("Authorization", "Bearer"+token)
+	w.Write([]byte(token))
+	cookie := authConfWithoutExp(w, token)
+	http.SetCookie(w, &cookie)
+
+	return err
 }

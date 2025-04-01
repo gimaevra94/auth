@@ -10,6 +10,8 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
+var DB *sql.DB
+
 func dBConnConf(password []byte) mysql.Config {
 	return mysql.Config{
 		User:   "root",
@@ -20,50 +22,42 @@ func dBConnConf(password []byte) mysql.Config {
 	}
 }
 
-func DBConn(w http.ResponseWriter, r *http.Request) (*sql.DB, error) {
+func DBConn() error {
 	password, err := os.ReadFile("/run/secrets/db_password")
 	if err != nil {
 		log.Println("db_password reading error: ", err)
-		return nil, err
+		return err
 	}
 
 	cfg := dBConnConf(password)
-	db, err := sql.Open("mysql", cfg.FormatDSN())
+	DB, err := sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
 		log.Println("sql.Open: ", err)
-		return nil, err
+		return err
 	}
 
-	err = db.Ping()
+	err = DB.Ping()
 	if err != nil {
 		log.Println("db.Ping: ", err)
-		db.Close()
-		return nil, err
+		DB.Close()
+		return err
 	}
 
-	defer func() {
-		if err := db.Close(); err != nil {
-			log.Println("db.Close: ", err)
-		}
-	}()
-
-	return db, nil
+	return nil
 }
 
 func UserCheck(w http.ResponseWriter, r *http.Request,
 	users constsandstructs.Users) error {
-	db, err := DBConn(w, r)
-	if err != nil {
-		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
-		log.Println("Database connection failed when started from UserCheck:", err)
-		return err
+
+	if DB == nil {
+		log.Fatal("Failed to start database")
 	}
 
 	query := "select * from users where email = ? limit 1"
 	email := users.GetEmail()
-	row := db.QueryRow(query, email)
+	row := DB.QueryRow(query, email)
 	var emailContainer string
-	err = row.Scan(&emailContainer)
+	err := row.Scan(&emailContainer)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return err
@@ -75,13 +69,8 @@ func UserCheck(w http.ResponseWriter, r *http.Request,
 
 func UserAdd(w http.ResponseWriter, r *http.Request,
 	users constsandstructs.Users) error {
-	db, err := DBConn(w, r)
-	if err != nil {
-		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
-		log.Println("Database connection failed when started from UserAdd", err)
-	}
 
-	err = UserCheck(w, r, users)
+	err := UserCheck(w, r, users)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			query := "insert into users (email,login,password) values(?,?,?)"
@@ -89,7 +78,7 @@ func UserAdd(w http.ResponseWriter, r *http.Request,
 			login := users.GetLogin()
 			password := users.GetPassword()
 
-			_, err = db.Exec(query, email, login, password)
+			_, err = DB.Exec(query, email, login, password)
 			if err != nil {
 				http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
 				log.Println("Adding user to database failed", err)
