@@ -7,27 +7,28 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/gimaevra94/auth/app/constsandstructs"
 	"github.com/golang-jwt/jwt"
 )
 
+func getJWTSecret(token *jwt.Token) (interface{}, error) {
+	return []byte(os.Getenv("JWT_SECRET")), nil
+}
+
 func IsValidToken(r *http.Request, cookie string) error {
-	token := r.Header.Get("auth")
+	token := r.Header.Get("Authorization")
 	if token == "" {
 		return fmt.Errorf("token loss when got from header")
 	}
 
 	claims := jwt.MapClaims{}
-	_, err := jwt.ParseWithClaims(token, claims,
-
-		func(token *jwt.Token) (interface{}, error) {
-			return []byte(os.Getenv("JWT_SECRET")), nil
-		})
-
+	_, err := jwt.ParseWithClaims(token, claims, getJWTSecret)
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -84,21 +85,29 @@ func IsValidInput(w http.ResponseWriter,
 	if err != nil {
 		if errors.Is(err, errEmpty) {
 			http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
-			log.Println("Data loss when getting from: ", err)
+			log.Println("Data loss when getting from: ", getKeyFromErr(err))
 			return validatedLoginInput, err
 
 		} else if errors.Is(err, errRegex) {
 			http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
-			log.Println("Data loss when getting from: ", err)
+			log.Println("Data loss when getting from: ", getKeyFromErr(err))
 			return validatedLoginInput, err
 
 		} else if errors.Is(err, errValidr) {
 			http.ServeFile(w, r, "badsign-up.html")
-			log.Printf("%s validation failed", err)
+			log.Printf("%s validation failed", getKeyFromErr(err))
 			return validatedLoginInput, err
 		}
 	}
 	return validatedLoginInput, err
+}
+
+func getKeyFromErr(err error) string {
+	str := strings.SplitN(err.Error(), ":", 2)
+	if len(str) != 0 {
+		return strings.TrimSpace(str[0])
+	}
+	return "Failed to get the key"
 }
 
 func inputValidator(loginInput map[string]string,

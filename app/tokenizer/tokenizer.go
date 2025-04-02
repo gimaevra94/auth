@@ -10,8 +10,7 @@ import (
 	"github.com/golang-jwt/jwt"
 )
 
-func authConf(w http.ResponseWriter,
-	token string, exp time.Time) http.Cookie {
+func authConf(token string, exp time.Time) http.Cookie {
 	return http.Cookie{
 		Name:     "Authorization",
 		Expires:  exp,
@@ -23,8 +22,7 @@ func authConf(w http.ResponseWriter,
 	}
 }
 
-func authConfWithoutExp(w http.ResponseWriter,
-	token string) http.Cookie {
+func authConfWithoutExp(token string) http.Cookie {
 	return http.Cookie{
 		Name:     "Authorization",
 		Path:     "/set-token",
@@ -35,7 +33,6 @@ func authConfWithoutExp(w http.ResponseWriter,
 	}
 }
 
-// Функция для генерации JWT токена
 func GenerateAndSignedToken(user string) (string, time.Time, error) {
 
 	tokenLifeTime := 24 * time.Hour
@@ -66,27 +63,29 @@ func TokenWriter(w http.ResponseWriter, r *http.Request,
 		token, exp, err := GenerateAndSignedToken(login)
 		if err != nil {
 			http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
-			log.Println("Failed token signed: ", err)
+			log.Println("Failed to sign the token: ", err)
+			return err
 		}
 
 		w.Header().Set("Authorization", "Bearer"+token)
 		w.Write([]byte(token))
-		cookie := authConf(w, token, exp)
+		cookie := authConf(token, exp)
 		http.SetCookie(w, &cookie)
 
-		return err
+		return nil
 	}
 
 	token, err := GenerateAndSignedTokenWitoutExp(login)
 	if err != nil {
 		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
 		log.Println("Failed token signed: ", err)
+		return err
 	}
 
 	w.Header().Set("Authorization", "Bearer"+token)
 	w.Write([]byte(token))
-	cookie := authConfWithoutExp(w, token)
+	cookie := authConfWithoutExp(token)
 	http.SetCookie(w, &cookie)
 
-	return err
+	return nil
 }

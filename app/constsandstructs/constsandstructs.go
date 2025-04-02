@@ -17,6 +17,7 @@ const (
 	DataSendURL      = "/data_send"
 	CodeSendURL      = "/code_send"
 	UserAddURL       = "/user_add"
+	UserCheckURL     = "/user_check"
 	RequestErrorHTML = "requesterror.html"
 )
 

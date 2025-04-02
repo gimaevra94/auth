@@ -21,6 +21,7 @@ func SignUpRouter() {
 	http.HandleFunc(constsandstructs.SignUpURL, signUp)
 	http.HandleFunc(constsandstructs.DataSendURL, CodeSend)
 	http.HandleFunc(constsandstructs.CodeSendURL, codeCheckUserAdd)
+	http.HandleFunc(constsandstructs.UserCheckURL, UserCheck)
 	http.HandleFunc(constsandstructs.HomeURL, Home)
 }
 
@@ -108,7 +109,42 @@ func codeCheckUserAdd(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if err == sql.ErrNoRows {
 			rememberBool := r.FormValue("remember")
-			err := tokenizer.TokenWriter(w, r, validatedLoginInput, rememberBool)
+			if rememberBool == "" {
+				http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+				log.Println("value 'remember me' missing in FormValue")
+			}
+			err = tokenizer.TokenWriter(w, r,
+				validatedLoginInput, rememberBool)
+			if err != nil {
+				http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+				log.Println("Failed to sign the token")
+			}
 		}
+	}
+}
+
+func UserCheck(w http.ResponseWriter, r *http.Request) {
+	validatedUserInput, err := validator.IsValidInput(w, r)
+	if err != nil {
+		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+		log.Println("IsValidInput failed :", err)
+	}
+
+	err = database.UserCheck(w, r, validatedUserInput)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.ServeFile(w, r, "usernotexist.html")
+			log.Println("User not exist: ", err)
+		}
+	}
+	rememberBool := r.FormValue("remember")
+	if rememberBool == "" {
+		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+		log.Println("value 'remember' missing in FormValue")
+	}
+	err = tokenizer.TokenWriter(w, r, validatedUserInput, rememberBool)
+	if err != nil {
+		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+		log.Println("Failed to sign the token: ", err)
 	}
 }
