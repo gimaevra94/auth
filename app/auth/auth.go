@@ -7,36 +7,47 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/gimaevra94/auth/app/constsandstructs"
+	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/database"
 	"github.com/gimaevra94/auth/app/mailsendler"
 	"github.com/gimaevra94/auth/app/tokenizer"
+	"github.com/gimaevra94/auth/app/users"
 	"github.com/gimaevra94/auth/app/validator"
 	"github.com/gorilla/sessions"
 )
 
 var store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET_KEY")))
 
-func SignUpRouter() {
-	http.HandleFunc(constsandstructs.SignUpURL, signUp)
-	http.HandleFunc(constsandstructs.DataSendURL, CodeSend)
-	http.HandleFunc(constsandstructs.CodeSendURL, codeCheckUserAdd)
-	http.HandleFunc(constsandstructs.UserCheckURL, UserCheck)
-	http.HandleFunc(constsandstructs.HomeURL, Home)
+func Router() {
+	http.HandleFunc(consts.SignUpPageURL, signUpPage)
+	http.HandleFunc(consts.SignUpCodeSendURL, signUpCodeSend)
+	http.HandleFunc(consts.SignUpUserAddURL, signUpUserAdd)
+
+	http.HandleFunc(consts.SignInPageURL, signInPage)
+	http.HandleFunc(consts.SignInURL, signIn)
+
+	http.HandleFunc(consts.CodeNotArrivedURL, codeNotArrived)
+	http.HandleFunc(consts.HomePageURL, HomePage)
+
+	//LoginWithGoogleURL
 }
 
-func Home(w http.ResponseWriter, r *http.Request) {
+func HomePage(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "home.html")
 }
 
-func signUp(w http.ResponseWriter, r *http.Request) {
+func signUpPage(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "sign-up.html")
 }
 
-func CodeSend(w http.ResponseWriter, r *http.Request) {
+func signInPage(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "sign-in.html")
+}
+
+func signUpCodeSend(w http.ResponseWriter, r *http.Request) {
 	validatedLoginInput, err := validator.IsValidInput(w, r)
 	if err != nil {
-		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println("IsValidInput failed: ", err)
 	}
 
@@ -46,7 +57,7 @@ func CodeSend(w http.ResponseWriter, r *http.Request) {
 			email := validatedLoginInput.GetEmail()
 			mscode, err := mailsendler.MailSendler(email)
 			if err != nil {
-				http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+				http.ServeFile(w, r, consts.RequestErrorHTML)
 				log.Println("MailSendler failed: ", err)
 			}
 
@@ -55,20 +66,20 @@ func CodeSend(w http.ResponseWriter, r *http.Request) {
 			session.Values["mscode"] = mscode
 			err = session.Save(r, w)
 			if err != nil {
-				http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+				http.ServeFile(w, r, consts.RequestErrorHTML)
 				log.Println("Saveing mscode in session failed", err)
 			}
 
 			jsonData, err := json.Marshal(validatedLoginInput)
 			if err != nil {
-				http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+				http.ServeFile(w, r, consts.RequestErrorHTML)
 				log.Println("validatedLoginInput serialize failed", err)
 			}
 
 			session.Values["validatedLoginInput"] = string(jsonData)
 			err = session.Save(r, w)
 			if err != nil {
-				http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+				http.ServeFile(w, r, consts.RequestErrorHTML)
 				log.Println("Saveing validatedLoginInput in session failed", err)
 			}
 		}
@@ -77,13 +88,44 @@ func CodeSend(w http.ResponseWriter, r *http.Request) {
 	log.Println("User allready exist: ", err)
 }
 
-func codeCheckUserAdd(w http.ResponseWriter, r *http.Request) {
-	sessions, _ := store.Get(r, "auth-session")
+func codeNotArrived(w http.ResponseWriter, r *http.Request) {
+	session, _ := store.Get(r, "auth-session")
+
+	jsonData, ok := session.Values["validatedLoginInput"].(string)
+	if !ok {
+		http.ServeFile(w, r, consts.RequestErrorHTML)
+		log.Println("validatedLoginInput not found in session")
+	}
+
+	var validatedLoginInput users.Users
+	err := json.Unmarshal([]byte(jsonData), validatedLoginInput)
+	if err != nil {
+		http.ServeFile(w, r, consts.RequestErrorHTML)
+		log.Println("validatedLoginInput deserialization failed")
+	}
+
+	email := validatedLoginInput.GetEmail()
+	mscode, err := mailsendler.MailSendler(email)
+	if err != nil {
+		http.ServeFile(w, r, consts.RequestErrorHTML)
+		log.Println("MailSendler failed: ", err)
+	}
+
+	session.Values["mscode"] = mscode
+	err = sessions.Save(r, w)
+	if err != nil {
+		http.ServeFile(w, r, consts.RequestErrorHTML)
+		log.Println("Saveing mscode in session failed", err)
+	}
+}
+
+func signUpUserAdd(w http.ResponseWriter, r *http.Request) {
+	session, _ := store.Get(r, "auth-session")
 
 	userCode := r.FormValue("code")
-	mscode, ok := sessions.Values["mscode"].(string)
+	mscode, ok := session.Values["mscode"].(string)
 	if !ok {
-		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println("mscode not found in session")
 	}
 
@@ -92,16 +134,16 @@ func codeCheckUserAdd(w http.ResponseWriter, r *http.Request) {
 		log.Println("userCode does not equal msCode")
 	}
 
-	jsonData, ok := sessions.Values["validatedLoginInput"].(string)
+	jsonData, ok := session.Values["validatedLoginInput"].(string)
 	if !ok {
-		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println("validatedLoginInput not found in session")
 	}
 
-	var validatedLoginInput constsandstructs.Users
+	var validatedLoginInput users.Users
 	err := json.Unmarshal([]byte(jsonData), validatedLoginInput)
 	if err != nil {
-		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println("validatedLoginInput deserialization failed")
 	}
 
@@ -110,23 +152,25 @@ func codeCheckUserAdd(w http.ResponseWriter, r *http.Request) {
 		if err == sql.ErrNoRows {
 			rememberBool := r.FormValue("remember")
 			if rememberBool == "" {
-				http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+				http.ServeFile(w, r, consts.RequestErrorHTML)
 				log.Println("value 'remember me' missing in FormValue")
 			}
 			err = tokenizer.TokenWriter(w, r,
 				validatedLoginInput, rememberBool)
 			if err != nil {
-				http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+				http.ServeFile(w, r, consts.RequestErrorHTML)
 				log.Println("Failed to sign the token")
 			}
+
+			http.ServeFile(w, r, consts.HomePageURL)
 		}
 	}
 }
 
-func UserCheck(w http.ResponseWriter, r *http.Request) {
+func signIn(w http.ResponseWriter, r *http.Request) {
 	validatedUserInput, err := validator.IsValidInput(w, r)
 	if err != nil {
-		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println("IsValidInput failed :", err)
 	}
 
@@ -139,12 +183,14 @@ func UserCheck(w http.ResponseWriter, r *http.Request) {
 	}
 	rememberBool := r.FormValue("remember")
 	if rememberBool == "" {
-		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println("value 'remember' missing in FormValue")
 	}
 	err = tokenizer.TokenWriter(w, r, validatedUserInput, rememberBool)
 	if err != nil {
-		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println("Failed to sign the token: ", err)
 	}
+
+	http.ServeFile(w, r, consts.HomePageURL)
 }

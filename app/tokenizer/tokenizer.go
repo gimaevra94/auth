@@ -6,7 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/gimaevra94/auth/app/constsandstructs"
+	"github.com/gimaevra94/auth/app/consts"
+	"github.com/gimaevra94/auth/app/users"
 	"github.com/golang-jwt/jwt"
 )
 
@@ -33,7 +34,7 @@ func authConfWithoutExp(token string) http.Cookie {
 	}
 }
 
-func GenerateAndSignedToken(user string) (string, time.Time, error) {
+func generateAndSignedToken(user string) (string, time.Time, error) {
 
 	tokenLifeTime := 24 * time.Hour
 	exp := time.Now().Add(tokenLifeTime)
@@ -45,7 +46,7 @@ func GenerateAndSignedToken(user string) (string, time.Time, error) {
 	return SignedToken, exp, err
 }
 
-func GenerateAndSignedTokenWitoutExp(user string) (string, error) {
+func generateAndSignedTokenWitoutExp(user string) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user": user,
@@ -54,15 +55,19 @@ func GenerateAndSignedTokenWitoutExp(user string) (string, error) {
 	return SignedToken, err
 }
 
+func GetJWTSecret(token *jwt.Token) (interface{}, error) {
+	return []byte(os.Getenv("JWT_SECRET")), nil
+}
+
 func TokenWriter(w http.ResponseWriter, r *http.Request,
-	users constsandstructs.Users,
+	users users.Users,
 	rememberBool string) error {
 	login := users.GetLogin()
 
 	if rememberBool != "on" {
-		token, exp, err := GenerateAndSignedToken(login)
+		token, exp, err := generateAndSignedToken(login)
 		if err != nil {
-			http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+			http.ServeFile(w, r, consts.RequestErrorHTML)
 			log.Println("Failed to sign the token: ", err)
 			return err
 		}
@@ -75,9 +80,9 @@ func TokenWriter(w http.ResponseWriter, r *http.Request,
 		return nil
 	}
 
-	token, err := GenerateAndSignedTokenWitoutExp(login)
+	token, err := generateAndSignedTokenWitoutExp(login)
 	if err != nil {
-		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println("Failed token signed: ", err)
 		return err
 	}

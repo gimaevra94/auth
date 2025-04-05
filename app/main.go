@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gimaevra94/auth/app/auth"
-	"github.com/gimaevra94/auth/app/constsandstructs"
+	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/database"
 	"github.com/gimaevra94/auth/app/validator"
 )
@@ -22,22 +22,22 @@ func main() {
 		log.Fatal("Failed to start server: ", err)
 	}
 
-	auth.SignUpRouter()
+	auth.Router()
 	http.HandleFunc("/", authentication)
 }
 
 func authentication(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("Authorization")
 	if err != nil {
-		http.Redirect(w, r, constsandstructs.SignUpURL, http.StatusFound)
+		http.Redirect(w, r, consts.SignUpPageURL, http.StatusFound)
 	}
 
 	err = validator.IsValidToken(r, cookie.Value)
 	if err != nil {
-		http.Redirect(w, r, constsandstructs.SignInURL, http.StatusFound)
+		http.Redirect(w, r, consts.SignInPageURL, http.StatusFound)
 	}
 
 	w.Header().Set("Authorization", "Bearer"+cookie.Value)
 	w.Write([]byte(cookie.Value))
-	auth.Home(w, r)
+	auth.HomePage(w, r)
 }

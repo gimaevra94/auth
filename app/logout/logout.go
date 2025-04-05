@@ -6,3 +6,5 @@ type sessionData struct {
 	TokenExp     time.Time
 	LastActivity time.Time
 }
+
+

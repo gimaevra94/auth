@@ -5,16 +5,21 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
 
-	"github.com/gimaevra94/auth/app/constsandstructs"
+	"github.com/gimaevra94/auth/app/consts"
+	"github.com/gimaevra94/auth/app/tokenizer"
+	"github.com/gimaevra94/auth/app/users"
 	"github.com/golang-jwt/jwt"
 )
 
-func getJWTSecret(token *jwt.Token) (interface{}, error) {
-	return []byte(os.Getenv("JWT_SECRET")), nil
+func getKeyFromErr(err error) string {
+	str := strings.SplitN(err.Error(), ":", 2)
+	if len(str) != 0 {
+		return strings.TrimSpace(str[0])
+	}
+	return "Failed to get the key"
 }
 
 func IsValidToken(r *http.Request, cookie string) error {
@@ -24,7 +29,7 @@ func IsValidToken(r *http.Request, cookie string) error {
 	}
 
 	claims := jwt.MapClaims{}
-	_, err := jwt.ParseWithClaims(token, claims, getJWTSecret)
+	_, err := jwt.ParseWithClaims(token, claims, tokenizer.GetJWTSecret)
 	if err != nil {
 		return err
 	}
@@ -33,7 +38,7 @@ func IsValidToken(r *http.Request, cookie string) error {
 }
 
 func IsValidInput(w http.ResponseWriter,
-	r *http.Request) (constsandstructs.Users, error) {
+	r *http.Request) (users.Users, error) {
 
 	var (
 		errEmpty  = errors.New("value is empty")
@@ -43,26 +48,26 @@ func IsValidInput(w http.ResponseWriter,
 
 	email := r.FormValue("email")
 	if email == "" {
-		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println("email missing in FormValue")
 		return nil, errEmpty
 	}
 
 	login := r.FormValue("login")
 	if login == "" {
-		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println("login missing in FormValue")
 		return nil, errEmpty
 	}
 
 	password := r.FormValue("password")
 	if password == "" {
-		http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println("password missing in FormValue")
 		return nil, errEmpty
 	}
 
-	validatedLoginInput := constsandstructs.NewUsers(
+	validatedLoginInput := users.NewUsers(
 		email,
 		login,
 		password,
@@ -75,21 +80,21 @@ func IsValidInput(w http.ResponseWriter,
 	}
 
 	regexes := map[string]string{
-		"email":    constsandstructs.EmailRegex,
-		"login":    constsandstructs.LoginRegex,
-		"password": constsandstructs.PasswordRegex,
+		"email":    consts.EmailRegex,
+		"login":    consts.LoginRegex,
+		"password": consts.PasswordRegex,
 	}
 
 	err := inputValidator(loginInput, regexes, errEmpty, errValidr,
 		errRegex)
 	if err != nil {
 		if errors.Is(err, errEmpty) {
-			http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+			http.ServeFile(w, r, consts.RequestErrorHTML)
 			log.Println("Data loss when getting from: ", getKeyFromErr(err))
 			return validatedLoginInput, err
 
 		} else if errors.Is(err, errRegex) {
-			http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+			http.ServeFile(w, r, consts.RequestErrorHTML)
 			log.Println("Data loss when getting from: ", getKeyFromErr(err))
 			return validatedLoginInput, err
 
@@ -100,14 +105,6 @@ func IsValidInput(w http.ResponseWriter,
 		}
 	}
 	return validatedLoginInput, err
-}
-
-func getKeyFromErr(err error) string {
-	str := strings.SplitN(err.Error(), ":", 2)
-	if len(str) != 0 {
-		return strings.TrimSpace(str[0])
-	}
-	return "Failed to get the key"
 }
 
 func inputValidator(loginInput map[string]string,

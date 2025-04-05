@@ -6,7 +6,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/gimaevra94/auth/app/constsandstructs"
+	"github.com/gimaevra94/auth/app/consts"
+	"github.com/gimaevra94/auth/app/users"
 	"github.com/go-sql-driver/mysql"
 )
 
@@ -47,15 +48,14 @@ func DBConn() error {
 }
 
 func UserCheck(w http.ResponseWriter, r *http.Request,
-	users constsandstructs.Users) error {
+	users users.Users) error {
 
 	if DB == nil {
 		log.Fatal("Failed to start database")
 	}
 
-	query := "select * from users where email = ? limit 1"
 	email := users.GetEmail()
-	row := DB.QueryRow(query, email)
+	row := DB.QueryRow(consts.SelectQuery, email)
 	var emailContainer string
 	err := row.Scan(&emailContainer)
 	if err != nil {
@@ -68,19 +68,18 @@ func UserCheck(w http.ResponseWriter, r *http.Request,
 }
 
 func UserAdd(w http.ResponseWriter, r *http.Request,
-	users constsandstructs.Users) error {
+	users users.Users) error {
 
 	err := UserCheck(w, r, users)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			query := "insert into users (email,login,password) values(?,?,?)"
 			email := users.GetEmail()
 			login := users.GetLogin()
 			password := users.GetPassword()
 
-			_, err = DB.Exec(query, email, login, password)
+			_, err = DB.Exec(consts.InsertQuery, email, login, password)
 			if err != nil {
-				http.ServeFile(w, r, constsandstructs.RequestErrorHTML)
+				http.ServeFile(w, r, consts.RequestErrorHTML)
 				log.Println("Adding user to database failed", err)
 				return err
 			}
