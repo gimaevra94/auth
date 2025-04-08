@@ -7,4 +7,6 @@ type sessionData struct {
 	LastActivity time.Time
 }
 
-
+func ActivityMiddleware()  {
+	
+}

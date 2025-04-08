@@ -12,15 +12,18 @@
     <div class="content-wrapper">
         <div class="container clearfix">
             <main class="content">
-                <p style="text-align: left; font-size: 30px; margin: 0;">enter login and password</p>
-                <form method="POST" action="/sign_in">
+                <p style="text-align: left; font-size: 30px; margin: 0;">enter login, password and email</p>
+                <form method="POST" action="/input_check">
                     <input type="text" name="login" required /><br><br>
                     <input type="password" name="password" required /><br><br>
+                    <input type="email" name="email" required /><br><br>
                     <input type="checkbox" name="remember" /> Remember me<br><br>
-                    <input type="submit" value="log in" />
+                    <input type="submit" value="sign up" />
                     <p style="text-align: left; font-size: 15px; margin: 0;">or</p>
-                    <input type="submit" value="log in with google" />
                 </form>
+                <form method="POST" action="/login_with_google">
+                    <input type="submit" value="log in with google" />
+                </form><br><br>
             </main>
         </div>
     </div>

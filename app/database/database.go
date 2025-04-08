@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/users"
 	"github.com/go-sql-driver/mysql"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var DB *sql.DB
@@ -54,16 +56,35 @@ func UserCheck(w http.ResponseWriter, r *http.Request,
 		log.Fatal("Failed to start database")
 	}
 
-	email := users.GetEmail()
-	row := DB.QueryRow(consts.SelectQuery, email)
-	var emailContainer string
-	err := row.Scan(&emailContainer)
+	inputEmail := users.GetEmail()
+	row := DB.QueryRow(consts.SelectQuery, inputEmail)
+	var storedPasswordHash string
+	err := row.Scan(&storedPasswordHash)
 	if err != nil {
 		if err == sql.ErrNoRows {
+			log.Println("User not found")
 			return err
 		}
+		http.ServeFile(w, r, consts.RequestErrorHTML)
+		log.Println("Database query failed")
 		return err
 	}
+
+	if storedPasswordHash == "" {
+		http.ServeFile(w, r, consts.RequestErrorHTML)
+		log.Println("Password from users not found")
+		return errors.New("password from users not found")
+	}
+
+	inputPassword := users.GetPassword()
+	err = bcrypt.CompareHashAndPassword([]byte(storedPasswordHash),
+		[]byte(inputPassword))
+	if err != nil {
+		http.ServeFile(w, r, consts.RequestErrorHTML)
+		log.Println("inputPassword not equal storedPasswordHash")
+		return err
+	}
+
 	return nil
 }
 
@@ -77,14 +98,26 @@ func UserAdd(w http.ResponseWriter, r *http.Request,
 			login := users.GetLogin()
 			password := users.GetPassword()
 
-			_, err = DB.Exec(consts.InsertQuery, email, login, password)
+			hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password),
+				bcrypt.DefaultCost)
+			if err != nil {
+				http.ServeFile(w, r, consts.RequestErrorHTML)
+				log.Println("password hashing failed")
+				return err
+			}
+
+			_, err = DB.Exec(consts.InsertQuery, email, login,
+				hashedPassword)
 			if err != nil {
 				http.ServeFile(w, r, consts.RequestErrorHTML)
 				log.Println("Adding user to database failed", err)
 				return err
 			}
 		}
+		http.ServeFile(w, r, consts.RequestErrorHTML)
+		log.Println("Database query failed")
 		return err
 	}
+
 	return nil
 }

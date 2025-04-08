@@ -12,9 +12,14 @@
     <div class="content-wrapper">
         <div class="container clearfix">
             <main class="content">
-                <p style="text-align: left; font-size: 30px; margin: 0; color: red">wrong code</p>
+                <p style="text-align: left; font-size: 30px; margin: 0;">enter code</p>
+                <form method="POST" action="/user_add">
+                    <input type="number" name="code" required /><br><br>
+                    <input type="submit" value="submit" />
+                </form>
+                <br><br>
                 <form method="POST" action="/code_send">
-                    <input type="submit" value="back to code input" />
+                    <input type="submit" value="send me code again" />
                 </form>
             </main>
         </div>

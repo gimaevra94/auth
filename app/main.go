@@ -29,15 +29,15 @@ func main() {
 func authentication(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("Authorization")
 	if err != nil {
-		http.Redirect(w, r, consts.SignUpPageURL, http.StatusFound)
+		http.Redirect(w, r, consts.SignUpLoginInputURL, http.StatusFound)
 	}
 
 	err = validator.IsValidToken(r, cookie.Value)
 	if err != nil {
-		http.Redirect(w, r, consts.SignInPageURL, http.StatusFound)
+		http.Redirect(w, r, consts.SignInLoginInputURL, http.StatusFound)
 	}
 
 	w.Header().Set("Authorization", "Bearer"+cookie.Value)
 	w.Write([]byte(cookie.Value))
-	auth.HomePage(w, r)
+	http.ServeFile(w, r, consts.HomeURL)
 }

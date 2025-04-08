@@ -6,6 +6,7 @@ require (
 	github.com/go-sql-driver/mysql v1.9.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/gorilla/sessions v1.4.0
+	golang.org/x/crypto v0.36.0
 )
 
 require (
