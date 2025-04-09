@@ -2,7 +2,6 @@ package database
 
 import (
 	"database/sql"
-	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -50,7 +49,7 @@ func DBConn() error {
 }
 
 func UserCheck(w http.ResponseWriter, r *http.Request,
-	users users.Users) error {
+	users users.Users, userAddFromLogIn bool) error {
 
 	if DB == nil {
 		log.Fatal("Failed to start database")
@@ -69,20 +68,15 @@ func UserCheck(w http.ResponseWriter, r *http.Request,
 		log.Println("Database query failed")
 		return err
 	}
-
-	if storedPasswordHash == "" {
-		http.ServeFile(w, r, consts.RequestErrorHTML)
-		log.Println("Password from users not found")
-		return errors.New("password from users not found")
-	}
-
-	inputPassword := users.GetPassword()
-	err = bcrypt.CompareHashAndPassword([]byte(storedPasswordHash),
-		[]byte(inputPassword))
-	if err != nil {
-		http.ServeFile(w, r, consts.RequestErrorHTML)
-		log.Println("inputPassword not equal storedPasswordHash")
-		return err
+	if userAddFromLogIn {
+		inputPassword := users.GetPassword()
+		err = bcrypt.CompareHashAndPassword([]byte(storedPasswordHash),
+			[]byte(inputPassword))
+		if err != nil {
+			http.ServeFile(w, r, consts.RequestErrorHTML)
+			log.Println("inputPassword not equal storedPasswordHash")
+			return err
+		}
 	}
 
 	return nil
@@ -90,32 +84,26 @@ func UserCheck(w http.ResponseWriter, r *http.Request,
 
 func UserAdd(w http.ResponseWriter, r *http.Request,
 	users users.Users) error {
+	if DB == nil {
+		log.Fatal("Fatal to start database")
+	}
 
-	err := UserCheck(w, r, users)
+	email := users.GetEmail()
+	login := users.GetLogin()
+	password := users.GetPassword()
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password),
+		bcrypt.DefaultCost)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			email := users.GetEmail()
-			login := users.GetLogin()
-			password := users.GetPassword()
-
-			hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password),
-				bcrypt.DefaultCost)
-			if err != nil {
-				http.ServeFile(w, r, consts.RequestErrorHTML)
-				log.Println("password hashing failed")
-				return err
-			}
-
-			_, err = DB.Exec(consts.InsertQuery, email, login,
-				hashedPassword)
-			if err != nil {
-				http.ServeFile(w, r, consts.RequestErrorHTML)
-				log.Println("Adding user to database failed", err)
-				return err
-			}
-		}
 		http.ServeFile(w, r, consts.RequestErrorHTML)
-		log.Println("Database query failed")
+		log.Println("Password hashing failed")
+		return err
+	}
+
+	_, err = DB.Exec(consts.InsertQuery, email, login, hashedPassword)
+	if err != nil {
+		http.ServeFile(w, r, consts.RequestErrorHTML)
+		log.Println("Adding user to database failed")
 		return err
 	}
 

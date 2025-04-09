@@ -17,15 +17,16 @@ import (
 )
 
 var store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET_KEY")))
+var userAddFromLogIn bool
 
 func Router() {
-	http.HandleFunc(consts.SignUpLoginInputURL, signUpLoginInput)
+	http.HandleFunc(consts.SignUpURL, signUpLoginInput)
 	http.HandleFunc(consts.InputCheckURL, inputCheck)
 	http.HandleFunc(consts.CodeSendURL, codeSend)
 	http.HandleFunc(consts.UserAddURL, userAdd)
 
-	http.HandleFunc(consts.SignInLoginInputURL, signInLoginInput)
-	http.HandleFunc(consts.LoginInputCheckUserAddURL, loginInputCheckUserAdd)
+	http.HandleFunc(consts.SignInURL, signInLoginInput)
+	http.HandleFunc(consts.LoginInURL, logIn)
 
 	//LoginWithGoogleURL
 }
@@ -46,7 +47,8 @@ func inputCheck(w http.ResponseWriter, r *http.Request) {
 		log.Println("IsValidInput failed: ", err)
 	}
 
-	err = database.UserCheck(w, r, validatedLoginInput)
+	err = database.UserCheck(w, r, validatedLoginInput,
+		userAddFromLogIn == false)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			jsonData, err := json.Marshal(validatedLoginInput)
@@ -99,6 +101,12 @@ func codeSend(w http.ResponseWriter, r *http.Request) {
 }
 
 func userAdd(w http.ResponseWriter, r *http.Request) {
+	rememberBool := r.FormValue("remember")
+	if rememberBool == "" {
+		http.ServeFile(w, r, consts.RequestErrorHTML)
+		log.Println("value 'remember me' missing in FormValue")
+	}
+
 	session, _ := store.Get(r, "auth-session")
 
 	userCode := r.FormValue("code")
@@ -128,29 +136,31 @@ func userAdd(w http.ResponseWriter, r *http.Request) {
 
 	err = database.UserAdd(w, r, validatedLoginInput)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			rememberBool := r.FormValue("remember")
-			if rememberBool == "" {
-				http.ServeFile(w, r, consts.RequestErrorHTML)
-				log.Println("value 'remember me' missing in FormValue")
-			}
-			err = tokenizer.TokenWriter(w, r,
-				validatedLoginInput, rememberBool)
-			if err != nil {
-				http.ServeFile(w, r, consts.RequestErrorHTML)
-				log.Println("Failed to sign the token")
-			}
-
-			http.ServeFile(w, r, consts.HomeURL)
-		}
+		http.ServeFile(w, r, consts.RequestErrorHTML)
+		log.Println("Adding users to database failed")
 	}
+
+	err = tokenizer.TokenWriter(w, r,
+		validatedLoginInput, rememberBool)
+	if err != nil {
+		http.ServeFile(w, r, consts.RequestErrorHTML)
+		log.Println("Failed to sign the token")
+	}
+
+	http.ServeFile(w, r, consts.HomeURL)
 }
 
 func signInLoginInput(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "signInloginInput.html")
 }
 
-func loginInputCheckUserAdd(w http.ResponseWriter, r *http.Request) {
+func logIn(w http.ResponseWriter, r *http.Request) {
+	rememberBool := r.FormValue("remember")
+	if rememberBool == "" {
+		http.ServeFile(w, r, consts.RequestErrorHTML)
+		log.Println("value 'remember' missing in FormValue")
+	}
+
 	session, _ := store.Get(r, "auth-session")
 	var validatedLoginInput users.Users
 
@@ -174,18 +184,15 @@ func loginInputCheckUserAdd(w http.ResponseWriter, r *http.Request) {
 		log.Println("IsValidInput failed :", err)
 	}
 
-	err = database.UserCheck(w, r, validatedLoginInput)
+	err = database.UserCheck(w, r, validatedLoginInput,
+		userAddFromLogIn == true)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			http.ServeFile(w, r, "usernotexist.html")
 			log.Println("User not exist: ", err)
 		}
-	}
-
-	rememberBool := r.FormValue("remember")
-	if rememberBool == "" {
 		http.ServeFile(w, r, consts.RequestErrorHTML)
-		log.Println("value 'remember' missing in FormValue")
+		log.Println("Database query failed")
 	}
 
 	err = tokenizer.TokenWriter(w, r, validatedLoginInput, rememberBool)

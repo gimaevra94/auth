@@ -8,17 +8,15 @@ const (
 	LoginRegex    = `^[a-zA-Zа-яА-ЯёЁ0-9]{3,30}$`
 	PasswordRegex = `^(?=.*[a-zA-Zа-яА-ЯёЁ])(?=.*\d)(?=.*[!@#$%^&*])[\w!@#$%^&*]{3,30}$`
 
-	SignUpLoginInputURL = "/sign_up_login_input"
-	InputCheckURL       = "/input_check"
-	CodeSendURL         = "/code_send"
-	UserAddURL          = "/user_add"
-
-	SignInLoginInputURL       = "/sign_in_login_input"
-	LoginInputCheckUserAddURL = "/input_check_user_add"
-
+	SignUpURL          = "/sign_up"
+	InputCheckURL      = "/input_check"
+	CodeSendURL        = "/code_send"
+	UserAddURL         = "/user_add"
+	SignInURL          = "/sign_in"
+	LoginInURL         = "/log_in"
 	SendCodeAgain      = "/send_code_again"
 	HomeURL            = "/home"
 	LoginWithGoogleURL = "/login_with_google"
-
-	RequestErrorHTML = "requesterror.html"
+	
+	RequestErrorHTML   = "requesterror.html"
 )
