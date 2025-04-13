@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/gimaevra94/auth/app/consts"
-	"github.com/gimaevra94/auth/app/users"
+	"github.com/gimaevra94/auth/app/structs"
 	"github.com/golang-jwt/jwt"
 )
 
@@ -60,8 +60,10 @@ func GetJWTSecret(token *jwt.Token) (interface{}, error) {
 }
 
 func TokenWriter(w http.ResponseWriter, r *http.Request,
-	users users.Users,
-	rememberBool string) error {
+	users structs.Users,
+	rememberBool string) (time.Time, error) {
+
+	var exp time.Time
 	login := users.GetLogin()
 
 	if rememberBool != "on" {
@@ -69,7 +71,7 @@ func TokenWriter(w http.ResponseWriter, r *http.Request,
 		if err != nil {
 			http.ServeFile(w, r, consts.RequestErrorHTML)
 			log.Println("Failed to sign the token: ", err)
-			return err
+			return exp, err
 		}
 
 		w.Header().Set("Authorization", "Bearer"+token)
@@ -77,14 +79,14 @@ func TokenWriter(w http.ResponseWriter, r *http.Request,
 		cookie := authConf(token, exp)
 		http.SetCookie(w, &cookie)
 
-		return nil
+		return exp, nil
 	}
 
 	token, err := generateAndSignedTokenWitoutExp(login)
 	if err != nil {
 		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println("Failed token signed: ", err)
-		return err
+		return exp, err
 	}
 
 	w.Header().Set("Authorization", "Bearer"+token)
@@ -92,5 +94,5 @@ func TokenWriter(w http.ResponseWriter, r *http.Request,
 	cookie := authConfWithoutExp(token)
 	http.SetCookie(w, &cookie)
 
-	return nil
+	return exp, nil
 }
