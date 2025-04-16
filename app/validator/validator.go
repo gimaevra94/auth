@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 
 	"github.com/gimaevra94/auth/app/consts"
-	"github.com/gimaevra94/auth/app/tokenizer"
-	"github.com/gimaevra94/auth/app/users"
+	"github.com/gimaevra94/auth/app/structs"
 	"github.com/golang-jwt/jwt"
 )
 
@@ -22,23 +22,32 @@ func getKeyFromErr(err error) string {
 	return "Failed to get the key"
 }
 
-func IsValidToken(r *http.Request, cookie string) error {
-	token := r.Header.Get("Authorization")
-	if token == "" {
-		return fmt.Errorf("token loss when got from header")
+func getJWTSecret(token *jwt.Token) (interface{}, error) {
+	return []byte(os.Getenv("JWT_SECRET")), nil
+}
+
+func IsValidToken(w http.ResponseWriter, r *http.Request,
+	value string) (*jwt.Token, error) {
+	if value == "" {
+		log.Println("Failed to get from token")
+		return nil, errors.New("failed to get from token")
 	}
 
-	claims := jwt.MapClaims{}
-	_, err := jwt.ParseWithClaims(token, claims, tokenizer.GetJWTSecret)
+	token, err := jwt.Parse(value, getJWTSecret)
 	if err != nil {
-		return err
+		log.Println("Failed to parse from token", err)
+		return token, err
 	}
 
-	return nil
+	if !token.Valid {
+		log.Println("Token is invalid", err)
+		return token, err
+	}
+	return token, nil
 }
 
 func IsValidInput(w http.ResponseWriter,
-	r *http.Request) (users.Users, error) {
+	r *http.Request) (structs.Users, error) {
 
 	var (
 		errEmpty  = errors.New("value is empty")
@@ -67,7 +76,7 @@ func IsValidInput(w http.ResponseWriter,
 		return nil, errEmpty
 	}
 
-	validatedLoginInput := users.NewUsers(
+	validatedLoginInput := structs.NewUsers(
 		email,
 		login,
 		password,

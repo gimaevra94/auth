@@ -1,6 +1,7 @@
 package tokenizer
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -10,29 +11,6 @@ import (
 	"github.com/gimaevra94/auth/app/structs"
 	"github.com/golang-jwt/jwt"
 )
-
-func authConf(token string, exp time.Time) http.Cookie {
-	return http.Cookie{
-		Name:     "Authorization",
-		Expires:  exp,
-		Path:     "/set-token",
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
-		Value:    token,
-	}
-}
-
-func authConfWithoutExp(token string) http.Cookie {
-	return http.Cookie{
-		Name:     "Authorization",
-		Path:     "/set-token",
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
-		Value:    token,
-	}
-}
 
 func generateAndSignedToken(user string) (string, time.Time, error) {
 
@@ -51,12 +29,42 @@ func generateAndSignedTokenWitoutExp(user string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user": user,
 	})
-	SignedToken, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
-	return SignedToken, err
+	signedToken, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	return signedToken, err
 }
 
-func GetJWTSecret(token *jwt.Token) (interface{}, error) {
-	return []byte(os.Getenv("JWT_SECRET")), nil
+func GetNewTokegn(token *jwt.Token) error {
+	claims := token.Claims.(jwt.MapClaims)
+	expFloat := claims["exp"].(float64)
+	exp := time.Unix(int64(expFloat), 0)
+	if time.Now().After(exp) {
+		log.Println("Token in expired")
+		return errors.New("token in expired")
+	}
+
+	newExp := time.Now().Add(3 * time.Hour)
+	newToken := jwt.NewWithClaims(jwt.SigningMethodHS256,
+		jwt.MapClaims{
+			"user": claims["user"],
+			"exp":  newExp.Unix(),
+		})
+
+	newiSngedToken, err := newToken.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	if err != nil {
+		log.Println("Failed to sign token", err)
+		return err
+	}
+
+	newCookie := http.Cookie{
+		Name:     "Authorization",
+		Path:     "/set-token",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		Value:    newiSngedToken,
+	}
+
+	http.SetCookie(w, &newCookie)
 }
 
 func TokenWriter(w http.ResponseWriter, r *http.Request,
@@ -76,9 +84,18 @@ func TokenWriter(w http.ResponseWriter, r *http.Request,
 
 		w.Header().Set("Authorization", "Bearer"+token)
 		w.Write([]byte(token))
-		cookie := authConf(token, exp)
-		http.SetCookie(w, &cookie)
 
+		cookie := http.Cookie{
+			Name:     "Authorization",
+			Expires:  exp,
+			Path:     "/set-token",
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteStrictMode,
+			Value:    token,
+		}
+
+		http.SetCookie(w, &cookie)
 		return exp, nil
 	}
 
@@ -91,8 +108,37 @@ func TokenWriter(w http.ResponseWriter, r *http.Request,
 
 	w.Header().Set("Authorization", "Bearer"+token)
 	w.Write([]byte(token))
-	cookie := authConfWithoutExp(token)
-	http.SetCookie(w, &cookie)
 
+	cookie := http.Cookie{
+		Name:     "Authorization",
+		Path:     "/set-token",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		Value:    token,
+	}
+
+	http.SetCookie(w, &cookie)
 	return exp, nil
+}
+
+func GetNewToken(users structs.Users, command string) (string, error) {
+	var token *jwt.Token
+
+	switch command {
+	case "Expire in 24 hours":
+		exp := time.Now().Add(24 * time.Hour)
+		user := users.GetLogin()
+		token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+			"user": user,
+			"exp":  exp,
+		})
+
+	case "Expire in 3 hours":
+
+	case "No expiration":
+	}
+
+	SignedToken, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	return SignedToken, err
 }
