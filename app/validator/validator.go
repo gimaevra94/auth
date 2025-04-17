@@ -26,24 +26,30 @@ func getJWTSecret(token *jwt.Token) (interface{}, error) {
 	return []byte(os.Getenv("JWT_SECRET")), nil
 }
 
-func IsValidToken(w http.ResponseWriter, r *http.Request,
-	value string) (*jwt.Token, error) {
+func IsValidToken(r *http.Request) error {
+	cookie, err := r.Cookie("Authorization")
+	if err != nil {
+		log.Println("Failed to get a cookie", err)
+		return err
+	}
+
+	value := cookie.Value
 	if value == "" {
-		log.Println("Failed to get from token")
-		return nil, errors.New("failed to get from token")
+		log.Println("Failed to get a token from the cookie", err)
+		return err
 	}
 
 	token, err := jwt.Parse(value, getJWTSecret)
 	if err != nil {
 		log.Println("Failed to parse from token", err)
-		return token, err
+		return err
 	}
 
 	if !token.Valid {
 		log.Println("Token is invalid", err)
-		return token, err
+		return err
 	}
-	return token, nil
+	return nil
 }
 
 func IsValidInput(w http.ResponseWriter,

@@ -7,8 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/gimaevra94/auth/app/consts"
-	"github.com/gimaevra94/auth/app/structs"
+	"github.com/gimaevra94/auth/app/auth"
 	"github.com/golang-jwt/jwt"
 )
 
@@ -67,66 +66,19 @@ func GetNewTokegn(token *jwt.Token) error {
 	http.SetCookie(w, &newCookie)
 }
 
-func TokenWriter(w http.ResponseWriter, r *http.Request,
-	users structs.Users,
-	rememberBool string) (time.Time, error) {
+func TokenCreate(w http.ResponseWriter, r *http.Request,
+	command string) error {
 
-	var exp time.Time
-	login := users.GetLogin()
-
-	if rememberBool != "on" {
-		token, exp, err := generateAndSignedToken(login)
-		if err != nil {
-			http.ServeFile(w, r, consts.RequestErrorHTML)
-			log.Println("Failed to sign the token: ", err)
-			return exp, err
-		}
-
-		w.Header().Set("Authorization", "Bearer"+token)
-		w.Write([]byte(token))
-
-		cookie := http.Cookie{
-			Name:     "Authorization",
-			Expires:  exp,
-			Path:     "/set-token",
-			HttpOnly: true,
-			Secure:   true,
-			SameSite: http.SameSiteStrictMode,
-			Value:    token,
-		}
-
-		http.SetCookie(w, &cookie)
-		return exp, nil
-	}
-
-	token, err := generateAndSignedTokenWitoutExp(login)
-	if err != nil {
-		http.ServeFile(w, r, consts.RequestErrorHTML)
-		log.Println("Failed token signed: ", err)
-		return exp, err
-	}
-
-	w.Header().Set("Authorization", "Bearer"+token)
-	w.Write([]byte(token))
-
-	cookie := http.Cookie{
-		Name:     "Authorization",
-		Path:     "/set-token",
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
-		Value:    token,
-	}
-
-	http.SetCookie(w, &cookie)
-	return exp, nil
-}
-
-func GetNewToken(users structs.Users, command string) (string, error) {
 	var token *jwt.Token
+	session, err := auth.Store.Get(r, "auth-session")
+	if err != nil {
+		log.Println("Failed to get 'auth-session'")
+	}
+
+	users:=session.Values[""]
 
 	switch command {
-	case "Expire in 24 hours":
+	case "":
 		exp := time.Now().Add(24 * time.Hour)
 		user := users.GetLogin()
 		token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -134,11 +86,37 @@ func GetNewToken(users structs.Users, command string) (string, error) {
 			"exp":  exp,
 		})
 
-	case "Expire in 3 hours":
+	case "on":
+		user := users.GetLogin()
+		token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+			"user": user,
+		})
 
-	case "No expiration":
+	case "expire_3_hours":
+		exp := time.Now().Add(3 * time.Hour)
+		user := users.GetLogin()
+		token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+			"user": user,
+			"exp":  exp,
+		})
 	}
 
 	SignedToken, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
-	return SignedToken, err
+	if err != nil {
+		log.Println("Failed to sign a token")
+		return err
+	}
+
+	cookie := http.Cookie{
+		Name:     "Authorization",
+		Path:     "/set-token",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		Value:    SignedToken,
+	}
+
+	http.SetCookie(w, &cookie)
+
+	return nil
 }
