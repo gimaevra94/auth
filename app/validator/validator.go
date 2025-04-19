@@ -26,34 +26,35 @@ func getJWTSecret(token *jwt.Token) (interface{}, error) {
 	return []byte(os.Getenv("JWT_SECRET")), nil
 }
 
-func IsValidToken(r *http.Request) error {
+func IsValidToken(r *http.Request) (*jwt.Token, error) {
 	cookie, err := r.Cookie("Authorization")
 	if err != nil {
 		log.Println("Failed to get a cookie", err)
-		return err
+		return nil, err
 	}
 
 	value := cookie.Value
 	if value == "" {
 		log.Println("Failed to get a token from the cookie", err)
-		return err
+		return nil, err
 	}
 
 	token, err := jwt.Parse(value, getJWTSecret)
 	if err != nil {
 		log.Println("Failed to parse from token", err)
-		return err
+		return nil, err
 	}
 
 	if !token.Valid {
 		log.Println("Token is invalid", err)
-		return err
+		return nil, err
 	}
-	return nil
+
+	return token, nil
 }
 
 func IsValidInput(w http.ResponseWriter,
-	r *http.Request) (structs.Users, error) {
+	r *http.Request) (structs.User, error) {
 
 	var (
 		errEmpty  = errors.New("value is empty")
@@ -82,7 +83,7 @@ func IsValidInput(w http.ResponseWriter,
 		return nil, errEmpty
 	}
 
-	validatedLoginInput := structs.NewUsers(
+	validatedLoginInput := structs.NewUser(
 		email,
 		login,
 		password,

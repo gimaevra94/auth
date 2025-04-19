@@ -17,24 +17,24 @@ func main() {
 	}
 	defer database.DB.Close()
 
-	err = http.ListenAndServe(":8080", nil)
+	r := auth.Router()
+	r.Get("/", authentication)
+
+	err = http.ListenAndServe(":8080", r)
 	if err != nil {
 		log.Fatal("Failed to start server: ", err)
 	}
-
-	auth.Router()
-	http.HandleFunc("/", authentication)
 }
 
 func authentication(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("Authorization")
 	if err != nil {
-		http.Redirect(w, r, consts.SignUpLoginInputURL, http.StatusFound)
+		http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 	}
 
-	err = validator.IsValidToken(r, cookie.Value)
+	_, err = validator.IsValidToken(r)
 	if err != nil {
-		http.Redirect(w, r, consts.SignInLoginInputURL, http.StatusFound)
+		http.Redirect(w, r, consts.LoginInURL, http.StatusFound)
 	}
 
 	w.Header().Set("Authorization", "Bearer"+cookie.Value)

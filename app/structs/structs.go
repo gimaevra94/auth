@@ -1,70 +1,33 @@
 package structs
 
-import "time"
-
-type users struct {
+type user struct {
 	Email    string `json:"email"`
 	Login    string `json:"login"`
 	Password string `json:"password"`
 }
 
-type Users interface {
+type User interface {
 	GetEmail() string
 	GetLogin() string
 	GetPassword() string
 }
 
-func (v *users) GetEmail() string {
+func (v *user) GetEmail() string {
 	return v.Email
 }
 
-func (v *users) GetLogin() string {
+func (v *user) GetLogin() string {
 	return v.Login
 }
 
-func (v *users) GetPassword() string {
+func (v *user) GetPassword() string {
 	return v.Password
 }
 
-func NewUsers(email, login, password string) Users {
-	return &users{
+func NewUser(email, login, password string) User {
+	return &user{
 		Email:    email,
 		Login:    login,
 		Password: password,
-	}
-}
-
-type lastActivity struct {
-	TokenExp    time.Time
-	ActivityExp time.Time
-}
-
-type LastActivity interface {
-	GetTokenExp() time.Time
-	GetActivityExp() time.Time
-	SetTokenExp(new_v time.Time)
-	SetActivityExp(new_v time.Time)
-}
-
-func (v *lastActivity) GetTokenExp() time.Time {
-	return v.TokenExp
-}
-
-func (v *lastActivity) GetActivityExp() time.Time {
-	return v.ActivityExp
-}
-
-func (v *lastActivity) SetTokenExp(new_v time.Time) {
-	v.TokenExp = new_v
-}
-
-func (v *lastActivity) SetActivityExp(new_v time.Time) {
-	v.ActivityExp = new_v
-}
-
-func NewLastActivity(tokenExp time.Time) LastActivity {
-	return &lastActivity{
-		TokenExp:    tokenExp,
-		ActivityExp: time.Now(),
 	}
 }

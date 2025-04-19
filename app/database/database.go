@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/gimaevra94/auth/app/consts"
-	"github.com/gimaevra94/auth/app/users"
+	"github.com/gimaevra94/auth/app/structs"
 	"github.com/go-sql-driver/mysql"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -49,7 +49,7 @@ func DBConn() error {
 }
 
 func UserCheck(w http.ResponseWriter, r *http.Request,
-	users users.Users, userAddFromLogIn bool) error {
+	users structs.User, userAddFromLogIn bool) error {
 
 	if DB == nil {
 		log.Fatal("Failed to start database")
@@ -83,7 +83,7 @@ func UserCheck(w http.ResponseWriter, r *http.Request,
 }
 
 func UserAdd(w http.ResponseWriter, r *http.Request,
-	users users.Users) error {
+	users structs.User) error {
 	if DB == nil {
 		log.Fatal("Fatal to start database")
 	}

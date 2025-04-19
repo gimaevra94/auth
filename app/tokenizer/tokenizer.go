@@ -1,100 +1,54 @@
 package tokenizer
 
 import (
+	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
 	"os"
 	"time"
 
-	"github.com/gimaevra94/auth/app/auth"
+	"github.com/gimaevra94/auth/app/structs"
 	"github.com/golang-jwt/jwt"
+	"github.com/gorilla/sessions"
 )
 
-func generateAndSignedToken(user string) (string, time.Time, error) {
+func TokenCreate(w http.ResponseWriter, r *http.Request, command string,
+	session *sessions.Session) error {
 
-	tokenLifeTime := 24 * time.Hour
-	exp := time.Now().Add(tokenLifeTime)
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user": user,
-		"exp":  exp,
-	})
-	SignedToken, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
-	return SignedToken, exp, err
-}
-
-func generateAndSignedTokenWitoutExp(user string) (string, error) {
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user": user,
-	})
-	signedToken, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
-	return signedToken, err
-}
-
-func GetNewTokegn(token *jwt.Token) error {
-	claims := token.Claims.(jwt.MapClaims)
-	expFloat := claims["exp"].(float64)
-	exp := time.Unix(int64(expFloat), 0)
-	if time.Now().After(exp) {
-		log.Println("Token in expired")
-		return errors.New("token in expired")
+	jsonData, ok := session.Values["user"].([]byte)
+	if !ok {
+		log.Println("'user' not exist in session")
+		return errors.New("'user' not exist in session")
 	}
 
-	newExp := time.Now().Add(3 * time.Hour)
-	newToken := jwt.NewWithClaims(jwt.SigningMethodHS256,
-		jwt.MapClaims{
-			"user": claims["user"],
-			"exp":  newExp.Unix(),
-		})
-
-	newiSngedToken, err := newToken.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	var user structs.User
+	err := json.Unmarshal([]byte(jsonData), &user)
 	if err != nil {
-		log.Println("Failed to sign token", err)
+		log.Println("'user' deserialize is failed", err)
 		return err
 	}
 
-	newCookie := http.Cookie{
-		Name:     "Authorization",
-		Path:     "/set-token",
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
-		Value:    newiSngedToken,
-	}
-
-	http.SetCookie(w, &newCookie)
-}
-
-func TokenCreate(w http.ResponseWriter, r *http.Request,
-	command string) error {
-
 	var token *jwt.Token
-	session, err := auth.Store.Get(r, "auth-session")
-	if err != nil {
-		log.Println("Failed to get 'auth-session'")
-	}
-
-	users:=session.Values[""]
 
 	switch command {
 	case "":
 		exp := time.Now().Add(24 * time.Hour)
-		user := users.GetLogin()
+		user := user.GetLogin()
 		token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 			"user": user,
 			"exp":  exp,
 		})
 
 	case "on":
-		user := users.GetLogin()
+		user := user.GetLogin()
 		token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 			"user": user,
 		})
 
 	case "expire_3_hours":
 		exp := time.Now().Add(3 * time.Hour)
-		user := users.GetLogin()
+		user := user.GetLogin()
 		token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 			"user": user,
 			"exp":  exp,

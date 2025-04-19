@@ -6,30 +6,40 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
-	"github.com/gimaevra94/auth/app/auth/serializer"
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/database"
+	"github.com/gimaevra94/auth/app/logout"
 	"github.com/gimaevra94/auth/app/mailsendler"
 	"github.com/gimaevra94/auth/app/structs"
 	"github.com/gimaevra94/auth/app/tokenizer"
 	"github.com/gimaevra94/auth/app/validator"
+	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/sessions"
 )
 
-var Store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET_KEY")))
+var store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET_KEY")))
 var userAddFromLogIn bool
 
-func Router() {
-	http.HandleFunc(consts.SignUpURL, signUpLoginInput)
-	http.HandleFunc(consts.InputCheckURL, inputCheck)
-	http.HandleFunc(consts.CodeSendURL, codeSend)
-	http.HandleFunc(consts.UserAddURL, userAdd)
+func Router() *chi.Mux {
+	r := chi.NewRouter()
 
-	http.HandleFunc(consts.SignInURL, signInLoginInput)
-	http.HandleFunc(consts.LoginInURL, logIn)
+	r.Get(consts.SignUpURL, signUpLoginInput)
+	r.Post(consts.InputCheckURL, inputCheck)
+	r.Get(consts.CodeSendURL, codeSend)
+	r.Post(consts.UserAddURL, userAdd)
+
+	r.Get(consts.SignInURL, signInLoginInput)
+	r.Post(consts.LoginInURL, logIn)
+
+	r.Use(logout.IsExpiredTokenMW(store))
+
+	r.With(logout.IsExpiredTokenMW(store)).Get(consts.HomeURL, Home)
+	r.With(logout.IsExpiredTokenMW(store)).Get(consts.LogoutURL, logout.Logout)
 
 	//LoginWithGoogleURL
+	return r
 }
 
 func signUpLoginInput(w http.ResponseWriter, r *http.Request) {
@@ -37,31 +47,36 @@ func signUpLoginInput(w http.ResponseWriter, r *http.Request) {
 }
 
 func inputCheck(w http.ResponseWriter, r *http.Request) {
-	session, err := Store.Get(r, "auth")
+	session, err := store.Get(r, "auth")
 	if err != nil {
 		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println("Failed to get session")
 	}
 
-	if session.Values["users"] != nil {
+	if session.Values["user"] != nil {
 		http.Redirect(w, r, consts.CodeSendURL, http.StatusFound)
 	}
 
-	validatedLoginInput, err := validator.IsValidInput(w, r)
+	user, err := validator.IsValidInput(w, r)
 	if err != nil {
 		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println("IsValidInput failed: ", err)
 	}
 
-	err = database.UserCheck(w, r, validatedLoginInput,
-		userAddFromLogIn == false)
+	err = database.UserCheck(w, r, user, !userAddFromLogIn)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			_, err := serializer.SerializeAndSaveInSession(w, r, validatedLoginInput,
-				true)
+			jsonData, err := json.Marshal(user)
 			if err != nil {
 				http.ServeFile(w, r, consts.RequestErrorHTML)
-				log.Println("serializer failed", err)
+				log.Println("'user' serialize is failed", err)
+			}
+
+			session.Values["user"] = jsonData
+			err = session.Save(r, w)
+			if err != nil {
+				http.ServeFile(w, r, consts.RequestErrorHTML)
+				log.Println("Failed to save 'user' in session")
 			}
 
 			http.Redirect(w, r, consts.CodeSendURL, http.StatusFound)
@@ -73,15 +88,26 @@ func inputCheck(w http.ResponseWriter, r *http.Request) {
 
 func codeSend(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "codeSend.html")
-	session, err := Store.Get(r, "auth-session")
+	session, err := store.Get(r, "auth-session")
 	if err != nil {
 		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println("Failed to get session")
 	}
-	var usersEmpty *structs.Users
-	users, err := serializer.Serialize(w, r, usersEmpty, false)
 
-	email := validatedLoginInput.GetEmail()
+	jsonData, ok := session.Values["user"].([]byte)
+	if !ok {
+		http.ServeFile(w, r, consts.RequestErrorHTML)
+		log.Println("'user' is not exist in session")
+	}
+
+	var user structs.User
+	err = json.Unmarshal([]byte(jsonData), &user)
+	if err != nil {
+		http.ServeFile(w, r, consts.RequestErrorHTML)
+		log.Println("'user' deserialize is failed", err)
+	}
+
+	email := user.GetEmail()
 	mscode, err := mailsendler.MailSendler(email)
 	if err != nil {
 		http.ServeFile(w, r, consts.RequestErrorHTML)
@@ -97,7 +123,7 @@ func codeSend(w http.ResponseWriter, r *http.Request) {
 }
 
 func userAdd(w http.ResponseWriter, r *http.Request) {
-	session, err := Store.Get(r, "auth-session")
+	session, err := store.Get(r, "auth-session")
 	if err != nil {
 		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println("Failed to get session")
@@ -115,33 +141,36 @@ func userAdd(w http.ResponseWriter, r *http.Request) {
 		log.Println("userCode does not equal msCode")
 	}
 
-	jsonData, ok := session.Values["validatedLoginInput"].(string)
+	jsonData, ok := session.Values["user"].([]byte)
 	if !ok {
 		http.ServeFile(w, r, consts.RequestErrorHTML)
-		log.Println("validatedLoginInput not found in session")
+		log.Println("user not found in session")
 	}
 
-	var validatedLoginInput structs.Users
-	err = json.Unmarshal([]byte(jsonData), validatedLoginInput)
+	var user structs.User
+	err = json.Unmarshal([]byte(jsonData), user)
 	if err != nil {
 		http.ServeFile(w, r, consts.RequestErrorHTML)
-		log.Println("validatedLoginInput deserialization failed")
+		log.Println("user deserialization failed")
 	}
 
-	err = database.UserAdd(w, r, validatedLoginInput)
+	err = database.UserAdd(w, r, user)
 	if err != nil {
 		http.ServeFile(w, r, consts.RequestErrorHTML)
-		log.Println("Adding users to database failed")
+		log.Println("Adding user to database failed")
 	}
 
 	tokenExp := r.FormValue("remember")
-	err = tokenizer.TokenCreate(w, tokenExp)
+	err = tokenizer.TokenCreate(w, r, tokenExp, session)
 	if err != nil {
 		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println("Failed to get a new token")
 	}
 
-	http.ServeFile(w, r, consts.HomeURL)
+	lastActivity := time.Now().Add(3 * time.Hour)
+	session.Values["lastActivity"] = lastActivity
+
+	Home(w, r)
 }
 
 func signInLoginInput(w http.ResponseWriter, r *http.Request) {
@@ -155,35 +184,35 @@ func logIn(w http.ResponseWriter, r *http.Request) {
 		log.Println("value 'remember' missing in FormValue")
 	}
 
-	session, err := Store.Get(r, "auth-session")
+	session, err := store.Get(r, "auth-session")
 	if err != nil {
 		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println("Failed to get session")
 	}
 
-	var validatedLoginInput structs.Users
-	if session.Values["validatedLoginInput"] != nil {
-		jsonData, ok := session.Values["validatedLoginInput"].(string)
+	var user structs.User
+	if session.Values["user"] != nil {
+		jsonData, ok := session.Values["user"].(string)
 		if !ok {
 			http.ServeFile(w, r, consts.RequestErrorHTML)
-			log.Println("validatedLoginInput not found in session")
+			log.Println("user not found in session")
 		}
 
-		err := json.Unmarshal([]byte(jsonData), &validatedLoginInput)
+		err := json.Unmarshal([]byte(jsonData), &user)
 		if err != nil {
 			http.ServeFile(w, r, consts.RequestErrorHTML)
-			log.Println("validatedLoginInput deserialization failed")
+			log.Println("user deserialization failed")
 		}
 	}
 
-	validatedLoginInput, err = validator.IsValidInput(w, r)
+	user, err = validator.IsValidInput(w, r)
 	if err != nil {
 		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println("IsValidInput failed :", err)
 	}
 
-	err = database.UserCheck(w, r, validatedLoginInput,
-		userAddFromLogIn == true)
+	err = database.UserCheck(w, r, user,
+		userAddFromLogIn)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			http.ServeFile(w, r, "usernotexist.html")
@@ -194,11 +223,45 @@ func logIn(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tokenExp := r.FormValue("remember")
-	err = tokenizer.TokenCreate(w, tokenExp)
+	err = tokenizer.TokenCreate(w, r, tokenExp, session)
 	if err != nil {
 		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println("Failed to get a new token")
 	}
 
-	http.ServeFile(w, r, consts.HomeURL)
+	lastActivity := time.Now().Add(3 * time.Hour)
+	session.Values["lastActivity"] = lastActivity
+	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
+}
+
+func Home(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "home.html")
+}
+
+func Logout(w http.ResponseWriter, r *http.Request) {
+	session, err := store.Get(r, "auth")
+	if err != nil {
+		http.ServeFile(w, r, consts.RequestErrorHTML)
+		log.Println("Failed to get the session from the store")
+	}
+
+	delete(session.Values, "lastActivity")
+	err = session.Save(r, w)
+	if err != nil {
+		http.ServeFile(w, r, consts.RequestErrorHTML)
+		log.Println("Session save is failed")
+	}
+
+	cookie := http.Cookie{
+		Name:     "Authorization",
+		Path:     "/set-token",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		Value:    "",
+		MaxAge:   -1,
+	}
+	http.SetCookie(w, &cookie)
+
+	http.Redirect(w, r, consts.LogoutURL, http.StatusFound)
 }

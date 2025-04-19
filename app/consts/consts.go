@@ -16,7 +16,8 @@ const (
 	LoginInURL         = "/log_in"
 	SendCodeAgain      = "/send_code_again"
 	HomeURL            = "/home"
+	LogoutURL          = "/log_out"
 	LoginWithGoogleURL = "/login_with_google"
-	
-	RequestErrorHTML   = "requesterror.html"
+
+	RequestErrorHTML = "requesterror.html"
 )
