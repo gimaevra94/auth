@@ -17,46 +17,47 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 		return http.HandlerFunc(func(w http.ResponseWriter,
 			r *http.Request) {
 
-			session, err := store.Get(r, "auth")
+			session, err := store.Get(r, consts.SessionNameStr)
 			if err != nil {
 				http.ServeFile(w, r, consts.RequestErrorHTML)
-				log.Println("Failed to get the session  from the store")
+				log.Println(consts.SessionGetFailedErr)
 				return
 			}
 
 			token, err := validator.IsValidToken(r)
 			if err != nil {
 				http.ServeFile(w, r, consts.RequestErrorHTML)
-				log.Println("Token validation is failed", err)
+				log.Println(consts.TokenValidateFailedErr, err)
 				return
 			}
 
 			claims, ok := token.Claims.(jwt.MapClaims)
 			if !ok {
-				log.Println("Failed to get the claims from the token")
+				log.Println(consts.ClaimsGetFromTokenFailedErr)
 				return
 			}
 
-			exp, ok := claims["exp"].(float64)
+			exp, ok := claims[consts.ExpStr].(float64)
 			if !ok {
-				log.Println("Failed to get the expire from the claims")
+				log.Println(consts.ExpireGetFromClaimsFailedErr)
 				return
 			}
 
 			expUnix := time.Unix(int64(exp), 0)
 			if time.Now().After(expUnix) {
-				lastActivity := session.Values["lastActivity"].(time.Time)
-				if time.Now().Sub(lastActivity) > 3*time.Hour {
-					http.ServeFile(w, r, "logout.html")
-					log.Println("session ended")
+				lastActivity := session.Values[consts.LastActivityStr].(time.Time)
+				if time.Since(lastActivity) > consts.TokenLifetime3HoursInt {
+					http.ServeFile(w, r, consts.LogoutURL)
+					log.Println(consts.SessionEndedErr)
 					return
 				}
 			}
 
-			err = tokenizer.TokenCreate(w, r, "expire_3_hours", session)
+			err = tokenizer.TokenCreate(w, r, consts.TokenCommand3HoursStr,
+				session)
 			if err != nil {
 				http.ServeFile(w, r, consts.RequestErrorHTML)
-				log.Println("Failed to create a token", err)
+				log.Println(consts.TokenCreateFailedErr, err)
 			}
 		})
 	}

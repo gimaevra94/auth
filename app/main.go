@@ -13,31 +13,32 @@ import (
 func main() {
 	err := database.DBConn()
 	if err != nil {
-		log.Fatal("Failed to start database: ", err)
+		log.Fatal(consts.DBStartFailedErr, err)
 	}
 	defer database.DB.Close()
 
 	r := auth.Router()
-	r.Get("/", authentication)
+	r.Get(consts.SlashStr, authentication)
 
-	err = http.ListenAndServe(":8080", r)
+	err = http.ListenAndServe(consts.ServerPortStr, r)
 	if err != nil {
-		log.Fatal("Failed to start server: ", err)
+		log.Fatal(consts.DBStartServerFailedErr, err)
 	}
 }
 
 func authentication(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("Authorization")
+	cookie, err := r.Cookie(consts.AuthCookieNameStr)
 	if err != nil {
 		http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 	}
 
 	_, err = validator.IsValidToken(r)
 	if err != nil {
-		http.Redirect(w, r, consts.LoginInURL, http.StatusFound)
+		http.Redirect(w, r, consts.LogInURL, http.StatusFound)
 	}
 
-	w.Header().Set("Authorization", "Bearer"+cookie.Value)
+	w.Header().Set(consts.AuthCookieNameStr,
+		consts.BearerStr+cookie.Value)
 	w.Write([]byte(cookie.Value))
 	http.ServeFile(w, r, consts.HomeURL)
 }

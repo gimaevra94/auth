@@ -18,9 +18,11 @@
                     <input type="password" name="password" required /><br><br>
                     <input type="checkbox" name="remember" /> Remember me<br><br>
                     <input type="submit" value="log in" />
-                    <p style="text-align: left; font-size: 15px; margin: 0;">or</p>
-                    <input type="submit" value="log in with google" />
                 </form>
+                <p style="text-align: left; font-size: 15px; margin: 0;">or</p>
+                <form method="POST" action="/login_with_google">
+                    <input type="submit" value="log in with google" />
+                </form><br><br>
             </main>
         </div>
     </div>

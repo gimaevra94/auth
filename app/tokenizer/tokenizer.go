@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/structs"
 	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/sessions"
@@ -16,7 +17,7 @@ import (
 func TokenCreate(w http.ResponseWriter, r *http.Request, command string,
 	session *sessions.Session) error {
 
-	jsonData, ok := session.Values["user"].([]byte)
+	jsonData, ok := session.Values[consts.UserStr].([]byte)
 	if !ok {
 		log.Println("'user' not exist in session")
 		return errors.New("'user' not exist in session")
@@ -25,45 +26,45 @@ func TokenCreate(w http.ResponseWriter, r *http.Request, command string,
 	var user structs.User
 	err := json.Unmarshal([]byte(jsonData), &user)
 	if err != nil {
-		log.Println("'user' deserialize is failed", err)
+		log.Println(consts.UserDeserializeFailedErr, err)
 		return err
 	}
 
 	var token *jwt.Token
 
 	switch command {
-	case "":
+	case consts.EmptyValueStr:
 		exp := time.Now().Add(24 * time.Hour)
 		user := user.GetLogin()
 		token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-			"user": user,
-			"exp":  exp,
+			consts.UserStr: user,
+			consts.ExpStr:  exp,
 		})
 
-	case "on":
+	case consts.OnValueStr:
 		user := user.GetLogin()
 		token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-			"user": user,
+			consts.UserStr: user,
 		})
 
-	case "expire_3_hours":
+	case consts.TokenCommand3HoursStr:
 		exp := time.Now().Add(3 * time.Hour)
 		user := user.GetLogin()
 		token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-			"user": user,
-			"exp":  exp,
+			consts.UserStr: user,
+			consts.ExpStr:  exp,
 		})
 	}
 
 	SignedToken, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
 	if err != nil {
-		log.Println("Failed to sign a token")
+		log.Println(consts.TokenSignFailedErr, err)
 		return err
 	}
 
 	cookie := http.Cookie{
-		Name:     "Authorization",
-		Path:     "/set-token",
+		Name:     consts.AuthCookieNameStr,
+		Path:     consts.AuthCookiePath,
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,

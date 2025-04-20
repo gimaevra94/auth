@@ -16,31 +16,31 @@ var DB *sql.DB
 
 func dBConnConf(password []byte) mysql.Config {
 	return mysql.Config{
-		User:   "root",
+		User:   consts.DBConfUserNameStr,
 		Passwd: string(password),
-		Net:    "tcp",
-		Addr:   "db:3306",
-		DBName: "db",
+		Net:    consts.DBConfNetNameStr,
+		Addr:   consts.DBConfAddrNameStr,
+		DBName: consts.DBConfDBNameStr,
 	}
 }
 
 func DBConn() error {
-	password, err := os.ReadFile("/run/secrets/db_password")
+	password, err := os.ReadFile(consts.DBPasswordPathStr)
 	if err != nil {
-		log.Println("db_password reading error: ", err)
+		log.Println(consts.PasswordFileReadFailedErr, err)
 		return err
 	}
 
 	cfg := dBConnConf(password)
-	DB, err := sql.Open("mysql", cfg.FormatDSN())
+	DB, err := sql.Open(consts.DBNameDriverStr, cfg.FormatDSN())
 	if err != nil {
-		log.Println("sql.Open: ", err)
+		log.Println(consts.SqlOpenFailedErr, err)
 		return err
 	}
 
 	err = DB.Ping()
 	if err != nil {
-		log.Println("db.Ping: ", err)
+		log.Println(consts.DBPingFailedErr, err)
 		DB.Close()
 		return err
 	}
@@ -52,29 +52,29 @@ func UserCheck(w http.ResponseWriter, r *http.Request,
 	users structs.User, userAddFromLogIn bool) error {
 
 	if DB == nil {
-		log.Fatal("Failed to start database")
+		log.Fatal(consts.DBStartFailedErr)
 	}
 
 	inputEmail := users.GetEmail()
 	row := DB.QueryRow(consts.SelectQuery, inputEmail)
-	var storedPasswordHash string
-	err := row.Scan(&storedPasswordHash)
+	var passwordHash string
+	err := row.Scan(&passwordHash)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Println("User not found")
+			log.Println(consts.UserNotExistInDBErr, err)
 			return err
 		}
 		http.ServeFile(w, r, consts.RequestErrorHTML)
-		log.Println("Database query failed")
+		log.Println(consts.DBQueryExecuteFailedErr, err)
 		return err
 	}
 	if userAddFromLogIn {
 		inputPassword := users.GetPassword()
-		err = bcrypt.CompareHashAndPassword([]byte(storedPasswordHash),
+		err = bcrypt.CompareHashAndPassword([]byte(passwordHash),
 			[]byte(inputPassword))
 		if err != nil {
 			http.ServeFile(w, r, consts.RequestErrorHTML)
-			log.Println("inputPassword not equal storedPasswordHash")
+			log.Println(consts.PasswordsNotMatchErr, err)
 			return err
 		}
 	}
@@ -85,7 +85,7 @@ func UserCheck(w http.ResponseWriter, r *http.Request,
 func UserAdd(w http.ResponseWriter, r *http.Request,
 	users structs.User) error {
 	if DB == nil {
-		log.Fatal("Fatal to start database")
+		log.Fatal(consts.DBStartFailedErr)
 	}
 
 	email := users.GetEmail()
@@ -96,14 +96,14 @@ func UserAdd(w http.ResponseWriter, r *http.Request,
 		bcrypt.DefaultCost)
 	if err != nil {
 		http.ServeFile(w, r, consts.RequestErrorHTML)
-		log.Println("Password hashing failed")
+		log.Println(consts.PasswordHashingFailed)
 		return err
 	}
 
 	_, err = DB.Exec(consts.InsertQuery, email, login, hashedPassword)
 	if err != nil {
 		http.ServeFile(w, r, consts.RequestErrorHTML)
-		log.Println("Adding user to database failed")
+		log.Println(consts.UserAddInDBFailedErr)
 		return err
 	}
 
