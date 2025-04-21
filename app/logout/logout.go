@@ -1,11 +1,13 @@
 package logout
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/gimaevra94/auth/app/consts"
+	"github.com/gimaevra94/auth/app/structs"
 	"github.com/gimaevra94/auth/app/tokenizer"
 	"github.com/gimaevra94/auth/app/validator"
 	"github.com/golang-jwt/jwt"
@@ -17,13 +19,6 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 		return http.HandlerFunc(func(w http.ResponseWriter,
 			r *http.Request) {
 
-			session, err := store.Get(r, consts.SessionNameStr)
-			if err != nil {
-				http.ServeFile(w, r, consts.RequestErrorHTML)
-				log.Println(consts.SessionGetFailedErr)
-				return
-			}
-
 			token, err := validator.IsValidToken(r)
 			if err != nil {
 				http.ServeFile(w, r, consts.RequestErrorHTML)
@@ -33,7 +28,7 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 
 			claims, ok := token.Claims.(jwt.MapClaims)
 			if !ok {
-				log.Println(consts.ClaimsGetFromTokenFailedErr)
+				log.Println(consts.ClaimsGetFailedErr)
 				return
 			}
 
@@ -41,6 +36,12 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 			if !ok {
 				log.Println(consts.ExpireGetFromClaimsFailedErr)
 				return
+			}
+
+			session, user, err := sessionUserGetUnmarshal(w, r, store)
+			if err != nil {
+				http.ServeFile(w, r, consts.RequestErrorHTML)
+				log.Println(consts.SessionGetFailedErr, err)
 			}
 
 			expUnix := time.Unix(int64(exp), 0)
@@ -54,11 +55,39 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 			}
 
 			err = tokenizer.TokenCreate(w, r, consts.TokenCommand3HoursStr,
-				session)
+				user)
 			if err != nil {
 				http.ServeFile(w, r, consts.RequestErrorHTML)
 				log.Println(consts.TokenCreateFailedErr, err)
 			}
 		})
 	}
+}
+
+func sessionUserGetUnmarshal(w http.ResponseWriter, r *http.Request,
+	store *sessions.CookieStore) (*sessions.Session, structs.User, error) {
+
+	session, err := store.Get(r, consts.SessionNameStr)
+	if err != nil {
+		http.ServeFile(w, r, consts.RequestErrorHTML)
+		log.Println(consts.SessionGetFailedErr, err)
+		return nil, nil, err
+	}
+
+	jsonData, ok := session.Values[consts.UserStr].([]byte)
+	if !ok {
+		http.ServeFile(w, r, consts.RequestErrorHTML)
+		log.Println(consts.UserNotExistInSessionErr)
+		return nil, nil, err
+	}
+
+	var user structs.User
+	err = json.Unmarshal([]byte(jsonData), &user)
+	if err != nil {
+		http.ServeFile(w, r, consts.RequestErrorHTML)
+		log.Println(consts.UserDeserializeFailedErr, err)
+		return nil, nil, err
+	}
+
+	return session, user, nil
 }

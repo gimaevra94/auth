@@ -14,15 +14,15 @@ import (
 func MailSendler(email string) (string, error) {
 
 	random := rand.New(rand.NewSource(time.Now().UnixNano()))
-	mscodeItn := random.Intn(9000) + 1000
-	mscode := strconv.Itoa(mscodeItn)
-	msg := []byte(consts.AccessCodeStr + mscode)
+	msCodeItn := random.Intn(9000) + consts.ThousandStr
+	msCode := strconv.Itoa(msCodeItn)
+	msg := []byte(consts.AccessCodeStr + msCode)
 	username := consts.MailUserNameStr
 
 	password, err := os.ReadFile(consts.DBPasswordPathStr)
 	if err != nil {
 		log.Println(consts.PasswordFileReadFailedErr, err)
-		return mscode, err
+		return msCode, err
 	}
 
 	host := consts.SMTPHostStr
@@ -35,7 +35,7 @@ func MailSendler(email string) (string, error) {
 	err = smtp.SendMail(addr, auth, from, to, msg)
 	if err != nil {
 		log.Println(consts.AccessCodeSendFailedErr, err)
-		return mscode, err
+		return msCode, err
 	}
-	return mscode, err
+	return msCode, err
 }

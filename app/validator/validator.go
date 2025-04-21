@@ -14,40 +14,32 @@ import (
 	"github.com/golang-jwt/jwt"
 )
 
-func getKeyFromErr(err error) string {
-	str := strings.SplitN(err.Error(), ":", 2)
-	if len(str) != 0 {
-		return strings.TrimSpace(str[0])
-	}
-	return "Failed to get the key"
-}
-
 func getJWTSecret(token *jwt.Token) (interface{}, error) {
 	return []byte(os.Getenv("JWT_SECRET")), nil
 }
 
 func IsValidToken(r *http.Request) (*jwt.Token, error) {
-	cookie, err := r.Cookie("Authorization")
+	cookie, err := r.Cookie(consts.AuthCookieNameStr)
 	if err != nil {
-		log.Println("Failed to get a cookie", err)
+		log.Println(consts.CookieGetFailedErr, err)
 		return nil, err
 	}
 
 	value := cookie.Value
 	if value == "" {
-		log.Println("Failed to get a token from the cookie", err)
-		return nil, err
+		log.Println(consts.TokenGetFailedErr, err)
+		return nil, errors.New("failed to get the token")
 	}
 
 	token, err := jwt.Parse(value, getJWTSecret)
 	if err != nil {
-		log.Println("Failed to parse from token", err)
+		log.Println(consts.ParseFromTokenFailedErr, err)
 		return nil, err
 	}
 
 	if !token.Valid {
-		log.Println("Token is invalid", err)
-		return nil, err
+		log.Println(consts.InvalidTokenErr, err)
+		return nil, errors.New("token is invalid")
 	}
 
 	return token, nil
@@ -57,29 +49,29 @@ func IsValidInput(w http.ResponseWriter,
 	r *http.Request) (structs.User, error) {
 
 	var (
-		errEmpty  = errors.New("value is empty")
-		errValidr = errors.New("validation failed")
-		errRegex  = errors.New("regex key not matching")
+		errEmpty  = errors.New(consts.EmptyValueErr)
+		errValidr = errors.New(consts.ValidationFailedErr)
+		errRegex  = errors.New(consts.RegexKEyNotMatchErr)
 	)
 
-	email := r.FormValue("email")
-	if email == "" {
+	email := r.FormValue(consts.EmailStr)
+	if email == consts.EmptyValueStr {
 		http.ServeFile(w, r, consts.RequestErrorHTML)
-		log.Println("email missing in FormValue")
+		log.Println(consts.EmailGetFromFormFailedErr, errEmpty)
 		return nil, errEmpty
 	}
 
-	login := r.FormValue("login")
-	if login == "" {
+	login := r.FormValue(consts.LoginStr)
+	if login == consts.EmptyValueStr {
 		http.ServeFile(w, r, consts.RequestErrorHTML)
-		log.Println("login missing in FormValue")
+		log.Println(consts.LoginGetFromFormFailedErr, errEmpty)
 		return nil, errEmpty
 	}
 
-	password := r.FormValue("password")
-	if password == "" {
+	password := r.FormValue(consts.PasswordStr)
+	if password == consts.EmptyValueStr {
 		http.ServeFile(w, r, consts.RequestErrorHTML)
-		log.Println("password missing in FormValue")
+		log.Println(consts.PasswordGetFromFormFailedErr, errEmpty)
 		return nil, errEmpty
 	}
 
@@ -90,15 +82,15 @@ func IsValidInput(w http.ResponseWriter,
 	)
 
 	loginInput := map[string]string{
-		"email":    email,
-		"login":    login,
-		"password": password,
+		consts.EmailStr:    email,
+		consts.LoginStr:    login,
+		consts.PasswordStr: password,
 	}
 
 	regexes := map[string]string{
-		"email":    consts.EmailRegex,
-		"login":    consts.LoginRegex,
-		"password": consts.PasswordRegex,
+		consts.EmailStr:    consts.EmailRegex,
+		consts.LoginStr:    consts.LoginRegex,
+		consts.PasswordStr: consts.PasswordRegex,
 	}
 
 	err := inputValidator(loginInput, regexes, errEmpty, errValidr,
@@ -106,21 +98,29 @@ func IsValidInput(w http.ResponseWriter,
 	if err != nil {
 		if errors.Is(err, errEmpty) {
 			http.ServeFile(w, r, consts.RequestErrorHTML)
-			log.Println("Data loss when getting from: ", getKeyFromErr(err))
+			log.Println(consts.DatGetFailed, getKeyFromErr(err))
 			return validatedLoginInput, err
 
 		} else if errors.Is(err, errRegex) {
 			http.ServeFile(w, r, consts.RequestErrorHTML)
-			log.Println("Data loss when getting from: ", getKeyFromErr(err))
+			log.Println(consts.DatGetFailed, getKeyFromErr(err))
 			return validatedLoginInput, err
 
 		} else if errors.Is(err, errValidr) {
-			http.ServeFile(w, r, "badsign-up.html")
-			log.Printf("%s validation failed", getKeyFromErr(err))
+			http.ServeFile(w, r, consts.BadSignUp)
+			log.Printf("%s %s", getKeyFromErr(err), consts.ValidationFailedErr)
 			return validatedLoginInput, err
 		}
 	}
 	return validatedLoginInput, err
+}
+
+func getKeyFromErr(err error) string {
+	str := strings.SplitN(err.Error(), ":", 2)
+	if len(str) != 0 {
+		return strings.TrimSpace(str[0])
+	}
+	return consts.KeyGetFailedErr
 }
 
 func inputValidator(loginInput map[string]string,

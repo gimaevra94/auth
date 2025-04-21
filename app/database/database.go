@@ -14,16 +14,6 @@ import (
 
 var DB *sql.DB
 
-func dBConnConf(password []byte) mysql.Config {
-	return mysql.Config{
-		User:   consts.DBConfUserNameStr,
-		Passwd: string(password),
-		Net:    consts.DBConfNetNameStr,
-		Addr:   consts.DBConfAddrNameStr,
-		DBName: consts.DBConfDBNameStr,
-	}
-}
-
 func DBConn() error {
 	password, err := os.ReadFile(consts.DBPasswordPathStr)
 	if err != nil {
@@ -31,7 +21,14 @@ func DBConn() error {
 		return err
 	}
 
-	cfg := dBConnConf(password)
+	cfg := mysql.Config{
+		User:   consts.DBConfUserNameStr,
+		Passwd: string(password),
+		Net:    consts.DBConfNetNameStr,
+		Addr:   consts.DBConfAddrNameStr,
+		DBName: consts.DBConfDBNameStr,
+	}
+
 	DB, err := sql.Open(consts.DBNameDriverStr, cfg.FormatDSN())
 	if err != nil {
 		log.Println(consts.SqlOpenFailedErr, err)
@@ -68,12 +65,13 @@ func UserCheck(w http.ResponseWriter, r *http.Request,
 		log.Println(consts.DBQueryExecuteFailedErr, err)
 		return err
 	}
+
 	if userAddFromLogIn {
 		inputPassword := users.GetPassword()
 		err = bcrypt.CompareHashAndPassword([]byte(passwordHash),
 			[]byte(inputPassword))
 		if err != nil {
-			http.ServeFile(w, r, consts.RequestErrorHTML)
+			http.ServeFile(w, r, consts.BadSignIn)
 			log.Println(consts.PasswordsNotMatchErr, err)
 			return err
 		}
@@ -96,7 +94,7 @@ func UserAdd(w http.ResponseWriter, r *http.Request,
 		bcrypt.DefaultCost)
 	if err != nil {
 		http.ServeFile(w, r, consts.RequestErrorHTML)
-		log.Println(consts.PasswordHashingFailed)
+		log.Println(consts.PasswordHashingFailedErr)
 		return err
 	}
 

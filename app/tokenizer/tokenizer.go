@@ -1,8 +1,6 @@
 package tokenizer
 
 import (
-	"encoding/json"
-	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -11,24 +9,10 @@ import (
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/structs"
 	"github.com/golang-jwt/jwt"
-	"github.com/gorilla/sessions"
 )
 
 func TokenCreate(w http.ResponseWriter, r *http.Request, command string,
-	session *sessions.Session) error {
-
-	jsonData, ok := session.Values[consts.UserStr].([]byte)
-	if !ok {
-		log.Println("'user' not exist in session")
-		return errors.New("'user' not exist in session")
-	}
-
-	var user structs.User
-	err := json.Unmarshal([]byte(jsonData), &user)
-	if err != nil {
-		log.Println(consts.UserDeserializeFailedErr, err)
-		return err
-	}
+	user structs.User) error {
 
 	var token *jwt.Token
 
