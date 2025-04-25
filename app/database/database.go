@@ -21,6 +21,12 @@ func DBConn() error {
 		return err
 	}
 
+	defer func() {
+		for i := range password {
+			password[i] = 0
+		}
+	}()
+
 	cfg := mysql.Config{
 		User:   consts.DBConfUserNameStr,
 		Passwd: string(password),
@@ -46,13 +52,13 @@ func DBConn() error {
 }
 
 func UserCheck(w http.ResponseWriter, r *http.Request,
-	users structs.User, userAddFromLogIn bool) error {
+	user structs.User, userAddFromLogIn bool) error {
 
 	if DB == nil {
 		log.Fatal(consts.DBStartFailedErr)
 	}
 
-	inputEmail := users.GetEmail()
+	inputEmail := user.GetEmail()
 	row := DB.QueryRow(consts.SelectQuery, inputEmail)
 	var passwordHash string
 	err := row.Scan(&passwordHash)
@@ -67,11 +73,11 @@ func UserCheck(w http.ResponseWriter, r *http.Request,
 	}
 
 	if userAddFromLogIn {
-		inputPassword := users.GetPassword()
+		inputPassword := user.GetPassword()
 		err = bcrypt.CompareHashAndPassword([]byte(passwordHash),
 			[]byte(inputPassword))
 		if err != nil {
-			http.ServeFile(w, r, consts.BadSignIn)
+			http.ServeFile(w, r, consts.BadSignInHTML)
 			log.Println(consts.PasswordsNotMatchErr, err)
 			return err
 		}

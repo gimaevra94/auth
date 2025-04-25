@@ -27,7 +27,7 @@ func main() {
 }
 
 func authentication(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie(consts.AuthCookieNameStr)
+	cookie, err := r.Cookie(consts.CookieNameStr)
 	if err != nil {
 		http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 	}
@@ -37,8 +37,7 @@ func authentication(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.LogInURL, http.StatusFound)
 	}
 
-	w.Header().Set(consts.AuthCookieNameStr,
-		consts.BearerStr+cookie.Value)
+	w.Header().Set(consts.CookieNameStr, consts.BearerStr+cookie.Value)
 	w.Write([]byte(cookie.Value))
-	http.ServeFile(w, r, consts.HomeURL)
+	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }

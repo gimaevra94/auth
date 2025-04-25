@@ -40,7 +40,7 @@ func Router() *chi.Mux {
 }
 
 func signUpLoginInput(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, consts.SignUploginInput)
+	http.ServeFile(w, r, consts.SignUpLoginInputHTML)
 }
 
 func inputCheck(w http.ResponseWriter, r *http.Request) {
@@ -65,13 +65,13 @@ func inputCheck(w http.ResponseWriter, r *http.Request) {
 		log.Println(consts.DBQueryExecuteFailedErr)
 	}
 
-	http.ServeFile(w, r, consts.UserAllreadyExistHTML)
+	http.ServeFile(w, r, consts.UserAlreadyExistHTML)
 	log.Println(consts.UserAllreadyExistErr)
 }
 
 func codeSend(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, consts.CodeSendHTML)
-	session, user, err := sessionUserGetUnmarshal(w, r, store)
+	session, user, err := sessionUserGetUnmarshal(r, store)
 	if err != nil {
 		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println(consts.UserGetFromSessionErr, err)
@@ -93,7 +93,7 @@ func codeSend(w http.ResponseWriter, r *http.Request) {
 }
 
 func userAdd(w http.ResponseWriter, r *http.Request) {
-	session, user, err := sessionUserGetUnmarshal(w, r, store)
+	session, user, err := sessionUserGetUnmarshal(r, store)
 	if err != nil {
 		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println(consts.SessionGetFailedErr, err)
@@ -123,6 +123,13 @@ func userAdd(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println(consts.TokenCreateFailedErr, err)
 	}
+
+	cookie, err := r.Cookie(consts.CookieNameStr)
+	if err != nil {
+		http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+	}
+	w.Header().Set(consts.CookieNameStr, consts.BearerStr+cookie.Value)
+	w.Write([]byte(cookie.Value))
 
 	lastActivity := time.Now().Add(consts.TokenLifetime3HoursInt)
 	session.Values[consts.LastActivityStr] = lastActivity
@@ -163,6 +170,13 @@ func logIn(w http.ResponseWriter, r *http.Request) {
 		log.Println(consts.TokenCreateFailedErr, err)
 	}
 
+	cookie, err := r.Cookie(consts.CookieNameStr)
+	if err != nil {
+		http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+	}
+	w.Header().Set(consts.CookieNameStr, consts.BearerStr+cookie.Value)
+	w.Write([]byte(cookie.Value))
+
 	session, err := store.Get(r, consts.SessionNameStr)
 	if err != nil {
 		http.ServeFile(w, r, consts.RequestErrorHTML)
@@ -193,7 +207,7 @@ func logOut(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cookie := http.Cookie{
-		Name:     consts.AuthCookieNameStr,
+		Name:     consts.CookieNameStr,
 		Path:     consts.AuthCookiePath,
 		HttpOnly: true,
 		Secure:   true,
@@ -206,19 +220,17 @@ func logOut(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, consts.LogoutURL, http.StatusFound)
 }
 
-func sessionUserGetUnmarshal(w http.ResponseWriter, r *http.Request,
+func sessionUserGetUnmarshal(r *http.Request,
 	store *sessions.CookieStore) (*sessions.Session, structs.User, error) {
 
 	session, err := store.Get(r, consts.SessionNameStr)
 	if err != nil {
-		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println(consts.SessionGetFailedErr, err)
 		return nil, nil, err
 	}
 
 	jsonData, ok := session.Values[consts.UserStr].([]byte)
 	if !ok {
-		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println(consts.UserNotExistInSessionErr)
 		return nil, nil, err
 	}
@@ -226,7 +238,6 @@ func sessionUserGetUnmarshal(w http.ResponseWriter, r *http.Request,
 	var user structs.User
 	err = json.Unmarshal([]byte(jsonData), &user)
 	if err != nil {
-		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println(consts.UserDeserializeFailedErr, err)
 		return nil, nil, err
 	}
@@ -239,13 +250,11 @@ func sessionUserSetMarshal(w http.ResponseWriter, r *http.Request,
 
 	session, err := store.Get(r, consts.SessionNameStr)
 	if err != nil {
-		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println(consts.SessionGetFailedErr, err)
 		return err
 	}
 	jsonData, err := json.Marshal(user)
 	if err != nil {
-		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println(consts.UserSerializeFailedErr, err)
 		return err
 	}
@@ -253,7 +262,6 @@ func sessionUserSetMarshal(w http.ResponseWriter, r *http.Request,
 	session.Values[consts.UserStr] = jsonData
 	err = session.Save(r, w)
 	if err != nil {
-		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println(consts.UserSaveInSessionFailedErr, err)
 		return err
 	}

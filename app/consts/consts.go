@@ -1,82 +1,114 @@
 package consts
 
-import "time"
+import (
+	"time"
+)
 
 const (
 	SelectQuery = "select password from users where email = ? limit 1"
 	InsertQuery = "insert into users (email,login,password) values(?,?,?)"
+)
 
+const (
 	EmailRegex    = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$`
 	LoginRegex    = `^[a-zA-Zа-яА-ЯёЁ0-9]{3,30}$`
 	PasswordRegex = `^(?=.*[a-zA-Zа-яА-ЯёЁ])(?=.*\d)(?=.*[!@#$%^&*])[\w!@#$%^&*]{3,30}$`
+)
 
+const (
 	SignUpURL          = "/sign_up"
 	InputCheckURL      = "/input_check"
 	CodeSendURL        = "/code_send"
 	UserAddURL         = "/user_add"
 	SignInURL          = "/sign_in"
 	LogInURL           = "/log_in"
-	SendCodeAgain      = "/send_code_again"
+	SendCodeAgainURL   = "/send_code_again"
 	HomeURL            = "/home"
 	LogoutURL          = "/log_out"
 	LoginWithGoogleURL = "/login_with_google"
+	RedirectURL        = "http://localhost:8080/home"
+	AuthURL            = "https://oauth.yandex.ru/authorize"
+	TokenURL           = "https://oauth.yandex.ru/token"
+	UserInfoURL        = "https://login.yandex.ru/info"
+	YandexAuthURL      = "/yandex"
+	YandexCallbackURL  = "/yandex/callback"
+)
 
-	SignUploginInput      = "signUploginInput.html"
-	RequestErrorHTML      = "requestError.html"
-	UserAllreadyExistHTML = "userAllreadyExist.html"
-	CodeSendHTML          = "codeSend.html"
-	WrongCodeHTML         = "wrongCode.html"
-	SignInloginInputHTML  = "signInloginInput.html"
-	UserNotExistHTML      = "userNotExist.html"
-	HomeHTML              = "home.html"
-	BadSignUp             = "badSign-up.html"
-	BadSignIn             = "badSign-in.html"
+const (
+	SignUpLoginInputHTML = "signUploginInput.html"
+	RequestErrorHTML     = "requestError.html"
+	UserAlreadyExistHTML = "userAlreadyExist.html"
+	CodeSendHTML         = "codeSend.html"
+	WrongCodeHTML        = "wrongCode.html"
+	SignInloginInputHTML = "signInloginInput.html"
+	UserNotExistHTML     = "userNotExist.html"
+	HomeHTML             = "home.html"
+	BadSignUpHTML        = "badSign-up.html"
+	BadSignInHTML        = "badSign-in.html"
+)
 
-	UserGetFromSessionErr        = "userGetFromSession failed"
-	UserSetFromSessionErr        = "userSetFromSession failed"
-	UserAllreadyExistErr         = "User allready exist"
-	CookieGetFailedErr           = "Failed to get the key"
-	KeyGetFailedErr              = "Failed to get the key"
-	SessionSaveFailedErr         = "Failed to save the session"
-	SessionGetFailedErr          = "Failed to get the session"
-	CodesNotMatchErr             = "The userCode does not match the msCode"
-	InputValidateFailedErr       = "Failed to validate the input"
-	UserSerializeFailedErr       = "Failed to serialize the 'user'"
-	UserDeserializeFailedErr     = "Failed to serialize the 'user'"
-	UserSaveInSessionFailedErr   = "Failed to save the 'user' in the session"
-	UserNotExistInSessionErr     = "'user' is not exist in the session"
-	MscodeNotExistInSessionErr   = "'mscode' is not exist in the session"
-	MailSendlerFailedErr         = "MailSendler failed: "
-	ExpireGetFromClaimsFailedErr = "Failed to get the expire from the claims"
-	ParseFromTokenFailedErr      = "Failed to parse from token"
-	TokenGetFailedErr            = "Failed to get the token"
-	ClaimsGetFailedErr           = "Failed to get the claims"
-	TokenValidateFailedErr       = "Failed to validate the token"
-	TokenCreateFailedErr         = "Failed to create the token"
-	UserAddInDBFailedErr         = "Failed to add the 'user' in db"
-	RememberGetInFormFailedErr   = "Failed to get the 'remember' from the FormValue"
-	PasswordFileReadFailedErr    = "Failed to read 'db_password.txt'"
-	MscodeSaveInSessionFailedErr = "Failed to save the mscode in the session"
-	UserNotExistInDBErr          = "User not exist in db"
-	PasswordHashingFailedErr     = "Failed to hash the password"
-	SqlOpenFailedErr             = "sql.Open failed"
-	DBStartFailedErr             = "Failed to start the database"
-	DBPingFailedErr              = "DB.Ping failed"
-	PasswordGetFromFormFailedErr = "Failed to get thr password from the FormValue"
-	PasswordsNotMatchErr         = "inputPassword does not match passwordHash"
-	AccessCodeSendFailedErr      = "Failed to send access code fron user email"
-	SessionEndedErr              = "session ended"
-	DBStartServerFailedErr       = "Failed to start the server"
-	TokenSignFailedErr           = "Failed to sign the token"
-	InvalidTokenErr              = "Token is invalid"
-	EmailGetFromFormFailedErr    = "Failed to get email from the FormValue"
-	EmptyValueErr                = "value is empty"
-	ValidationFailedErr          = "validation failed"
-	RegexKEyNotMatchErr          = "regex key not matching"
-	DBQueryExecuteFailedErr      = "Failed to execute query against the db"
-	LoginGetFromFormFailedErr    = "Failed to get login from the FormValue"
-	DatGetFailed                 = "Failed to get the data from: "
+const (
+	DBPingFailedErr      = "DB.Ping failed"
+	SqlOpenFailedErr     = "sql.Open failed"
+	ValidationFailedErr  = "validation failed"
+	MailSendlerFailedErr = "mailSendler failed"
 
+	UserGetFromSessionErr = "'userGetFromSession' failed"
+	UserSetFromSessionErr = "'userSetFromSession' failed"
+
+	SessionEndedErr      = "session ended"
+	UserAllreadyExistErr = "'user' allready exist"
+	RegexKeyNotMatchErr  = "regex key not matching: "
+
+	InvalidTokenErr            = "token is invalid"
+	EmptyValueErr              = "value is empty"
+	UserNotExistInSessionErr   = "'user' is not exist in the session"
+	UserNotExistInDBErr        = "'user' is not exist in db"
+	MscodeNotExistInSessionErr = "'msCode' is not exist in the session"
+	AuthCodeNotFoundErr        = "Auth code: 'CodeStr' not found in the auth url: 'authURLWithParamsUrl'"
+	JWTSecretNotExistErr       = "'JWT_SECRET is not exist"
+
+	PasswordsNotMatchErr = "'inputPassword' does not match 'passwordHash'"
+	CodesNotMatchErr     = "the 'userCode' does not match the 'msCode'"
+
+	UserSaveInSessionFailedErr   = "failed to save the 'user' in the session"
+	MscodeSaveInSessionFailedErr = "failed to save the msCode in the session"
+	SessionSaveFailedErr         = "failed to save the session"
+
+	DBStartServerFailedErr = "failed to start the server"
+	DBStartFailedErr       = "failed to start the database"
+
+	InputValidateFailedErr = "failed to validate the input in 'IsValidInput'  when called from 'inputCheck'"
+	UserSerializeFailedErr = "failed to serialize the 'user'"
+
+	UserDeserializeFailedErr  = "failed to deserialize the 'user'"
+	ParseFromTokenFailedErr   = "failed to parse from token"
+	TokenValidateFailedErr    = "failed to validate the token"
+	TokenCreateFailedErr      = "failed to create the token"
+	UserAddInDBFailedErr      = "failed to add the 'user' in db"
+	PasswordFileReadFailedErr = "failed to read 'db_password.txt'"
+	PasswordHashingFailedErr  = "failed to hash the password"
+	DBQueryExecuteFailedErr   = "failed to execute query against the db"
+	AccessCodeSendFailedErr   = "failed to send access code fron user email"
+	TokenSignFailedErr        = "failed to sign the token"
+
+	DataGetFailedErr             = "failed to get the data from: "
+	TokenGetFailedErr            = "failed to get the token"
+	CookieGetFailedErr           = "failed to get the cookie"
+	KeyGetFailedErr              = "failed to get the key"
+	SessionGetFailedErr          = "failed to get the session"
+	ClaimsGetFailedErr           = "failed to get the claims"
+	ExpireGetFromClaimsFailedErr = "failed to get the expire from the claims"
+
+	EmailGetFromFormFailedErr    = "failed to get 'email' from the FormValue"
+	LoginGetFromFormFailedErr    = "failed to get 'login' from the FormValue"
+	PasswordGetFromFormFailedErr = "failed to get the 'password' from the FormValue"
+	RememberGetInFormFailedErr   = "failed to get the 'remember' from the FormValue"
+	YandexTokenGetFailedErr      = "failed to get the token from the 'getAccessToken'"
+	UserInfoGetFailedErr         = "failed to get the user info from the 'getUserInfo'"
+)
+
+const (
 	LoginStr              = "login"
 	EmailStr              = "email"
 	UserStr               = "user"
@@ -86,7 +118,7 @@ const (
 	RememberStr           = "remember"
 	LastActivityStr       = "lastActivity"
 	EmptyValueStr         = ""
-	AuthCookieNameStr     = "Authorization"
+	CookieNameStr         = "Authorization"
 	AuthCookiePath        = "/set-token"
 	DBConfUserNameStr     = "root"
 	DBConfNetNameStr      = "tcp"
@@ -105,7 +137,22 @@ const (
 	BearerStr             = "Bearer"
 	ServerPortStr         = ":8080"
 	SlashStr              = "/"
+	GrandTypeStr          = "grant_type"
+	AuthCodeStr           = "authorization_code"
+	CodeStr               = "code"
+	ClientIDStr           = "client_id"
+	ClientSecret          = "client_secret"
+	RedirectUrlStr        = "redirect_uri"
+	ClientIDCodeStr       = "0c0c69265b9549b7ae1b994a2aecbcfb"
+	ClientSecretCodeStr   = "a72af8c056c647c99d6b0ab470569b0b"
+	ResponseTypeStr       = "response_type"
+	QuestionMarkStr       = "?"
+	TokenStr              = "access_token"
+)
 
-	TokenLifetime3HoursInt = 3 * time.Hour
-	ThousandStr            = 1000
+const (
+	TokenLifetime3HoursInt  = 3 * time.Hour
+	TokenLifetime24HoursInt = 24 * time.Hour
+	ThousandSInt            = 1000
+	NineThousandInt         = 9000
 )

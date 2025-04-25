@@ -38,7 +38,7 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 				return
 			}
 
-			session, user, err := sessionUserGetUnmarshal(w, r, store)
+			session, user, err := sessionUserGetUnmarshal(r, store)
 			if err != nil {
 				http.ServeFile(w, r, consts.RequestErrorHTML)
 				log.Println(consts.SessionGetFailedErr, err)
@@ -60,23 +60,26 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 				http.ServeFile(w, r, consts.RequestErrorHTML)
 				log.Println(consts.TokenCreateFailedErr, err)
 			}
+
+			//w.Header().Set(consts.CookieNameStr, consts.BearerStr+cookie.Value)
+			//w.Write([]byte(cookie.Value))
 		})
+
+		// next
 	}
 }
 
-func sessionUserGetUnmarshal(w http.ResponseWriter, r *http.Request,
+func sessionUserGetUnmarshal(r *http.Request,
 	store *sessions.CookieStore) (*sessions.Session, structs.User, error) {
 
 	session, err := store.Get(r, consts.SessionNameStr)
 	if err != nil {
-		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println(consts.SessionGetFailedErr, err)
 		return nil, nil, err
 	}
 
 	jsonData, ok := session.Values[consts.UserStr].([]byte)
 	if !ok {
-		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println(consts.UserNotExistInSessionErr)
 		return nil, nil, err
 	}
@@ -84,7 +87,6 @@ func sessionUserGetUnmarshal(w http.ResponseWriter, r *http.Request,
 	var user structs.User
 	err = json.Unmarshal([]byte(jsonData), &user)
 	if err != nil {
-		http.ServeFile(w, r, consts.RequestErrorHTML)
 		log.Println(consts.UserDeserializeFailedErr, err)
 		return nil, nil, err
 	}

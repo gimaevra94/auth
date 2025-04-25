@@ -12,28 +12,26 @@ import (
 )
 
 func TokenCreate(w http.ResponseWriter, r *http.Request, command string,
-	user structs.User) error {
+	value structs.User) error {
 
 	var token *jwt.Token
+	user := value.GetLogin()
 
 	switch command {
 	case consts.EmptyValueStr:
-		exp := time.Now().Add(24 * time.Hour)
-		user := user.GetLogin()
+		exp := time.Now().Add(consts.TokenLifetime24HoursInt)
 		token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 			consts.UserStr: user,
 			consts.ExpStr:  exp,
 		})
 
 	case consts.OnValueStr:
-		user := user.GetLogin()
 		token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 			consts.UserStr: user,
 		})
 
 	case consts.TokenCommand3HoursStr:
-		exp := time.Now().Add(3 * time.Hour)
-		user := user.GetLogin()
+		exp := time.Now().Add(consts.TokenLifetime3HoursInt)
 		token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 			consts.UserStr: user,
 			consts.ExpStr:  exp,
@@ -47,7 +45,7 @@ func TokenCreate(w http.ResponseWriter, r *http.Request, command string,
 	}
 
 	cookie := http.Cookie{
-		Name:     consts.AuthCookieNameStr,
+		Name:     consts.CookieNameStr,
 		Path:     consts.AuthCookiePath,
 		HttpOnly: true,
 		Secure:   true,
