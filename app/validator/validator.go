@@ -96,54 +96,11 @@ func IsValidInput(w http.ResponseWriter,
 		consts.PasswordStr: consts.PasswordRegex,
 	}
 
-	err := inputValidator(loginInput, regexes, errEmpty, errValid,
-		errRegex)
-	if err != nil {
-		if errors.Is(err, errEmpty) {
-			http.ServeFile(w, r, consts.RequestErrorHTML)
-			log.Println(consts.EmptyValueErr, getKeyFromErr(err))
-			return nil, err
-
-		} else if errors.Is(err, errRegex) {
-			http.ServeFile(w, r, consts.RequestErrorHTML)
-			log.Println(consts.RegexKeyNotMatchErr, getKeyFromErr(err))
-			return nil, err
-
-		} else if errors.Is(err, errValid) {
-			http.ServeFile(w, r, consts.BadSignUpHTML)
-			log.Printf("%s: %s", getKeyFromErr(err), consts.ValidationFailedErr)
-			return nil, err
-		}
-	}
-	return validatedLoginInput, nil
-}
-
-func getKeyFromErr(err error) string {
-	str := strings.SplitN(err.Error(), ":", 2)
-	if len(str) != 0 {
-		return strings.TrimSpace(str[0])
-	}
-	return consts.KeyGetFailedErr
-}
-
-func inputValidator(loginInput map[string]string,
-	regexes map[string]string, errEmpty error, errValidr error,
-	errRegex error) error {
-
 	for key, value := range loginInput {
-		if value == consts.EmptyValueStr {
-			return errors.Wrapf(errEmpty, "%s", key)
-		}
-
 		regex := regexes[key]
-		if regex == consts.EmptyValueStr {
-			return errors.Wrapf(errRegex, "%s", key)
-		}
-
 		re := regexp.MustCompile(regex)
 		if !re.MatchString(value) {
-			return errors.Wrapf(errValidr, "%s", key)
+			return errors.Wrapf(errValidr, key)
 		}
-	}
-	return nil
+	return validatedLoginInput, nil
 }
