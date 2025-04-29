@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"strings"
 
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/structs"
@@ -22,22 +21,19 @@ func getJWTSecret(token *jwt.Token) (interface{}, error) {
 }
 
 func IsValidToken(r *http.Request) (*jwt.Token, error) {
-	cookie, err := r.Cookie(consts.CookieNameStr)
+	cookie, err := r.Cookie("cookie")
 	if err != nil {
-		log.Println(consts.CookieGetFailedErr, err)
-		return nil, err
+		return nil, errors.Wrap(errors.New(consts.GetFailedErr), "cookie")
 	}
 
 	value := cookie.Value
-	if value == consts.EmptyValueStr {
-		log.Println(consts.TokenGetFailedErr, err)
-		return nil, errors.New(consts.TokenGetFailedErr)
+	if value == "" {
+		return nil, errors.Wrap(errors.New(consts.GetFailedErr), "token")
 	}
 
 	token, err := jwt.Parse(value, getJWTSecret)
 	if err != nil {
-		log.Println(consts.ParseFromTokenFailedErr, err)
-		return nil, err
+		return nil, errors.Wrap(err, "")
 	}
 
 	if !token.Valid {
@@ -51,56 +47,33 @@ func IsValidToken(r *http.Request) (*jwt.Token, error) {
 func IsValidInput(w http.ResponseWriter,
 	r *http.Request) (structs.User, error) {
 
-	var (
-		errEmpty = errors.New(consts.EmptyValueErr)
-		errValid = errors.New(consts.ValidationFailedErr)
-		errRegex = errors.New(consts.RegexKeyNotMatchErr)
-	)
-
-	email := r.FormValue(consts.EmailStr)
-	if email == consts.EmptyValueStr {
-		http.ServeFile(w, r, consts.RequestErrorHTML)
-		log.Println(consts.EmailGetFromFormFailedErr)
-		return nil, errEmpty
+	data := []string{
+		r.FormValue("email"),
+		r.FormValue("login"),
+		r.FormValue("password"),
+		`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$`,
+		`^[a-zA-Zа-яА-ЯёЁ0-9]{3,30}$`,
+		`^(?=.*[a-zA-Zа-яА-ЯёЁ])(?=.*\d)(?=.*[!@#$%^&*])[\w!@#$%^&*]{3,30}$`,
 	}
 
-	login := r.FormValue(consts.LoginStr)
-	if login == consts.EmptyValueStr {
-		http.ServeFile(w, r, consts.RequestErrorHTML)
-		log.Println(consts.LoginGetFromFormFailedErr)
-		return nil, errEmpty
-	}
-
-	password := r.FormValue(consts.PasswordStr)
-	if password == consts.EmptyValueStr {
-		http.ServeFile(w, r, consts.RequestErrorHTML)
-		log.Println(consts.PasswordGetFromFormFailedErr)
-		return nil, errEmpty
+	for i := 0; i < 3; i++ {
+		if data[i] == "" {
+			wrappedErr := errors.Wrap(errors.New("empty value"), data[i])
+			log.Printf("%+v\n", wrappedErr)
+			return nil, wrappedErr
+		}
+		re := regexp.MustCompile(data[i+3])
+		if !re.MatchString(data[i]) {
+			wrappedErr := errors.Wrap(errors.New("validation failed"), data[i])
+			log.Printf("%+v\n", wrappedErr)
+			return nil, wrappedErr
+		}
 	}
 
 	validatedLoginInput := structs.NewUser(
-		email,
-		login,
-		password,
+		data[0],
+		data[1],
+		data[2],
 	)
-
-	loginInput := map[string]string{
-		consts.EmailStr:    email,
-		consts.LoginStr:    login,
-		consts.PasswordStr: password,
-	}
-
-	regexes := map[string]string{
-		consts.EmailStr:    consts.EmailRegex,
-		consts.LoginStr:    consts.LoginRegex,
-		consts.PasswordStr: consts.PasswordRegex,
-	}
-
-	for key, value := range loginInput {
-		regex := regexes[key]
-		re := regexp.MustCompile(regex)
-		if !re.MatchString(value) {
-			return errors.Wrapf(errValidr, key)
-		}
 	return validatedLoginInput, nil
 }
