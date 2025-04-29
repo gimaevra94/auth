@@ -76,4 +76,4 @@ func IsValidInput(w http.ResponseWriter,
 		data[2],
 	)
 	return validatedLoginInput, nil
-}
+} 
