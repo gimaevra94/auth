@@ -1,9 +1,9 @@
 package validator
 
 import (
+	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"regexp"
 
 	"github.com/gimaevra94/auth/app/consts"
@@ -12,33 +12,40 @@ import (
 	"github.com/pkg/errors"
 )
 
-func getJWTSecret(token *jwt.Token) (interface{}, error) {
-	secret := os.Getenv("JWT_SECRET")
-	if secret == consts.EmptyValueStr {
-		return nil, errors.New(consts.JWTSecretNotExistErr)
-	}
-	return []byte(os.Getenv("JWT_SECRET")), nil
-}
+const (
+	emailRegex    = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$`
+	loginRegex    = `^[a-zA-Zа-яА-ЯёЁ0-9]{3,30}$`
+	passwordRegex = `^(?=.*[a-zA-Zа-яА-ЯёЁ])(?=.*\d)(?=.*[!@#$%^&*])[\w!@#$%^&*]{3,30}$`
+	pathRegex     = `^/[a-zA-Z0-9_/\\-]+$`
+)
 
-func IsValidToken(r *http.Request) (*jwt.Token, error) {
+var validPathRegex = regexp.MustCompile(pathRegex)
+
+func IsValidToken(w http.ResponseWriter, r *http.Request) (*jwt.Token, error) {
 	cookie, err := r.Cookie("cookie")
 	if err != nil {
-		return nil, errors.Wrap(errors.New(consts.GetFailedErr), "cookie")
+		wrappedErr := LogTraceAndRedirectErr(w, r,
+			consts.GetFailedErr, "cookie", "", false)
+		return nil, wrappedErr
 	}
 
 	value := cookie.Value
 	if value == "" {
-		return nil, errors.Wrap(errors.New(consts.GetFailedErr), "token")
+		return nil, LogTraceAndRedirectErr(w, r,
+			consts.EmptyValueErr, "token", "", false)
 	}
 
-	token, err := jwt.Parse(value, getJWTSecret)
+	token, err := jwt.Parse(value, func(t *jwt.Token) (interface{}, error) {
+		return []byte("my-super-secret-key"), nil
+	})
+
 	if err != nil {
-		return nil, errors.Wrap(err, "")
+		return nil, LogTraceAndRedirectErr(w, r, err, "", "", false)
 	}
 
 	if !token.Valid {
-		log.Println(consts.InvalidTokenErr, err)
-		return nil, errors.New(consts.TokenValidateFailedErr)
+		return nil, LogTraceAndRedirectErr(w, r,
+			consts.ValidationFailedErr, "token", "", false)
 	}
 
 	return token, nil
@@ -51,22 +58,20 @@ func IsValidInput(w http.ResponseWriter,
 		r.FormValue("email"),
 		r.FormValue("login"),
 		r.FormValue("password"),
-		`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$`,
-		`^[a-zA-Zа-яА-ЯёЁ0-9]{3,30}$`,
-		`^(?=.*[a-zA-Zа-яА-ЯёЁ])(?=.*\d)(?=.*[!@#$%^&*])[\w!@#$%^&*]{3,30}$`,
+		emailRegex,
+		loginRegex,
+		passwordRegex,
 	}
 
 	for i := 0; i < 3; i++ {
 		if data[i] == "" {
-			wrappedErr := errors.Wrap(errors.New("empty value"), data[i])
-			log.Printf("%+v\n", wrappedErr)
-			return nil, wrappedErr
+			return nil, LogTraceAndRedirectErr(w, r,
+				consts.EmptyValueErr, data[i], "", false)
 		}
 		re := regexp.MustCompile(data[i+3])
 		if !re.MatchString(data[i]) {
-			wrappedErr := errors.Wrap(errors.New("validation failed"), data[i])
-			log.Printf("%+v\n", wrappedErr)
-			return nil, wrappedErr
+			return nil, LogTraceAndRedirectErr(w, r,
+				consts.ValidationFailedErr, data[i], "", false)
 		}
 	}
 
@@ -76,4 +81,38 @@ func IsValidInput(w http.ResponseWriter,
 		data[2],
 	)
 	return validatedLoginInput, nil
-} 
+}
+
+func LogTraceAndRedirectErr(w http.ResponseWriter, r *http.Request,
+	err interface{}, key string, path string, isExternalCall bool) error {
+	if err == nil || err == "" {
+		log.Printf("'err' value is nil or empty")
+		return nil
+	}
+
+	if isExternalCall {
+		if e, ok := err.(error); ok {
+			if !validPathRegex.MatchString(path) {
+				log.Println("path format must be like '/sign_in'")
+				return nil
+			}
+
+			log.Printf("%+v\n", e)
+			http.Redirect(w, r, path, http.StatusFound)
+			return nil
+		}
+
+		log.Printf("excpected 'error' type for 'err' when 'isExternalCall' = true, got: %T", err)
+		return nil
+	}
+
+	switch e := err.(type) {
+	case error, string:
+		wrappedErr := errors.Wrapf(errors.New(fmt.Sprintf("%v", e)), key)
+		log.Printf("%+v\n", wrappedErr)
+		return wrappedErr
+	}
+
+	log.Printf("excpected 'error' or 'string' type for 'err' when 'isExternalCall' = false, got: %T", err)
+	return nil
+}

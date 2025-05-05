@@ -10,12 +10,6 @@ const (
 )
 
 const (
-	EmailRegex    = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$`
-	LoginRegex    = `^[a-zA-Zа-яА-ЯёЁ0-9]{3,30}$`
-	PasswordRegex = `^(?=.*[a-zA-Zа-яА-ЯёЁ])(?=.*\d)(?=.*[!@#$%^&*])[\w!@#$%^&*]{3,30}$`
-)
-
-const (
 	SignUpURL          = "/sign_up"
 	InputCheckURL      = "/input_check"
 	CodeSendURL        = "/code_send"
@@ -50,7 +44,6 @@ const (
 const (
 	DBPingFailedErr      = "DB.Ping failed"
 	SqlOpenFailedErr     = "sql.Open failed"
-	ValidationFailedErr  = "validation failed"
 	MailSendlerFailedErr = "mailSendler failed"
 
 	UserGetFromSessionErr = "'userGetFromSession' failed"
@@ -61,12 +54,10 @@ const (
 	RegexKeyNotMatchErr  = "regex key not matching: "
 
 	InvalidTokenErr            = "token is invalid"
-	EmptyValueErr              = "value is empty"
 	UserNotExistInSessionErr   = "'user' is not exist in the session"
 	UserNotExistInDBErr        = "'user' is not exist in db"
 	MscodeNotExistInSessionErr = "'msCode' is not exist in the session"
 	AuthCodeNotFoundErr        = "Auth code: 'CodeStr' not found in the auth url: 'authURLWithParamsUrl'"
-	JWTSecretNotExistErr       = "'JWT_SECRET is not exist"
 
 	PasswordsNotMatchErr = "'inputPassword' does not match 'passwordHash'"
 	CodesNotMatchErr     = "the 'userCode' does not match the 'msCode'"
@@ -88,7 +79,7 @@ const (
 	UserAddInDBFailedErr      = "failed to add the 'user' in db"
 	PasswordFileReadFailedErr = "failed to read 'db_password.txt'"
 	PasswordHashingFailedErr  = "failed to hash the password"
-	DBQueryExecuteFailedErr   = "failed to execute query against the db"
+	ExecuteQueryFailedErr   = "execute query failed"
 	AccessCodeSendFailedErr   = "failed to send access code fron user email"
 	TokenSignFailedErr        = "failed to sign the token"
 
@@ -106,6 +97,10 @@ const (
 	RememberGetInFormFailedErr   = "failed to get the 'remember' from the FormValue"
 	YandexTokenGetFailedErr      = "failed to get the token from the 'getAccessToken'"
 	UserInfoGetFailedErr         = "failed to get the user info from the 'getUserInfo'"
+
+	GetFailedErr        = "get failed"
+	ValidationFailedErr = "validation failed"
+	EmptyValueErr       = "empty value"
 )
 
 const (

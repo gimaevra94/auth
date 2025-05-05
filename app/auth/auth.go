@@ -46,27 +46,29 @@ func signUpLoginInput(w http.ResponseWriter, r *http.Request) {
 func inputCheck(w http.ResponseWriter, r *http.Request) {
 	validatedLoginInput, err := validator.IsValidInput(w, r)
 	if err != nil {
-		http.ServeFile(w, r, consts.RequestErrorHTML)
-		log.Println(consts.InputValidateFailedErr, err)
+
+		validator.LogTraceAndRedirectErr(w, r, err, "token",
+			"/request_error", true)
 	}
 
-	err = database.UserCheck(w, r, validatedLoginInput, false)
+	err = database.UserCheck(w, r, validatedLoginInput, true)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			err := sessionUserSetMarshal(w, r, store, validatedLoginInput)
 			if err != nil {
 				http.ServeFile(w, r, consts.RequestErrorHTML)
-				log.Println(consts.UserSetFromSessionErr, err)
+				validator.LogTraceAndRedirectErr(w, r,
+					err, "", "/request_error", true)
 			}
 			http.Redirect(w, r, consts.CodeSendURL, http.StatusFound)
 		}
 
 		http.ServeFile(w, r, consts.RequestErrorHTML)
-		log.Println(consts.DBQueryExecuteFailedErr)
+		validator.LogTraceAndRedirectErr(w, r, err, "", "request_error", true)
 	}
 
 	http.ServeFile(w, r, consts.UserAlreadyExistHTML)
-	log.Println(consts.UserAllreadyExistErr)
+	validator.LogTraceAndRedirectErr(w, r, "already exist", "user", "/already_exist", true)
 }
 
 func codeSend(w http.ResponseWriter, r *http.Request) {
