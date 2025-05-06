@@ -11,6 +11,7 @@ import (
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/database"
 	"github.com/gimaevra94/auth/app/logout"
+	"github.com/gimaevra94/auth/app/logtraceredir"
 	"github.com/gimaevra94/auth/app/mailsendler"
 	"github.com/gimaevra94/auth/app/structs"
 	"github.com/gimaevra94/auth/app/tokenizer"
@@ -31,8 +32,10 @@ func Router() *chi.Mux {
 	r.Post(consts.UserAddURL, userAdd)
 
 	r.Get(consts.SignInURL, signInLoginInput)
-	r.With(logout.IsExpiredTokenMW(store)).Post(consts.LogInURL, logIn)
 
+	r.Get(consts.RequestErrorURL, requestError)
+
+	r.With(logout.IsExpiredTokenMW(store)).Post(consts.LogInURL, logIn)
 	r.With(logout.IsExpiredTokenMW(store)).Get(consts.HomeURL, Home)
 	r.With(logout.IsExpiredTokenMW(store)).Post(consts.LogoutURL, logOut)
 
@@ -43,12 +46,16 @@ func signUpLoginInput(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, consts.SignUpLoginInputHTML)
 }
 
+func requestError(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, consts.SignUpLoginInputHTML)
+}
+
 func inputCheck(w http.ResponseWriter, r *http.Request) {
 	validatedLoginInput, err := validator.IsValidInput(w, r)
 	if err != nil {
-
-		validator.LogTraceAndRedirectErr(w, r, err, "token",
-			"/request_error", true)
+		// проверить как будте выглядеть ошибка
+		logtraceredir.LogTraceRedir(w, r,
+			err, "", consts.RequestErrorURL, true)
 	}
 
 	err = database.UserCheck(w, r, validatedLoginInput, true)

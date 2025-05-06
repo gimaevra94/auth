@@ -20,6 +20,7 @@ const (
 	HomeURL            = "/home"
 	LogoutURL          = "/log_out"
 	LoginWithGoogleURL = "/login_with_google"
+	RequestErrorURL    = "/request_error"
 	RedirectURL        = "http://localhost:8080/home"
 	AuthURL            = "https://oauth.yandex.ru/authorize"
 	TokenURL           = "https://oauth.yandex.ru/token"
@@ -79,7 +80,7 @@ const (
 	UserAddInDBFailedErr      = "failed to add the 'user' in db"
 	PasswordFileReadFailedErr = "failed to read 'db_password.txt'"
 	PasswordHashingFailedErr  = "failed to hash the password"
-	ExecuteQueryFailedErr   = "execute query failed"
+	ExecuteQueryFailedErr     = "execute query failed"
 	AccessCodeSendFailedErr   = "failed to send access code fron user email"
 	TokenSignFailedErr        = "failed to sign the token"
 
