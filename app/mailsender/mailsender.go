@@ -17,7 +17,8 @@ func MailSendler(email string) (string, error) {
 	msCodeItn := random.Intn(9000) + 1000
 	msCode := strconv.Itoa(msCodeItn)
 	msg := []byte("Access code: " + msCode)
-	username := "gimaev.vending@ya.ru"
+	// работоспособность ящика под вопросом
+	username := "gimaevra94@ya.ru"
 
 	password, err := os.ReadFile(consts.DBPasswordPathStr)
 	if err != nil {
