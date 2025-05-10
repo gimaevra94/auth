@@ -54,6 +54,8 @@ func TokenCreate(w http.ResponseWriter, r *http.Request, command string,
 	}
 
 	http.SetCookie(w, &cookie)
+	w.Header().Set(consts.CookieNameStr, consts.BearerStr+cookie.Value)
+	w.Write([]byte(cookie.Value))
 
 	return nil
 }

@@ -14,10 +14,10 @@ import (
 func MailSendler(email string) (string, error) {
 
 	random := rand.New(rand.NewSource(time.Now().UnixNano()))
-	msCodeItn := random.Intn(consts.NineThousandInt) + consts.ThousandSInt
+	msCodeItn := random.Intn(9000) + 1000
 	msCode := strconv.Itoa(msCodeItn)
-	msg := []byte(consts.AccessCodeStr + msCode)
-	username := consts.MailUserNameStr
+	msg := []byte("Access code: " + msCode)
+	username := "gimaev.vending@ya.ru"
 
 	password, err := os.ReadFile(consts.DBPasswordPathStr)
 	if err != nil {

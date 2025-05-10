@@ -1,9 +1,5 @@
 package consts
 
-import (
-	"time"
-)
-
 const (
 	SelectQuery = "select password from users where email = ? limit 1"
 	InsertQuery = "insert into users (email,login,password) values(?,?,?)"
@@ -30,42 +26,24 @@ const (
 )
 
 const (
-	SignUpLoginInputHTML = "signUploginInput.html"
-	RequestErrorHTML     = "requestError.html"
-	UserAlreadyExistHTML = "userAlreadyExist.html"
-	CodeSendHTML         = "codeSend.html"
-	WrongCodeHTML        = "wrongCode.html"
-	SignInloginInputHTML = "signInloginInput.html"
-	UserNotExistHTML     = "userNotExist.html"
-	HomeHTML             = "home.html"
-	BadSignUpHTML        = "badSign-up.html"
-	BadSignInHTML        = "badSign-in.html"
-)
-
-const (
 	DBPingFailedErr      = "DB.Ping failed"
-	SqlOpenFailedErr     = "sql.Open failed"
 	MailSendlerFailedErr = "mailSendler failed"
 
 	UserGetFromSessionErr = "'userGetFromSession' failed"
 	UserSetFromSessionErr = "'userSetFromSession' failed"
 
-	SessionEndedErr      = "session ended"
 	UserAllreadyExistErr = "'user' allready exist"
 	RegexKeyNotMatchErr  = "regex key not matching: "
 
 	InvalidTokenErr            = "token is invalid"
-	UserNotExistInSessionErr   = "'user' is not exist in the session"
-	UserNotExistInDBErr        = "'user' is not exist in db"
+	UserNotExistErr            = "'user' is not exist"
 	MscodeNotExistInSessionErr = "'msCode' is not exist in the session"
 	AuthCodeNotFoundErr        = "Auth code: 'CodeStr' not found in the auth url: 'authURLWithParamsUrl'"
 
-	PasswordsNotMatchErr = "'inputPassword' does not match 'passwordHash'"
-	CodesNotMatchErr     = "the 'userCode' does not match the 'msCode'"
+	CodesNotMatchErr = "the 'userCode' does not match the 'msCode'"
 
 	UserSaveInSessionFailedErr   = "failed to save the 'user' in the session"
 	MscodeSaveInSessionFailedErr = "failed to save the msCode in the session"
-	SessionSaveFailedErr         = "failed to save the session"
 
 	DBStartServerFailedErr = "failed to start the server"
 	DBStartFailedErr       = "failed to start the database"
@@ -80,17 +58,15 @@ const (
 	UserAddInDBFailedErr      = "failed to add the 'user' in db"
 	PasswordFileReadFailedErr = "failed to read 'db_password.txt'"
 	PasswordHashingFailedErr  = "failed to hash the password"
-	ExecuteQueryFailedErr     = "execute query failed"
 	AccessCodeSendFailedErr   = "failed to send access code fron user email"
 	TokenSignFailedErr        = "failed to sign the token"
 
-	DataGetFailedErr             = "failed to get the data from: "
-	TokenGetFailedErr            = "failed to get the token"
-	CookieGetFailedErr           = "failed to get the cookie"
-	KeyGetFailedErr              = "failed to get the key"
-	SessionGetFailedErr          = "failed to get the session"
-	ClaimsGetFailedErr           = "failed to get the claims"
-	ExpireGetFromClaimsFailedErr = "failed to get the expire from the claims"
+	DataGetFailedErr    = "failed to get the data from: "
+	TokenGetFailedErr   = "failed to get the token"
+	CookieGetFailedErr  = "failed to get the cookie"
+	KeyGetFailedErr     = "failed to get the key"
+	SessionGetFailedErr = "session get failed"
+	ClaimsGetFailedErr  = "failed to get the claims"
 
 	EmailGetFromFormFailedErr    = "failed to get 'email' from the FormValue"
 	LoginGetFromFormFailedErr    = "failed to get 'login' from the FormValue"
@@ -112,15 +88,10 @@ const (
 	UserCodeStr           = "code"
 	SessionNameStr        = "auth"
 	RememberStr           = "remember"
-	LastActivityStr       = "lastActivity"
 	EmptyValueStr         = ""
 	CookieNameStr         = "Authorization"
 	AuthCookiePath        = "/set-token"
-	DBConfUserNameStr     = "root"
-	DBConfNetNameStr      = "tcp"
 	PasswordStr           = "password"
-	DBConfAddrNameStr     = "db:3306"
-	DBConfDBNameStr       = "db"
 	DBPasswordPathStr     = "/run/secrets/db_password"
 	DBNameDriverStr       = "mysql"
 	TokenCommand3HoursStr = "expire_3_hours"
@@ -144,11 +115,4 @@ const (
 	ResponseTypeStr       = "response_type"
 	QuestionMarkStr       = "?"
 	TokenStr              = "access_token"
-)
-
-const (
-	TokenLifetime3HoursInt  = 3 * time.Hour
-	TokenLifetime24HoursInt = 24 * time.Hour
-	ThousandSInt            = 1000
-	NineThousandInt         = 9000
 )

@@ -1,17 +1,17 @@
 package logout
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/gimaevra94/auth/app/consts"
-	"github.com/gimaevra94/auth/app/structs"
+	"github.com/gimaevra94/auth/app/serializer"
 	"github.com/gimaevra94/auth/app/tokenizer"
 	"github.com/gimaevra94/auth/app/validator"
 	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/sessions"
+	"github.com/pkg/errors"
 )
 
 func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handler {
@@ -19,37 +19,32 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 		return http.HandlerFunc(func(w http.ResponseWriter,
 			r *http.Request) {
 
-			token, err := validator.IsValidToken(r)
+			token, err := validator.IsValidToken(w, r)
 			if err != nil {
-				http.ServeFile(w, r, consts.RequestErrorHTML)
-				log.Println(consts.TokenValidateFailedErr, err)
+				log.Println("%+v", err)
+				http.Redirect(w, r, consts.RequestErrorURL, http.StatusFound)
 				return
 			}
 
-			claims, ok := token.Claims.(jwt.MapClaims)
-			if !ok {
-				log.Println(consts.ClaimsGetFailedErr)
-				return
-			}
+			claims := token.Claims.(jwt.MapClaims)
+			exp := claims["exp"].(float64)
 
-			exp, ok := claims[consts.ExpStr].(float64)
-			if !ok {
-				log.Println(consts.ExpireGetFromClaimsFailedErr)
-				return
-			}
-
-			session, user, err := sessionUserGetUnmarshal(r, store)
+			session, user, err := serializer.SessionUserGetUnmarshal(r,
+				store)
 			if err != nil {
-				http.ServeFile(w, r, consts.RequestErrorHTML)
-				log.Println(consts.SessionGetFailedErr, err)
+				log.Println("%+v", err)
+				http.Redirect(w, r, consts.RequestErrorURL, http.StatusFound)
+				return
 			}
 
 			expUnix := time.Unix(int64(exp), 0)
 			if time.Now().After(expUnix) {
-				lastActivity := session.Values[consts.LastActivityStr].(time.Time)
-				if time.Since(lastActivity) > consts.TokenLifetime3HoursInt {
-					http.ServeFile(w, r, consts.LogoutURL)
-					log.Println(consts.SessionEndedErr)
+				lastActivity := session.Values["lastActivity"].(time.Time)
+				if time.Since(lastActivity) > 3*time.Hour {
+					newErr := errors.New("session ended")
+					wrappedErr := errors.WithStack(newErr)
+					log.Println("%+v", wrappedErr)
+					http.Redirect(w, r, consts.LogoutURL, http.StatusFound)
 					return
 				}
 			}
@@ -57,39 +52,46 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 			err = tokenizer.TokenCreate(w, r, consts.TokenCommand3HoursStr,
 				user)
 			if err != nil {
-				http.ServeFile(w, r, consts.RequestErrorHTML)
-				log.Println(consts.TokenCreateFailedErr, err)
+				log.Println("%+v", err)
+				http.Redirect(w, r, consts.RequestErrorURL, http.StatusFound)
+				return
 			}
 
-			//w.Header().Set(consts.CookieNameStr, consts.BearerStr+cookie.Value)
-			//w.Write([]byte(cookie.Value))
+			next.ServeHTTP(w, r)
 		})
-
-		// next
 	}
 }
 
-func sessionUserGetUnmarshal(r *http.Request,
-	store *sessions.CookieStore) (*sessions.Session, structs.User, error) {
+func Logout(store *sessions.CookieStore) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, err := store.Get(r, consts.SessionNameStr)
+		if err != nil {
+			wrappedErr := errors.WithStack(err)
+			log.Println("%+v", wrappedErr)
+			http.Redirect(w, r, consts.RequestErrorURL, http.StatusFound)
+			return
+		}
 
-	session, err := store.Get(r, consts.SessionNameStr)
-	if err != nil {
-		log.Println(consts.SessionGetFailedErr, err)
-		return nil, nil, err
+		session.Options.MaxAge = -1
+		err = session.Save(r, w)
+		if err != nil {
+			wrappedErr := errors.WithStack(err)
+			log.Println("%+v", wrappedErr)
+			http.Redirect(w, r, consts.RequestErrorURL, http.StatusFound)
+			return
+		}
+
+		cookie := http.Cookie{
+			Name:     "Authorization",
+			Path:     "/set-token",
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteStrictMode,
+			Value:    "",
+			MaxAge:   -1,
+		}
+
+		http.SetCookie(w, &cookie)
+		http.Redirect(w, r, consts.LogoutURL, http.StatusFound)
 	}
-
-	jsonData, ok := session.Values[consts.UserStr].([]byte)
-	if !ok {
-		log.Println(consts.UserNotExistInSessionErr)
-		return nil, nil, err
-	}
-
-	var user structs.User
-	err = json.Unmarshal([]byte(jsonData), &user)
-	if err != nil {
-		log.Println(consts.UserDeserializeFailedErr, err)
-		return nil, nil, err
-	}
-
-	return session, user, nil
 }

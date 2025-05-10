@@ -9,6 +9,7 @@ import (
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/structs"
 	"github.com/go-sql-driver/mysql"
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -17,8 +18,9 @@ var DB *sql.DB
 func DBConn() error {
 	password, err := os.ReadFile(consts.DBPasswordPathStr)
 	if err != nil {
-		log.Println(consts.PasswordFileReadFailedErr, err)
-		return err
+		wrappedErr := errors.WithStack(err)
+		log.Printf("%+v", wrappedErr)
+		return wrappedErr
 	}
 
 	defer func() {
@@ -28,24 +30,27 @@ func DBConn() error {
 	}()
 
 	cfg := mysql.Config{
-		User:   consts.DBConfUserNameStr,
+		User:   "root",
 		Passwd: string(password),
-		Net:    consts.DBConfNetNameStr,
-		Addr:   consts.DBConfAddrNameStr,
-		DBName: consts.DBConfDBNameStr,
+		Net:    "tcp",
+		Addr:   "db:3306",
+		DBName: "db",
 	}
 
 	DB, err := sql.Open(consts.DBNameDriverStr, cfg.FormatDSN())
 	if err != nil {
-		log.Println(consts.SqlOpenFailedErr, err)
-		return err
+		wrappedErr := errors.WithStack(err)
+		log.Printf("%+v", wrappedErr)
+		return wrappedErr
 	}
 
 	err = DB.Ping()
 	if err != nil {
-		log.Println(consts.DBPingFailedErr, err)
+		log.Printf(consts.DBPingFailedErr, err)
 		DB.Close()
-		return err
+		wrappedErr := errors.WithStack(err)
+		log.Printf("%+v", wrappedErr)
+		return wrappedErr
 	}
 
 	return nil
@@ -64,12 +69,14 @@ func UserCheck(w http.ResponseWriter, r *http.Request,
 	err := row.Scan(&passwordHash)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Println(consts.UserNotExistInDBErr, err)
-			return err
+			newErr := errors.New(consts.UserNotExistErr)
+			wrappedErr := errors.Wrap(newErr, "database")
+			log.Printf("%+v", wrappedErr)
+			return wrappedErr
 		}
-		http.ServeFile(w, r, consts.RequestErrorHTML)
-		log.Println(consts.DBQueryExecuteFailedErr, err)
-		return err
+		wrappedErr := errors.WithStack(err)
+		log.Printf("%+v", wrappedErr)
+		return wrappedErr
 	}
 
 	if userAddFromLogIn {
@@ -77,9 +84,9 @@ func UserCheck(w http.ResponseWriter, r *http.Request,
 		err = bcrypt.CompareHashAndPassword([]byte(passwordHash),
 			[]byte(inputPassword))
 		if err != nil {
-			http.ServeFile(w, r, consts.BadSignInHTML)
-			log.Println(consts.PasswordsNotMatchErr, err)
-			return err
+			wrappedErr := errors.WithStack(err)
+			log.Printf("%+v", wrappedErr)
+			return wrappedErr
 		}
 	}
 
@@ -99,16 +106,16 @@ func UserAdd(w http.ResponseWriter, r *http.Request,
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password),
 		bcrypt.DefaultCost)
 	if err != nil {
-		http.ServeFile(w, r, consts.RequestErrorHTML)
-		log.Println(consts.PasswordHashingFailedErr)
-		return err
+		wrappedErr := errors.WithStack(err)
+		log.Printf("%+v", wrappedErr)
+		return wrappedErr
 	}
 
 	_, err = DB.Exec(consts.InsertQuery, email, login, hashedPassword)
 	if err != nil {
-		http.ServeFile(w, r, consts.RequestErrorHTML)
-		log.Println(consts.UserAddInDBFailedErr)
-		return err
+		wrappedErr := errors.WithStack(err)
+		log.Printf("%+v", wrappedErr)
+		return wrappedErr
 	}
 
 	return nil
