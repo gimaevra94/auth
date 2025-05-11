@@ -1,4 +1,4 @@
-package structs
+package app
 
 type user struct {
 	Email    string `json:"email"`

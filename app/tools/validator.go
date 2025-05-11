@@ -1,12 +1,10 @@
-package validator
+package tools
 
 import (
 	"net/http"
 	"regexp"
 
-	"github.com/gimaevra94/auth/app/consts"
-	"github.com/gimaevra94/auth/app/logtraceredir"
-	"github.com/gimaevra94/auth/app/structs"
+	"github.com/gimaevra94/auth/app"
 	"github.com/golang-jwt/jwt"
 )
 
@@ -18,21 +16,21 @@ var (
 	passwordRegex = regexp.MustCompile(`^(?=.*[a-zA-Zа-яА-ЯёЁ])(?=.*\d)(?=.[!@#$%^&*])[\w!@#$%^&*]{3,30}$`)
 )
 
-func IsValidToken(w http.ResponseWriter, 
+func IsValidToken(w http.ResponseWriter,
 	r *http.Request) (*jwt.Token, error) {
 	cookie, err := r.Cookie("cookie")
 	if err != nil {
-		return nil, logtraceredir.LogTraceRedir(w, r, 
-			consts.GetFailedErr, "cookie","", false)
+		return nil, logtraceredir.LogTraceRedir(w, r,
+			app.GetFailedErr, "cookie", "", false)
 	}
 
 	value := cookie.Value
 	if value == "" {
-		return nil, logtraceredir.LogTraceRedir(w, r, 
-			consts.EmptyValueErr, "token","", false)
+		return nil, logtraceredir.LogTraceRedir(w, r,
+			app.EmptyValueErr, "token", "", false)
 	}
 
-	token, err := jwt.Parse(value, func(t *jwt.Token) (interface{}, 
+	token, err := jwt.Parse(value, func(t *jwt.Token) (interface{},
 		error) {
 		return []byte("my-super-secret-key"), nil
 	})
@@ -42,15 +40,15 @@ func IsValidToken(w http.ResponseWriter,
 	}
 
 	if !token.Valid {
-		return nil, logtraceredir.LogTraceRedir(w, r, 
-			consts.ValidationFailedErr, "token","", false)
+		return nil, logtraceredir.LogTraceRedir(w, r,
+			app.ValidationFailedErr, "token", "", false)
 	}
 
 	return token, nil
 }
 
 func IsValidInput(w http.ResponseWriter,
-	r *http.Request) (structs.User, error) {
+	r *http.Request) (app.User, error) {
 
 	email := r.FormValue("email")
 	login := r.FormValue("login")
@@ -58,32 +56,32 @@ func IsValidInput(w http.ResponseWriter,
 
 	if email == "" {
 		return nil, logtraceredir.LogTraceRedir(w, r,
-			consts.EmptyValueErr, "email", "", false)
+			app.EmptyValueErr, "email", "", false)
 	}
 	if !emailRegex.MatchString(email) {
 		return nil, logtraceredir.LogTraceRedir(w, r,
-			consts.ValidationFailedErr, email, "", false)
+			app.ValidationFailedErr, email, "", false)
 	}
 
 	if login == "" {
 		return nil, logtraceredir.LogTraceRedir(w, r,
-			consts.EmptyValueErr, "login", "", false)
+			app.EmptyValueErr, "login", "", false)
 	}
 	if !loginRegex.MatchString(login) {
 		return nil, logtraceredir.LogTraceRedir(w, r,
-			consts.ValidationFailedErr, login, "", false)
+			app.ValidationFailedErr, login, "", false)
 	}
 
 	if password == "" {
 		return nil, logtraceredir.LogTraceRedir(w, r,
-			consts.EmptyValueErr, "password", "", false)
+			app.EmptyValueErr, "password", "", false)
 	}
 	if !passwordRegex.MatchString(password) {
 		return nil, logtraceredir.LogTraceRedir(w, r,
-			consts.ValidationFailedErr, password, "", false)
+			app.ValidationFailedErr, password, "", false)
 	}
 
-	validatedLoginInput := structs.NewUser(
+	validatedLoginInput := app.NewUser(
 		email,
 		login,
 		password,

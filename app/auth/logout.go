@@ -1,14 +1,12 @@
-package logout
+package auth
 
 import (
 	"log"
 	"net/http"
 	"time"
 
-	"github.com/gimaevra94/auth/app/consts"
-	"github.com/gimaevra94/auth/app/serializer"
-	"github.com/gimaevra94/auth/app/tokenizer"
-	"github.com/gimaevra94/auth/app/validator"
+	"github.com/gimaevra94/auth/app"
+	"github.com/gimaevra94/auth/app/tools"
 	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/sessions"
 	"github.com/pkg/errors"
@@ -19,21 +17,20 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 		return http.HandlerFunc(func(w http.ResponseWriter,
 			r *http.Request) {
 
-			token, err := validator.IsValidToken(w, r)
+			token, err := tools.IsValidToken(w, r)
 			if err != nil {
 				log.Println("%+v", err)
-				http.Redirect(w, r, consts.RequestErrorURL, http.StatusFound)
+				http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
 				return
 			}
 
 			claims := token.Claims.(jwt.MapClaims)
 			exp := claims["exp"].(float64)
-
-			session, user, err := serializer.SessionUserGetUnmarshal(r,
+			session, user, err := tools.SessionUserGetUnmarshal(r,
 				store)
 			if err != nil {
 				log.Println("%+v", err)
-				http.Redirect(w, r, consts.RequestErrorURL, http.StatusFound)
+				http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
 				return
 			}
 
@@ -44,16 +41,16 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 					newErr := errors.New("session ended")
 					wrappedErr := errors.WithStack(newErr)
 					log.Println("%+v", wrappedErr)
-					http.Redirect(w, r, consts.LogoutURL, http.StatusFound)
+					http.Redirect(w, r, app.LogoutURL, http.StatusFound)
 					return
 				}
 			}
 
-			err = tokenizer.TokenCreate(w, r, consts.TokenCommand3HoursStr,
+			err = tools.TokenCreate(w, r, app.TokenCommand3HoursStr,
 				user)
 			if err != nil {
 				log.Println("%+v", err)
-				http.Redirect(w, r, consts.RequestErrorURL, http.StatusFound)
+				http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
 				return
 			}
 
@@ -64,11 +61,11 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 
 func Logout(store *sessions.CookieStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		session, err := store.Get(r, consts.SessionNameStr)
+		session, err := store.Get(r, app.SessionNameStr)
 		if err != nil {
 			wrappedErr := errors.WithStack(err)
 			log.Println("%+v", wrappedErr)
-			http.Redirect(w, r, consts.RequestErrorURL, http.StatusFound)
+			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
 			return
 		}
 
@@ -77,7 +74,7 @@ func Logout(store *sessions.CookieStore) http.HandlerFunc {
 		if err != nil {
 			wrappedErr := errors.WithStack(err)
 			log.Println("%+v", wrappedErr)
-			http.Redirect(w, r, consts.RequestErrorURL, http.StatusFound)
+			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
 			return
 		}
 
@@ -92,6 +89,6 @@ func Logout(store *sessions.CookieStore) http.HandlerFunc {
 		}
 
 		http.SetCookie(w, &cookie)
-		http.Redirect(w, r, consts.LogoutURL, http.StatusFound)
+		http.Redirect(w, r, app.LogoutURL, http.StatusFound)
 	}
 }

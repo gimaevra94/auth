@@ -1,4 +1,4 @@
-package htmlfiles
+package templates
 
 import (
 	"net/http"
@@ -22,4 +22,8 @@ func RequestError(w http.ResponseWriter, r *http.Request) {
 
 func Logout(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "logout.html")
+}
+
+func BadSignIn(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "badSign-in.html")
 }

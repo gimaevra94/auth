@@ -1,4 +1,4 @@
-package yauth
+package auth
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/gimaevra94/auth/app/consts"
+	"github.com/gimaevra94/auth/app/app"
 )
 
 type YandexUser struct {
@@ -18,19 +18,19 @@ type YandexUser struct {
 }
 
 func Router() {
-	http.HandleFunc(consts.YandexAuthURL, yandexAuthHandler)         // Маршрут для начала авторизации через Яндекс
-	http.HandleFunc(consts.YandexCallbackURL, yandexCallbackHandler) // Маршрут для обработки callback от Яндекса
+	http.HandleFunc(app.YandexAuthURL, yandexAuthHandler)         // Маршрут для начала авторизации через Яндекс
+	http.HandleFunc(app.YandexCallbackURL, yandexCallbackHandler) // Маршрут для обработки callback от Яндекса
 }
 
 // Обработчик для начала авторизации через Яндекс
 func yandexAuthHandler(w http.ResponseWriter, r *http.Request) {
 	authParams := url.Values{}
-	authParams.Add(consts.ResponseTypeStr, consts.CodeStr)
-	authParams.Add(consts.ClientIDStr, consts.ClientIDCodeStr)
-	authParams.Add(consts.RedirectUrlStr, consts.RedirectURL) // URL, куда Яндекс перенаправит пользователя после авторизации
+	authParams.Add(app.ResponseTypeStr, app.CodeStr)
+	authParams.Add(app.ClientIDStr, app.ClientIDCodeStr)
+	authParams.Add(app.RedirectUrlStr, app.RedirectURL) // URL, куда Яндекс перенаправит пользователя после авторизации
 
 	// Формируем полный URL для авторизации
-	authURLWithParamsUrl := consts.AuthURL + "?" + authParams.Encode() // Добавляем параметры к базовому URL авторизации
+	authURLWithParamsUrl := app.AuthURL + "?" + authParams.Encode() // Добавляем параметры к базовому URL авторизации
 
 	// Перенаправляем пользователя на страницу авторизации Яндекса
 	http.Redirect(w, r, authURLWithParamsUrl, http.StatusFound) // HTTP-статус 302 (перенаправление)
@@ -38,26 +38,26 @@ func yandexAuthHandler(w http.ResponseWriter, r *http.Request) {
 
 func yandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	// Получаем параметр "code" из URL (он передается Яндексом после успешной авторизации)
-	code := r.URL.Query().Get(consts.CodeStr)
-	if code == consts.EmptyValueStr {
-		http.Error(w, consts.AuthCodeNotFoundErr, http.StatusBadRequest)
+	code := r.URL.Query().Get(app.CodeStr)
+	if code == app.EmptyValueStr {
+		http.Error(w, app.AuthCodeNotFoundErr, http.StatusBadRequest)
 		return
 	}
 
 	// Получаем access_token, используя код авторизации
 	token, err := getAccessToken(code)
 	if err != nil {
-		http.Error(w, consts.YandexTokenGetFailedErr,
+		http.Error(w, app.YandexTokenGetFailedErr,
 			http.StatusInternalServerError)
-		log.Println(consts.YandexTokenGetFailedErr, err)
+		log.Println(app.YandexTokenGetFailedErr, err)
 		return
 	}
 
 	// Получаем информацию о пользователе с помощью access_token
 	user, err := getUserInfo(token)
 	if err != nil {
-		http.Error(w, consts.UserInfoGetFailedErr, http.StatusInternalServerError)
-		log.Println(consts.UserInfoGetFailedErr, err)
+		http.Error(w, app.UserInfoGetFailedErr, http.StatusInternalServerError)
+		log.Println(app.UserInfoGetFailedErr, err)
 		return
 	}
 
@@ -66,36 +66,36 @@ func yandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 
 func getAccessToken(code string) (string, error) {
 	tokenParams := url.Values{}
-	tokenParams.Add(consts.GrandTypeStr, consts.AuthCodeStr)
-	tokenParams.Add(consts.CodeStr, code)
-	tokenParams.Add(consts.ClientIDStr, consts.ClientIDCodeStr)
-	tokenParams.Add(consts.ClientSecret, consts.ClientSecretCodeStr)
-	tokenParams.Add(consts.RedirectUrlStr, consts.RedirectURL)
+	tokenParams.Add(app.GrandTypeStr, app.AuthCodeStr)
+	tokenParams.Add(app.CodeStr, code)
+	tokenParams.Add(app.ClientIDStr, app.ClientIDCodeStr)
+	tokenParams.Add(app.ClientSecret, app.ClientSecretCodeStr)
+	tokenParams.Add(app.RedirectUrlStr, app.RedirectURL)
 
 	// Отправляем POST-запрос для получения токена
-	resp, err := http.PostForm(consts.TokenURL, tokenParams) // Отправляем данные через форму
+	resp, err := http.PostForm(app.TokenURL, tokenParams) // Отправляем данные через форму
 	if err != nil {
-		return consts.EmptyValueStr, err
+		return app.EmptyValueStr, err
 	}
 	defer resp.Body.Close()
 
 	// Читаем тело ответа
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return consts.EmptyValueStr, err
+		return app.EmptyValueStr, err
 	}
 
 	// Парсим JSON-ответ
 	var result map[string]interface{}
 	err = json.Unmarshal(body, &result)
 	if err != nil {
-		return consts.EmptyValueStr, err
+		return app.EmptyValueStr, err
 	}
 
 	// Извлекаем access_token из ответа
-	accessToken, ok := result[consts.TokenStr].(string)
+	accessToken, ok := result[app.TokenStr].(string)
 	if !ok {
-		return consts.EmptyValueStr, fmt.Errorf(consts.TokenGetFailedErr)
+		return app.EmptyValueStr, fmt.Errorf(app.TokenGetFailedErr)
 	}
 
 	return accessToken, nil
@@ -103,7 +103,7 @@ func getAccessToken(code string) (string, error) {
 
 func getUserInfo(accessToken string) (*YandexUser, error) {
 	// Создаем GET-запрос для получения данных пользователя
-	req, err := http.NewRequest("GET", consts.UserInfoURL, nil)
+	req, err := http.NewRequest("GET", app.UserInfoURL, nil)
 	if err != nil {
 		return nil, err
 	}

@@ -1,4 +1,8 @@
-package consts
+package app
+
+import (
+	"time"
+)
 
 const (
 	SelectQuery = "select password from users where email = ? limit 1"
@@ -23,6 +27,7 @@ const (
 	UserInfoURL        = "https://login.yandex.ru/info"
 	YandexAuthURL      = "/yandex"
 	YandexCallbackURL  = "/yandex/callback"
+	BadSignInURL       = "/bad_sign_in"
 )
 
 const (
@@ -32,6 +37,7 @@ const (
 	UserGetFromSessionErr = "'userGetFromSession' failed"
 	UserSetFromSessionErr = "'userSetFromSession' failed"
 
+	NotExistErr          = "not exist"
 	UserAllreadyExistErr = "'user' allready exist"
 	RegexKeyNotMatchErr  = "regex key not matching: "
 
@@ -48,10 +54,8 @@ const (
 	DBStartServerFailedErr = "failed to start the server"
 	DBStartFailedErr       = "failed to start the database"
 
-	InputValidateFailedErr = "failed to validate the input in 'IsValidInput'  when called from 'inputCheck'"
 	UserSerializeFailedErr = "failed to serialize the 'user'"
 
-	UserDeserializeFailedErr  = "failed to deserialize the 'user'"
 	ParseFromTokenFailedErr   = "failed to parse from token"
 	TokenValidateFailedErr    = "failed to validate the token"
 	TokenCreateFailedErr      = "failed to create the token"
@@ -115,4 +119,12 @@ const (
 	ResponseTypeStr       = "response_type"
 	QuestionMarkStr       = "?"
 	TokenStr              = "access_token"
+)
+
+const (
+	RequestErrorHTML       = "templates/request_error.html"
+	UserNotExistHTML       = "templates/user_not_exist.html"
+	BadSignInHTML          = "templates/bad_sign_in.html"
+	TokenLifetime3HoursInt = 3 * time.Hour
+	LastActivityStr        = "last_activity"
 )

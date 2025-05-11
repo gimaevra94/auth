@@ -1,4 +1,4 @@
-package tokenizer
+package tools
 
 import (
 	"log"
@@ -6,47 +6,46 @@ import (
 	"os"
 	"time"
 
-	"github.com/gimaevra94/auth/app/consts"
-	"github.com/gimaevra94/auth/app/structs"
+	"github.com/gimaevra94/auth/app"
 	"github.com/golang-jwt/jwt"
 )
 
 func TokenCreate(w http.ResponseWriter, r *http.Request, command string,
-	value structs.User) error {
+	value app.User) error {
 
 	var token *jwt.Token
 	user := value.GetLogin()
 
 	switch command {
-	case consts.EmptyValueStr:
-		exp := time.Now().Add(consts.TokenLifetime24HoursInt)
+	case app.EmptyValueStr:
+		exp := time.Now().Add(24 * time.Hour)
 		token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-			consts.UserStr: user,
-			consts.ExpStr:  exp,
+			app.UserStr: user,
+			app.ExpStr:  exp,
 		})
 
-	case consts.OnValueStr:
+	case app.OnValueStr:
 		token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-			consts.UserStr: user,
+			app.UserStr: user,
 		})
 
-	case consts.TokenCommand3HoursStr:
-		exp := time.Now().Add(consts.TokenLifetime3HoursInt)
+	case app.TokenCommand3HoursStr:
+		exp := time.Now().Add(app.TokenLifetime3HoursInt)
 		token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-			consts.UserStr: user,
-			consts.ExpStr:  exp,
+			app.UserStr: user,
+			app.ExpStr:  exp,
 		})
 	}
 
 	SignedToken, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
 	if err != nil {
-		log.Println(consts.TokenSignFailedErr, err)
+		log.Println(app.TokenSignFailedErr, err)
 		return err
 	}
 
 	cookie := http.Cookie{
-		Name:     consts.CookieNameStr,
-		Path:     consts.AuthCookiePath,
+		Name:     app.CookieNameStr,
+		Path:     app.AuthCookiePath,
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
@@ -54,7 +53,7 @@ func TokenCreate(w http.ResponseWriter, r *http.Request, command string,
 	}
 
 	http.SetCookie(w, &cookie)
-	w.Header().Set(consts.CookieNameStr, consts.BearerStr+cookie.Value)
+	w.Header().Set(app.CookieNameStr, app.BearerStr+cookie.Value)
 	w.Write([]byte(cookie.Value))
 
 	return nil

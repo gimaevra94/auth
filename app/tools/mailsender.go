@@ -1,4 +1,4 @@
-package mailsendler
+package tools
 
 import (
 	"log"
@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gimaevra94/auth/app/consts"
+	"github.com/gimaevra94/auth/app"
 )
 
 func MailSendler(email string) (string, error) {
@@ -20,22 +20,22 @@ func MailSendler(email string) (string, error) {
 	// работоспособность ящика под вопросом
 	username := "gimaevra94@ya.ru"
 
-	password, err := os.ReadFile(consts.DBPasswordPathStr)
+	password, err := os.ReadFile(app.DBPasswordPathStr)
 	if err != nil {
-		log.Println(consts.PasswordFileReadFailedErr, err)
+		log.Println(app.PasswordFileReadFailedErr, err)
 		return "", err
 	}
 
-	host := consts.SMTPHostStr
-	auth := smtp.PlainAuth(consts.EmptyValueStr, username,
+	host := app.SMTPHostStr
+	auth := smtp.PlainAuth(app.EmptyValueStr, username,
 		string(password), host)
-	addr := consts.SMTPAddrStr
+	addr := app.SMTPAddrStr
 	from := username
 	to := []string{email}
 
 	err = smtp.SendMail(addr, auth, from, to, msg)
 	if err != nil {
-		log.Println(consts.AccessCodeSendFailedErr, err)
+		log.Println(app.AccessCodeSendFailedErr, err)
 		return "", err
 	}
 	return msCode, err

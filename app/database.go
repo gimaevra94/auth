@@ -1,4 +1,4 @@
-package database
+package app
 
 import (
 	"database/sql"
@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/gimaevra94/auth/app/consts"
-	"github.com/gimaevra94/auth/app/structs"
 	"github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
@@ -16,10 +14,11 @@ import (
 var DB *sql.DB
 
 func DBConn() error {
-	password, err := os.ReadFile(consts.DBPasswordPathStr)
+	password, err := os.ReadFile(DBPasswordPathStr)
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
 		log.Printf("%+v", wrappedErr)
+
 		return wrappedErr
 	}
 
@@ -37,7 +36,7 @@ func DBConn() error {
 		DBName: "db",
 	}
 
-	DB, err := sql.Open(consts.DBNameDriverStr, cfg.FormatDSN())
+	DB, err := sql.Open(DBNameDriverStr, cfg.FormatDSN())
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
 		log.Printf("%+v", wrappedErr)
@@ -46,7 +45,7 @@ func DBConn() error {
 
 	err = DB.Ping()
 	if err != nil {
-		log.Printf(consts.DBPingFailedErr, err)
+		log.Printf(DBPingFailedErr, err)
 		DB.Close()
 		wrappedErr := errors.WithStack(err)
 		log.Printf("%+v", wrappedErr)
@@ -57,20 +56,20 @@ func DBConn() error {
 }
 
 func UserCheck(w http.ResponseWriter, r *http.Request,
-	user structs.User, userAddFromLogIn bool) error {
+	user User, userAddFromLogIn bool) error {
 
 	if DB == nil {
-		log.Fatal(consts.DBStartFailedErr)
+		log.Fatal(DBStartFailedErr)
 	}
 
 	inputEmail := user.GetEmail()
-	row := DB.QueryRow(consts.SelectQuery, inputEmail)
+	row := DB.QueryRow(SelectQuery, inputEmail)
 	var passwordHash string
 	err := row.Scan(&passwordHash)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			newErr := errors.New(consts.UserNotExistErr)
-			wrappedErr := errors.Wrap(newErr, "database")
+			newErr := errors.New(NotExistErr)
+			wrappedErr := errors.Wrap(newErr, "user")
 			log.Printf("%+v", wrappedErr)
 			return wrappedErr
 		}
@@ -94,9 +93,9 @@ func UserCheck(w http.ResponseWriter, r *http.Request,
 }
 
 func UserAdd(w http.ResponseWriter, r *http.Request,
-	users structs.User) error {
+	users User) error {
 	if DB == nil {
-		log.Fatal(consts.DBStartFailedErr)
+		log.Fatal(DBStartFailedErr)
 	}
 
 	email := users.GetEmail()
@@ -111,7 +110,7 @@ func UserAdd(w http.ResponseWriter, r *http.Request,
 		return wrappedErr
 	}
 
-	_, err = DB.Exec(consts.InsertQuery, email, login, hashedPassword)
+	_, err = DB.Exec(InsertQuery, email, login, hashedPassword)
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
 		log.Printf("%+v", wrappedErr)
