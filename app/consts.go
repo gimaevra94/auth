@@ -10,41 +10,34 @@ const (
 )
 
 const (
-	SignUpURL          = "/sign_up"
-	InputCheckURL      = "/input_check"
-	CodeSendURL        = "/code_send"
-	UserAddURL         = "/user_add"
-	SignInURL          = "/sign_in"
-	LogInURL           = "/log_in"
-	SendCodeAgainURL   = "/send_code_again"
-	HomeURL            = "/home"
-	LogoutURL          = "/log_out"
-	LoginWithGoogleURL = "/login_with_google"
-	RequestErrorURL    = "/request_error"
-	RedirectURL        = "http://localhost:8080/home"
-	AuthURL            = "https://oauth.yandex.ru/authorize"
-	TokenURL           = "https://oauth.yandex.ru/token"
-	UserInfoURL        = "https://login.yandex.ru/info"
-	YandexAuthURL      = "/yandex"
-	YandexCallbackURL  = "/yandex/callback"
-	BadSignInURL       = "/bad_sign_in"
+	SignUpURL       = "/sign_up"
+	CodeSendURL     = "/code_send"
+	SignInURL       = "/sign_in"
+	LogInURL        = "/log_in"
+	HomeURL         = "/home"
+	LogoutURL       = "/log_out"
+	RequestErrorURL = "/request_error"
+
+	BadSignInURL    = "/bad_sign_in"
+	BadSignUpURL    = "/bad_sign_up"
+	UserNotExistURL = "/user_not_exist"
+	WrongCodeURL    = "/wrong_code"
 )
 
 const (
+	AlreadyExistURL      = "/already_exist"
 	DBPingFailedErr      = "DB.Ping failed"
 	MailSendlerFailedErr = "mailSendler failed"
 
 	UserGetFromSessionErr = "'userGetFromSession' failed"
 	UserSetFromSessionErr = "'userSetFromSession' failed"
 
-	NotExistErr          = "not exist"
-	UserAllreadyExistErr = "'user' allready exist"
-	RegexKeyNotMatchErr  = "regex key not matching: "
+	NotExistErr         = "not exist"
+	RegexKeyNotMatchErr = "regex key not matching: "
 
-	InvalidTokenErr            = "token is invalid"
-	UserNotExistErr            = "'user' is not exist"
-	MscodeNotExistInSessionErr = "'msCode' is not exist in the session"
-	AuthCodeNotFoundErr        = "Auth code: 'CodeStr' not found in the auth url: 'authURLWithParamsUrl'"
+	InvalidTokenErr     = "token is invalid"
+	UserNotExistErr     = "'user' is not exist"
+	AuthCodeNotFoundErr = "Auth code: 'CodeStr' not found in the auth url: 'authURLWithParamsUrl'"
 
 	CodesNotMatchErr = "the 'userCode' does not match the 'msCode'"
 
@@ -56,14 +49,13 @@ const (
 
 	UserSerializeFailedErr = "failed to serialize the 'user'"
 
-	ParseFromTokenFailedErr   = "failed to parse from token"
-	TokenValidateFailedErr    = "failed to validate the token"
-	TokenCreateFailedErr      = "failed to create the token"
-	UserAddInDBFailedErr      = "failed to add the 'user' in db"
-	PasswordFileReadFailedErr = "failed to read 'db_password.txt'"
-	PasswordHashingFailedErr  = "failed to hash the password"
-	AccessCodeSendFailedErr   = "failed to send access code fron user email"
-	TokenSignFailedErr        = "failed to sign the token"
+	ParseFromTokenFailedErr  = "failed to parse from token"
+	TokenValidateFailedErr   = "failed to validate the token"
+	TokenCreateFailedErr     = "failed to create the token"
+	UserAddInDBFailedErr     = "failed to add the 'user' in db"
+	PasswordHashingFailedErr = "failed to hash the password"
+	AccessCodeSendFailedErr  = "failed to send access code fron user email"
+	TokenSignFailedErr       = "failed to sign the token"
 
 	DataGetFailedErr    = "failed to get the data from: "
 	TokenGetFailedErr   = "failed to get the token"
@@ -79,9 +71,9 @@ const (
 	YandexTokenGetFailedErr      = "failed to get the token from the 'getAccessToken'"
 	UserInfoGetFailedErr         = "failed to get the user info from the 'getUserInfo'"
 
-	GetFailedErr        = "get failed"
-	ValidationFailedErr = "validation failed"
-	EmptyValueErr       = "empty value"
+	GetFailedErr  = "get failed"
+	InvalidErr    = "invalid"
+	EmptyValueErr = "empty value"
 )
 
 const (
@@ -125,6 +117,16 @@ const (
 	RequestErrorHTML       = "templates/request_error.html"
 	UserNotExistHTML       = "templates/user_not_exist.html"
 	BadSignInHTML          = "templates/bad_sign_in.html"
+	BadSignUpHTML          = "templates/bad_sign_up.html"
 	TokenLifetime3HoursInt = 3 * time.Hour
 	LastActivityStr        = "last_activity"
+)
+
+const (
+	RedirectURL       = "http://localhost:8080/home"
+	AuthURL           = "https://oauth.yandex.ru/authorize"
+	TokenURL          = "https://oauth.yandex.ru/token"
+	UserInfoURL       = "https://login.yandex.ru/info"
+	YandexAuthURL     = "/yandex"
+	YandexCallbackURL = "/yandex/callback"
 )

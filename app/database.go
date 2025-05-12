@@ -45,7 +45,6 @@ func DBConn() error {
 
 	err = DB.Ping()
 	if err != nil {
-		log.Printf(DBPingFailedErr, err)
 		DB.Close()
 		wrappedErr := errors.WithStack(err)
 		log.Printf("%+v", wrappedErr)

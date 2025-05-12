@@ -7,6 +7,7 @@ import (
 
 	"github.com/gimaevra94/auth/app"
 	"github.com/gimaevra94/auth/app/auth"
+	"github.com/pkg/errors"
 
 	"github.com/gimaevra94/auth/app/templates"
 	"github.com/gimaevra94/auth/app/tools"
@@ -19,7 +20,9 @@ var store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET_KEY")))
 func main() {
 	err := app.DBConn()
 	if err != nil {
-		log.Fatal(app.DBStartFailedErr, err)
+		wrappedErr := errors.WithStack(err)
+		log.Printf("%+v", wrappedErr)
+		log.Fatal(wrappedErr)
 	}
 	defer app.DB.Close()
 
@@ -28,18 +31,23 @@ func main() {
 
 	err = http.ListenAndServe(app.ServerPortStr, r)
 	if err != nil {
-		log.Fatal(app.DBStartServerFailedErr, err)
+		wrappedErr := errors.WithStack(err)
+		log.Printf("%+v", wrappedErr)
+		log.Fatal(wrappedErr)
 	}
 }
 
 func authentication(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie(app.CookieNameStr)
 	if err != nil {
+		wrappedErr := errors.WithStack(err)
+		log.Printf("%+v", wrappedErr)
 		http.Redirect(w, r, app.SignUpURL, http.StatusFound)
 	}
 
 	_, err = tools.IsValidToken(w, r)
 	if err != nil {
+		log.Printf("%+v", err)
 		http.Redirect(w, r, app.LogInURL, http.StatusFound)
 	}
 
@@ -53,13 +61,18 @@ func Router() *chi.Mux {
 	r.Use(auth.IsExpiredTokenMW(store))
 
 	r.Get(app.SignUpURL, templates.SignUpLoginInput)
-	r.Post(app.InputCheckURL, auth.InputCheck)
-	r.Get(app.CodeSendURL, auth.CodeSend)
-	r.Post(app.UserAddURL, auth.UserAdd)
+	r.Post("/input_check", auth.InputCheck(store))
+	r.Get(app.CodeSendURL, auth.CodeSend(store))
+	r.Post("/user_add", auth.UserAdd(store))
+
+	r.Get(app.BadSignUpURL, templates.BadSignUp)
+	r.Get(app.WrongCodeURL, templates.WrongCode)
+	r.Get(app.UserNotExistURL, templates.UserNotExist)
 
 	r.Get(app.SignInURL, templates.SignInLoginInput)
-	r.Post(app.LogInURL, auth.LogIn)
+	r.Post(app.LogInURL, auth.LogIn(store))
 	r.Get(app.BadSignInURL, templates.BadSignIn)
+	r.Get(app.AlreadyExistURL, templates.UserAllreadyExist)
 
 	r.Get(app.RequestErrorURL, templates.RequestError)
 

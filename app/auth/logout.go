@@ -46,7 +46,7 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 				}
 			}
 
-			err = tools.TokenCreate(w, r, app.TokenCommand3HoursStr,
+			err = tools.TokenCreate(w, r, "3hours",
 				user)
 			if err != nil {
 				log.Println("%+v", err)
@@ -79,7 +79,7 @@ func Logout(store *sessions.CookieStore) http.HandlerFunc {
 		}
 
 		cookie := http.Cookie{
-			Name:     "Authorization",
+			Name:     "auth",
 			Path:     "/set-token",
 			HttpOnly: true,
 			Secure:   true,
@@ -89,6 +89,6 @@ func Logout(store *sessions.CookieStore) http.HandlerFunc {
 		}
 
 		http.SetCookie(w, &cookie)
-		http.Redirect(w, r, app.LogoutURL, http.StatusFound)
+		http.Redirect(w, r, app.SignInURL, http.StatusFound)
 	}
 }

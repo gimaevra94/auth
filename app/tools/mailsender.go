@@ -22,7 +22,7 @@ func MailSendler(email string) (string, error) {
 
 	password, err := os.ReadFile(app.DBPasswordPathStr)
 	if err != nil {
-		log.Println(app.PasswordFileReadFailedErr, err)
+		log.Println("%+v", err)
 		return "", err
 	}
 
@@ -35,8 +35,9 @@ func MailSendler(email string) (string, error) {
 
 	err = smtp.SendMail(addr, auth, from, to, msg)
 	if err != nil {
-		log.Println(app.AccessCodeSendFailedErr, err)
+		log.Println("%+v", err)
 		return "", err
 	}
-	return msCode, err
+
+	return msCode, nil
 }

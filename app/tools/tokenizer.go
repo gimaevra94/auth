@@ -8,6 +8,7 @@ import (
 
 	"github.com/gimaevra94/auth/app"
 	"github.com/golang-jwt/jwt"
+	"github.com/pkg/errors"
 )
 
 func TokenCreate(w http.ResponseWriter, r *http.Request, command string,
@@ -17,35 +18,36 @@ func TokenCreate(w http.ResponseWriter, r *http.Request, command string,
 	user := value.GetLogin()
 
 	switch command {
-	case app.EmptyValueStr:
+	case "false":
 		exp := time.Now().Add(24 * time.Hour)
 		token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-			app.UserStr: user,
-			app.ExpStr:  exp,
+			"user": user,
+			"exp":  exp,
 		})
 
-	case app.OnValueStr:
+	case "true":
 		token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-			app.UserStr: user,
+			"user": user,
 		})
 
-	case app.TokenCommand3HoursStr:
-		exp := time.Now().Add(app.TokenLifetime3HoursInt)
+	case "3hours":
+		exp := time.Now().Add(3 * time.Hour)
 		token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-			app.UserStr: user,
-			app.ExpStr:  exp,
+			"user": user,
+			"exp":  exp,
 		})
 	}
 
 	SignedToken, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
 	if err != nil {
-		log.Println(app.TokenSignFailedErr, err)
+		wrappedErr := errors.WithStack(err)
+		log.Println("%+v", wrappedErr)
 		return err
 	}
 
 	cookie := http.Cookie{
-		Name:     app.CookieNameStr,
-		Path:     app.AuthCookiePath,
+		Name:     "auth",
+		Path:     "/set-token",
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
@@ -53,7 +55,7 @@ func TokenCreate(w http.ResponseWriter, r *http.Request, command string,
 	}
 
 	http.SetCookie(w, &cookie)
-	w.Header().Set(app.CookieNameStr, app.BearerStr+cookie.Value)
+	w.Header().Set("auth", cookie.Value)
 	w.Write([]byte(cookie.Value))
 
 	return nil

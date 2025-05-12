@@ -1,11 +1,13 @@
 package tools
 
 import (
+	"log"
 	"net/http"
 	"regexp"
 
 	"github.com/gimaevra94/auth/app"
 	"github.com/golang-jwt/jwt"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -20,28 +22,35 @@ func IsValidToken(w http.ResponseWriter,
 	r *http.Request) (*jwt.Token, error) {
 	cookie, err := r.Cookie("cookie")
 	if err != nil {
-		return nil, logtraceredir.LogTraceRedir(w, r,
-			app.GetFailedErr, "cookie", "", false)
+		wrappedErr := errors.WithStack(err)
+		log.Println("%+v", wrappedErr)
+		return nil, wrappedErr
 	}
 
-	value := cookie.Value
-	if value == "" {
-		return nil, logtraceredir.LogTraceRedir(w, r,
-			app.EmptyValueErr, "token", "", false)
+	tokenValue := cookie.Value
+	if tokenValue == "" {
+		newErr := errors.New(app.GetFailedErr)
+		wrappedErr := errors.Wrap(newErr, "'tokenValue'")
+		log.Println("%+v", wrappedErr)
+		return nil, wrappedErr
 	}
 
-	token, err := jwt.Parse(value, func(t *jwt.Token) (interface{},
+	token, err := jwt.Parse(tokenValue, func(t *jwt.Token) (interface{},
 		error) {
 		return []byte("my-super-secret-key"), nil
 	})
 
 	if err != nil {
-		return nil, logtraceredir.LogTraceRedir(w, r, err, "", "", false)
+		wrappedErr := errors.WithStack(err)
+		log.Println("%+v", wrappedErr)
+		return nil, wrappedErr
 	}
 
 	if !token.Valid {
-		return nil, logtraceredir.LogTraceRedir(w, r,
-			app.ValidationFailedErr, "token", "", false)
+		newErr := errors.New(app.InvalidErr)
+		wrappedErr := errors.Wrap(newErr, "token")
+		log.Println("%+v", wrappedErr)
+		return nil, wrappedErr
 	}
 
 	return token, nil
@@ -55,30 +64,42 @@ func IsValidInput(w http.ResponseWriter,
 	password := r.FormValue("password")
 
 	if email == "" {
-		return nil, logtraceredir.LogTraceRedir(w, r,
-			app.EmptyValueErr, "email", "", false)
+		newErr := errors.New(app.GetFailedErr)
+		wrappedErr := errors.Wrap(newErr, "email")
+		log.Printf("%+v", wrappedErr)
+		return nil, wrappedErr
 	}
 	if !emailRegex.MatchString(email) {
-		return nil, logtraceredir.LogTraceRedir(w, r,
-			app.ValidationFailedErr, email, "", false)
+		newErr := errors.New(app.InvalidErr)
+		wrappedErr := errors.Wrap(newErr, "email")
+		log.Printf("%+v", wrappedErr)
+		return nil, wrappedErr
 	}
 
 	if login == "" {
-		return nil, logtraceredir.LogTraceRedir(w, r,
-			app.EmptyValueErr, "login", "", false)
+		newErr := errors.New(app.GetFailedErr)
+		wrappedErr := errors.Wrap(newErr, "login")
+		log.Printf("%+v", wrappedErr)
+		return nil, wrappedErr
 	}
 	if !loginRegex.MatchString(login) {
-		return nil, logtraceredir.LogTraceRedir(w, r,
-			app.ValidationFailedErr, login, "", false)
+		newErr := errors.New(app.InvalidErr)
+		wrappedErr := errors.Wrap(newErr, "login")
+		log.Printf("%+v", wrappedErr)
+		return nil, wrappedErr
 	}
 
 	if password == "" {
-		return nil, logtraceredir.LogTraceRedir(w, r,
-			app.EmptyValueErr, "password", "", false)
+		newErr := errors.New(app.GetFailedErr)
+		wrappedErr := errors.Wrap(newErr, "password")
+		log.Printf("%+v", wrappedErr)
+		return nil, wrappedErr
 	}
 	if !passwordRegex.MatchString(password) {
-		return nil, logtraceredir.LogTraceRedir(w, r,
-			app.ValidationFailedErr, password, "", false)
+		newErr := errors.New(app.InvalidErr)
+		wrappedErr := errors.Wrap(newErr, "password")
+		log.Printf("%+v", wrappedErr)
+		return nil, wrappedErr
 	}
 
 	validatedLoginInput := app.NewUser(
