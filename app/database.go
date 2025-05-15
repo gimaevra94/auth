@@ -13,8 +13,18 @@ import (
 
 var DB *sql.DB
 
+const (
+	selectQuery = "select password from users where email = ? limit 1"
+	insertQuery = "insert into users (email,login,password) values(?,?,?)"
+)
+
+const (
+	dbStartFailedErr = "failed to start the database"
+)
+
 func DBConn() error {
-	password, err := os.ReadFile(DBPasswordPathStr)
+	passwordFilePath := "/run/secrets/db_password"
+	password, err := os.ReadFile(passwordFilePath)
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
 		log.Printf("%+v", wrappedErr)
@@ -36,7 +46,7 @@ func DBConn() error {
 		DBName: "db",
 	}
 
-	DB, err := sql.Open(DBNameDriverStr, cfg.FormatDSN())
+	DB, err := sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
 		log.Printf("%+v", wrappedErr)
@@ -58,11 +68,11 @@ func UserCheck(w http.ResponseWriter, r *http.Request,
 	user User, userAddFromLogIn bool) error {
 
 	if DB == nil {
-		log.Fatal(DBStartFailedErr)
+		log.Fatal(dbStartFailedErr)
 	}
 
 	inputEmail := user.GetEmail()
-	row := DB.QueryRow(SelectQuery, inputEmail)
+	row := DB.QueryRow(selectQuery, inputEmail)
 	var passwordHash string
 	err := row.Scan(&passwordHash)
 	if err != nil {
@@ -94,7 +104,7 @@ func UserCheck(w http.ResponseWriter, r *http.Request,
 func UserAdd(w http.ResponseWriter, r *http.Request,
 	users User) error {
 	if DB == nil {
-		log.Fatal(DBStartFailedErr)
+		log.Fatal(dbStartFailedErr)
 	}
 
 	email := users.GetEmail()
@@ -109,7 +119,7 @@ func UserAdd(w http.ResponseWriter, r *http.Request,
 		return wrappedErr
 	}
 
-	_, err = DB.Exec(InsertQuery, email, login, hashedPassword)
+	_, err = DB.Exec(insertQuery, email, login, hashedPassword)
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
 		log.Printf("%+v", wrappedErr)

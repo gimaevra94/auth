@@ -7,12 +7,9 @@ import (
 	"os"
 	"strconv"
 	"time"
-
-	"github.com/gimaevra94/auth/app"
 )
 
 func MailSendler(email string) (string, error) {
-
 	random := rand.New(rand.NewSource(time.Now().UnixNano()))
 	msCodeItn := random.Intn(9000) + 1000
 	msCode := strconv.Itoa(msCodeItn)
@@ -20,22 +17,23 @@ func MailSendler(email string) (string, error) {
 	// работоспособность ящика под вопросом
 	username := "gimaevra94@ya.ru"
 
-	password, err := os.ReadFile(app.DBPasswordPathStr)
+	passwordFilePath := "/run/secrets/mail_password"
+	password, err := os.ReadFile(passwordFilePath)
 	if err != nil {
-		log.Println("%+v", err)
+		log.Printf("%+v", err)
 		return "", err
 	}
 
-	host := app.SMTPHostStr
-	auth := smtp.PlainAuth(app.EmptyValueStr, username,
+	host := "smtp.yandex.ru"
+	auth := smtp.PlainAuth("", username,
 		string(password), host)
-	addr := app.SMTPAddrStr
+	addr := "smtp.yandex.ru:587"
 	from := username
 	to := []string{email}
 
 	err = smtp.SendMail(addr, auth, from, to, msg)
 	if err != nil {
-		log.Println("%+v", err)
+		log.Printf("%+v", err)
 		return "", err
 	}
 

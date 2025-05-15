@@ -57,7 +57,7 @@ func CodeSend(store *sessions.CookieStore) http.HandlerFunc {
 			return
 		}
 
-		session.Values[app.MscodeStr] = msCode
+		session.Values["mscode"] = msCode
 		err = session.Save(r, w)
 		if err != nil {
 			wrappedErr := errors.WithStack(err)

@@ -41,7 +41,7 @@ func TokenCreate(w http.ResponseWriter, r *http.Request, command string,
 	SignedToken, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
-		log.Println("%+v", wrappedErr)
+		log.Printf("%+v", wrappedErr)
 		return err
 	}
 

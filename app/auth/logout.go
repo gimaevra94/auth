@@ -17,9 +17,9 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 		return http.HandlerFunc(func(w http.ResponseWriter,
 			r *http.Request) {
 
-			token, err := tools.IsValidToken(w, r)
+			token, err := tools.IsValidToken(r)
 			if err != nil {
-				log.Println("%+v", err)
+				log.Printf("%+v", err)
 				http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
 				return
 			}
@@ -61,7 +61,7 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 
 func Logout(store *sessions.CookieStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		session, err := store.Get(r, app.SessionNameStr)
+		session, err := store.Get(r, "auth")
 		if err != nil {
 			wrappedErr := errors.WithStack(err)
 			log.Println("%+v", wrappedErr)

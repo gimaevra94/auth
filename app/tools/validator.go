@@ -11,27 +11,29 @@ import (
 )
 
 var (
-	emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$`)
-
-	loginRegex = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ0-9]{3,30}$`)
-
-	passwordRegex = regexp.MustCompile(`^(?=.*[a-zA-Zа-яА-ЯёЁ])(?=.*\d)(?=.[!@#$%^&*])[\w!@#$%^&*]{3,30}$`)
+	emailRegex    = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$`)
+	loginRegex    = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ0-9]{3,30}$`)
+	passwordRegex = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ\d!@#$%^&*]{3,30}$`)
 )
 
-func IsValidToken(w http.ResponseWriter,
-	r *http.Request) (*jwt.Token, error) {
+const (
+	getFailedErr = "failed to get"
+	invalidErr   = "invalid"
+)
+
+func IsValidToken(r *http.Request) (*jwt.Token, error) {
 	cookie, err := r.Cookie("cookie")
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
-		log.Println("%+v", wrappedErr)
+		log.Printf("%+v", wrappedErr)
 		return nil, wrappedErr
 	}
 
 	tokenValue := cookie.Value
 	if tokenValue == "" {
-		newErr := errors.New(app.GetFailedErr)
+		newErr := errors.New(getFailedErr)
 		wrappedErr := errors.Wrap(newErr, "'tokenValue'")
-		log.Println("%+v", wrappedErr)
+		log.Printf("%+v", wrappedErr)
 		return nil, wrappedErr
 	}
 
@@ -42,14 +44,14 @@ func IsValidToken(w http.ResponseWriter,
 
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
-		log.Println("%+v", wrappedErr)
+		log.Printf("%+v", wrappedErr)
 		return nil, wrappedErr
 	}
 
 	if !token.Valid {
-		newErr := errors.New(app.InvalidErr)
+		newErr := errors.New(invalidErr)
 		wrappedErr := errors.Wrap(newErr, "token")
-		log.Println("%+v", wrappedErr)
+		log.Printf("%+v", wrappedErr)
 		return nil, wrappedErr
 	}
 
@@ -64,39 +66,39 @@ func IsValidInput(w http.ResponseWriter,
 	password := r.FormValue("password")
 
 	if email == "" {
-		newErr := errors.New(app.GetFailedErr)
+		newErr := errors.New(getFailedErr)
 		wrappedErr := errors.Wrap(newErr, "email")
 		log.Printf("%+v", wrappedErr)
 		return nil, wrappedErr
 	}
 	if !emailRegex.MatchString(email) {
-		newErr := errors.New(app.InvalidErr)
+		newErr := errors.New(invalidErr)
 		wrappedErr := errors.Wrap(newErr, "email")
 		log.Printf("%+v", wrappedErr)
 		return nil, wrappedErr
 	}
 
 	if login == "" {
-		newErr := errors.New(app.GetFailedErr)
+		newErr := errors.New(getFailedErr)
 		wrappedErr := errors.Wrap(newErr, "login")
 		log.Printf("%+v", wrappedErr)
 		return nil, wrappedErr
 	}
 	if !loginRegex.MatchString(login) {
-		newErr := errors.New(app.InvalidErr)
+		newErr := errors.New(invalidErr)
 		wrappedErr := errors.Wrap(newErr, "login")
 		log.Printf("%+v", wrappedErr)
 		return nil, wrappedErr
 	}
 
 	if password == "" {
-		newErr := errors.New(app.GetFailedErr)
+		newErr := errors.New(getFailedErr)
 		wrappedErr := errors.Wrap(newErr, "password")
 		log.Printf("%+v", wrappedErr)
 		return nil, wrappedErr
 	}
 	if !passwordRegex.MatchString(password) {
-		newErr := errors.New(app.InvalidErr)
+		newErr := errors.New(invalidErr)
 		wrappedErr := errors.Wrap(newErr, "password")
 		log.Printf("%+v", wrappedErr)
 		return nil, wrappedErr

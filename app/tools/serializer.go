@@ -13,7 +13,7 @@ import (
 func SessionUserGetUnmarshal(r *http.Request,
 	store *sessions.CookieStore) (*sessions.Session, app.User, error) {
 
-	session, err := store.Get(r, app.SessionNameStr)
+	session, err := store.Get(r, "auth")
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
 		log.Printf("%+v", wrappedErr)
@@ -42,7 +42,7 @@ func SessionUserGetUnmarshal(r *http.Request,
 func SessionUserSetMarshal(w http.ResponseWriter, r *http.Request,
 	store *sessions.CookieStore, user app.User) error {
 
-	session, err := store.Get(r, app.SessionNameStr)
+	session, err := store.Get(r, "auth")
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
 		log.Printf("%+v", wrappedErr)
