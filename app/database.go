@@ -28,7 +28,6 @@ func DBConn() error {
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
 		log.Printf("%+v", wrappedErr)
-
 		return wrappedErr
 	}
 
@@ -67,7 +66,7 @@ func DBConn() error {
 func UserCheck(w http.ResponseWriter, r *http.Request,
 	user User, userAddFromLogIn bool) error {
 
-	if DB == nil {
+	if err := DB.Ping(); err != nil {
 		log.Fatal(dbStartFailedErr)
 	}
 
@@ -103,7 +102,7 @@ func UserCheck(w http.ResponseWriter, r *http.Request,
 
 func UserAdd(w http.ResponseWriter, r *http.Request,
 	users User) error {
-	if DB == nil {
+	if err := DB.Ping(); err != nil {
 		log.Fatal(dbStartFailedErr)
 	}
 
