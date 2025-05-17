@@ -11,5 +11,6 @@ const (
 	UserNotExistURL = "/user_not_exist"
 	WrongCodeURL    = "/wrong_code"
 	AlreadyExistURL = "/already_exist"
-	NotExistErr     = "not exist"
+
+	NotExistErr = "not exist"
 )

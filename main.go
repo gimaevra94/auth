@@ -32,7 +32,6 @@ func main() {
 	defer app.DB.Close()
 
 	r := Router()
-	r.Get("/", authentication)
 
 	err = http.ListenAndServe(":8080", r)
 	if err != nil {
@@ -40,6 +39,8 @@ func main() {
 		log.Printf("%+v", wrappedErr)
 		log.Fatal(wrappedErr)
 	}
+
+	r.Get("/", authentication)
 }
 
 func authentication(w http.ResponseWriter, r *http.Request) {
@@ -65,7 +66,7 @@ func Router() *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(auth.IsExpiredTokenMW(store))
 
-	r.Get(signUpURL, templates.SignUpLoginInput)
+	r.Get(signUpURL, templates.SignUp)
 	r.Post("/input_check", auth.InputCheck(store))
 	r.Get(app.CodeSendURL, auth.CodeSend(store))
 	r.Post("/user_add", auth.UserAdd(store))
@@ -74,10 +75,12 @@ func Router() *chi.Mux {
 	r.Get(app.WrongCodeURL, templates.WrongCode)
 	r.Get(app.UserNotExistURL, templates.UserNotExist)
 
-	r.Get(app.SignInURL, templates.SignInLoginInput)
+	r.Get(app.SignInURL, templates.SignIn)
 	r.Post(logInURL, auth.LogIn(store))
 	r.Get(app.BadSignInURL, templates.BadSignIn)
 	r.Get(app.AlreadyExistURL, templates.UserAllreadyExist)
+
+	r.Get("/auth/yandex", auth.YandexAuthHandler)
 
 	r.Get(app.RequestErrorURL, templates.RequestError)
 

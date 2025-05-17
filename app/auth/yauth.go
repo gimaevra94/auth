@@ -8,26 +8,24 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/gimaevra94/auth/app/app"
+	"github.com/gimaevra94/auth/app"
 )
 
-type YandexUser struct {
-	ID    string `json:"id"`
-	Login string `json:"login"`
-	Email string `json:"default_email"`
-}
-
-func Router() {
-	http.HandleFunc(app.YandexAuthURL, yandexAuthHandler)         // Маршрут для начала авторизации через Яндекс
-	http.HandleFunc(app.YandexCallbackURL, yandexCallbackHandler) // Маршрут для обработки callback от Яндекса
-}
+const (
+	clientID     = "0c0c69265b9549b7ae1b994a2aecbcfb"
+	clientSecret = "a72af8c056c647c99d6b0ab470569b0b"
+	authURL      = "https://oauth.yandex.ru/authorize "
+	tokenURL     = "https://oauth.yandex.ru/token "
+	userInfoURL  = "https://login.yandex.ru/info "
+)
 
 // Обработчик для начала авторизации через Яндекс
-func yandexAuthHandler(w http.ResponseWriter, r *http.Request) {
-	authParams := url.Values{}
-	authParams.Add(app.ResponseTypeStr, app.CodeStr)
-	authParams.Add(app.ClientIDStr, app.ClientIDCodeStr)
-	authParams.Add(app.RedirectUrlStr, app.RedirectURL) // URL, куда Яндекс перенаправит пользователя после авторизации
+func YandexAuthHandler(w http.ResponseWriter, r *http.Request) {
+	authParams := url.Values{
+		"response_type": {"code"},
+		"client_id":     {clientID},
+		"redirect_uri":  {app.RedirectURL},
+	}
 
 	// Формируем полный URL для авторизации
 	authURLWithParamsUrl := app.AuthURL + "?" + authParams.Encode() // Добавляем параметры к базовому URL авторизации
