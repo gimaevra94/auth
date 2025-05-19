@@ -29,7 +29,7 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 			session, user, err := tools.SessionUserGetUnmarshal(r,
 				store)
 			if err != nil {
-				log.Println("%+v", err)
+				log.Printf("%+v", err)
 				http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
 				return
 			}
@@ -40,7 +40,7 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 				if time.Since(lastActivity) > 3*time.Hour {
 					newErr := errors.New("session ended")
 					wrappedErr := errors.WithStack(newErr)
-					log.Println("%+v", wrappedErr)
+					log.Printf("%+v", wrappedErr)
 					http.Redirect(w, r, app.LogoutURL, http.StatusFound)
 					return
 				}
@@ -49,7 +49,7 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 			err = tools.TokenCreate(w, r, "3hours",
 				user)
 			if err != nil {
-				log.Println("%+v", err)
+				log.Printf("%+v", err)
 				http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
 				return
 			}
@@ -64,7 +64,7 @@ func Logout(store *sessions.CookieStore) http.HandlerFunc {
 		session, err := store.Get(r, "auth")
 		if err != nil {
 			wrappedErr := errors.WithStack(err)
-			log.Println("%+v", wrappedErr)
+			log.Printf("%+v", wrappedErr)
 			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
 			return
 		}
@@ -73,7 +73,7 @@ func Logout(store *sessions.CookieStore) http.HandlerFunc {
 		err = session.Save(r, w)
 		if err != nil {
 			wrappedErr := errors.WithStack(err)
-			log.Println("%+v", wrappedErr)
+			log.Printf("%+v", wrappedErr)
 			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
 			return
 		}

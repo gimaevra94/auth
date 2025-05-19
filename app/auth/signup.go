@@ -16,7 +16,7 @@ func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		validatedLoginInput, err := tools.IsValidInput(w, r)
 		if err != nil {
-			log.Println("%+v", err)
+			log.Printf("%+v", err)
 			http.Redirect(w, r, app.BadSignUpURL, http.StatusFound)
 		}
 
@@ -25,13 +25,13 @@ func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
 			if err == sql.ErrNoRows {
 				err := tools.SessionUserSetMarshal(w, r, store, validatedLoginInput)
 				if err != nil {
-					log.Println("%+v", err)
+					log.Printf("%+v", err)
 					http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
 				}
 				http.Redirect(w, r, app.CodeSendURL, http.StatusFound)
 			}
 
-			log.Println("%+v", err)
+			log.Printf("%+v", err)
 			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
 		}
 
@@ -61,7 +61,7 @@ func CodeSend(store *sessions.CookieStore) http.HandlerFunc {
 		err = session.Save(r, w)
 		if err != nil {
 			wrappedErr := errors.WithStack(err)
-			log.Println("%+v", wrappedErr)
+			log.Printf("%+v", wrappedErr)
 			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
 			return
 		}
@@ -89,7 +89,7 @@ func UserAdd(store *sessions.CookieStore) http.HandlerFunc {
 		cookie, err := r.Cookie("auth")
 		if err != nil {
 			wrappedErr := errors.WithStack(err)
-			log.Println("%+v", wrappedErr)
+			log.Printf("%+v", wrappedErr)
 			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
 			return
 		}
@@ -131,7 +131,7 @@ func UserAdd(store *sessions.CookieStore) http.HandlerFunc {
 		err = session.Save(r, w)
 		if err != nil {
 			wrappedErr := errors.WithStack(err)
-			log.Println("%+v", wrappedErr)
+			log.Printf("%+v", wrappedErr)
 			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
 		}
 

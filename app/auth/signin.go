@@ -20,7 +20,7 @@ func LogIn(store *sessions.CookieStore) http.HandlerFunc {
 		if rememberMe == "" {
 			newErr := errors.New(app.NotExistErr)
 			wrappedErr := errors.Wrap(newErr, "'rememberMe'")
-			log.Println("%+v", wrappedErr)
+			log.Printf("%+v", wrappedErr)
 			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
 			return
 		}
@@ -28,20 +28,20 @@ func LogIn(store *sessions.CookieStore) http.HandlerFunc {
 		session, err := store.Get(r, "auth")
 		if err != nil {
 			wrappedErr := errors.WithStack(err)
-			log.Println("%+v", wrappedErr)
+			log.Printf("%+v", wrappedErr)
 			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
 		}
 
 		cookie, err := r.Cookie("auth")
 		if err != nil {
 			wrappedErr := errors.WithStack(err)
-			log.Println("%+v", wrappedErr)
+			log.Printf("%+v", wrappedErr)
 			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
 		}
 
 		validatedLoginInput, err := tools.IsValidInput(w, r)
 		if err != nil {
-			log.Println("%+v", err)
+			log.Printf("%+v", err)
 			http.Redirect(w, r, app.BadSignInURL, http.StatusFound)
 			return
 		}
@@ -49,24 +49,24 @@ func LogIn(store *sessions.CookieStore) http.HandlerFunc {
 		err = app.UserCheck(w, r, validatedLoginInput, true)
 		if err != nil {
 			if err == sql.ErrNoRows {
-				log.Println("%+v", err)
+				log.Printf("%+v", err)
 				http.Redirect(w, r, app.UserNotExistURL, http.StatusFound)
 				return
 			}
 
 			if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-				log.Println("%+v", err)
+				log.Printf("%+v", err)
 				http.Redirect(w, r, app.BadSignInURL, http.StatusFound)
 				return
 			}
 
-			log.Println("%+v", err)
+			log.Printf("%+v", err)
 			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
 		}
 
 		err = tools.TokenCreate(w, r, rememberMe, validatedLoginInput)
 		if err != nil {
-			log.Println("%+v", err)
+			log.Printf("%+v", err)
 			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
 		}
 
@@ -75,7 +75,7 @@ func LogIn(store *sessions.CookieStore) http.HandlerFunc {
 		err = session.Save(r, w)
 		if err != nil {
 			wrappedErr := errors.WithStack(err)
-			log.Println("%+v", wrappedErr)
+			log.Printf("%+v", wrappedErr)
 			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
 		}
 

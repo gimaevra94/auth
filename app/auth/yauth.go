@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -95,18 +94,22 @@ func getUserInfo(accessToken string) (*app.YandexUser, error) {
 	client := &http.Client{}    // Создаем HTTP-клиент
 	resp, err := client.Do(req) // Отправляем запрос
 	if err != nil {             // Если произошла ошибка при отправке запроса
-		return nil, err // Возвращаем nil и ошибку
+		wrappedErr := errors.WithStack(err)
+		log.Printf("%+v", wrappedErr)
+		return nil, wrappedErr // Возвращаем nil и ошибку
 	}
 	defer resp.Body.Close() // Закрываем тело ответа после завершения работы
 
 	// Читаем тело ответа
-	body, err := ioutil.ReadAll(resp.Body) // Читаем все данные из тела ответа
-	if err != nil {                        // Если произошла ошибка при чтении
-		return nil, err // Возвращаем nil и ошибку
+	body, err := io.ReadAll(resp.Body) // Читаем все данные из тела ответа
+	if err != nil {                    // Если произошла ошибка при чтении
+		wrappedErr := errors.WithStack(err)
+		log.Printf("%+v", wrappedErr)
+		return nil, wrappedErr // Возвращаем nil и ошибку
 	}
 
 	// Парсим JSON-ответ
-	var user YandexUser               // Создаем структуру для хранения данных пользователя
+	var user app.YandexUser           // Создаем структуру для хранения данных пользователя
 	err = json.Unmarshal(body, &user) // Преобразуем JSON в структуру
 	if err != nil {                   // Если произошла ошибка при парсинге
 		return nil, err // Возвращаем nil и ошибку
