@@ -46,7 +46,7 @@ func LogIn(store *sessions.CookieStore) http.HandlerFunc {
 			return
 		}
 
-		err = app.UserCheck(w, r, validatedLoginInput, true)
+		err = app.UserCheck(w, r, *validatedLoginInput, true)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				log.Printf("%+v", err)
@@ -64,7 +64,7 @@ func LogIn(store *sessions.CookieStore) http.HandlerFunc {
 			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
 		}
 
-		err = tools.TokenCreate(w, r, rememberMe, validatedLoginInput)
+		err = tools.TokenCreate(w, r, rememberMe, *validatedLoginInput)
 		if err != nil {
 			log.Printf("%+v", err)
 			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)

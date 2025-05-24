@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	emailRegex    = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$`)
 	loginRegex    = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ0-9]{3,30}$`)
+	emailRegex    = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$`)
 	passwordRegex = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ\d!@#$%^&*]{3,30}$`)
 )
 
@@ -58,25 +58,12 @@ func IsValidToken(r *http.Request) (*jwt.Token, error) {
 	return token, nil
 }
 
-func IsValidInput(w http.ResponseWriter,
-	r *http.Request) (app.User, error) {
+func IsValidInput(w http.ResponseWriter, r *http.Request) (*app.User, error) {
 
-	email := r.FormValue("email")
+	id := ""
 	login := r.FormValue("login")
+	email := r.FormValue("email")
 	password := r.FormValue("password")
-
-	if email == "" {
-		newErr := errors.New(getFailedErr)
-		wrappedErr := errors.Wrap(newErr, "email")
-		log.Printf("%+v", wrappedErr)
-		return nil, wrappedErr
-	}
-	if !emailRegex.MatchString(email) {
-		newErr := errors.New(invalidErr)
-		wrappedErr := errors.Wrap(newErr, "email")
-		log.Printf("%+v", wrappedErr)
-		return nil, wrappedErr
-	}
 
 	if login == "" {
 		newErr := errors.New(getFailedErr)
@@ -87,6 +74,19 @@ func IsValidInput(w http.ResponseWriter,
 	if !loginRegex.MatchString(login) {
 		newErr := errors.New(invalidErr)
 		wrappedErr := errors.Wrap(newErr, "login")
+		log.Printf("%+v", wrappedErr)
+		return nil, wrappedErr
+	}
+
+	if email == "" {
+		newErr := errors.New(getFailedErr)
+		wrappedErr := errors.Wrap(newErr, "email")
+		log.Printf("%+v", wrappedErr)
+		return nil, wrappedErr
+	}
+	if !emailRegex.MatchString(email) {
+		newErr := errors.New(invalidErr)
+		wrappedErr := errors.Wrap(newErr, "email")
 		log.Printf("%+v", wrappedErr)
 		return nil, wrappedErr
 	}
@@ -105,9 +105,10 @@ func IsValidInput(w http.ResponseWriter,
 	}
 
 	validatedLoginInput := app.NewUser(
-		email,
+		id,
 		login,
+		email,
 		password,
 	)
-	return validatedLoginInput, nil
+	return &validatedLoginInput, nil
 }

@@ -2,13 +2,15 @@ package auth
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/gimaevra94/auth/app"
+	"github.com/gimaevra94/auth/app/tools"
+	"github.com/gorilla/sessions"
 	"github.com/pkg/errors"
 )
 
@@ -29,6 +31,52 @@ func YandexAuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	authURLWithParamsUrl := authURL + "?" + authParams.Encode()
 	http.Redirect(w, r, authURLWithParamsUrl, http.StatusFound)
+}
+
+func YandexCallbackHandler(store *sessions.CookieStore) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		yaCode := r.URL.Query().Get("YaCode")
+		if yaCode == "" {
+			newErr := errors.New(app.NotExistErr)
+			wrappedErr := errors.Wrap(newErr, "YaCode")
+			log.Printf("%+v", wrappedErr)
+			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
+			return
+		}
+
+		token, err := getAccessToken(yaCode)
+		if err != nil {
+			wrappedErr := errors.WithStack(err)
+			log.Printf("%+v", wrappedErr)
+			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
+			return
+		}
+
+		user, err := getUserInfo(token)
+		if err != nil {
+			wrappedErr := errors.WithStack(err)
+			log.Printf("%+v", wrappedErr)
+			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
+			return
+		}
+
+		session, err := store.Get(r, "auth")
+		if err != nil {
+			wrappedErr := errors.WithStack(err)
+			log.Printf("%+v", wrappedErr)
+			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
+		}
+
+		session, user, err := tools.SessionUserGetUnmarshal(r, store)
+		if err != nil {
+			log.Printf("%+v", err)
+			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
+			return err
+		}
+
+
+
+	}
 }
 
 func getAccessToken(yaCode string) (string, error) {
@@ -78,7 +126,7 @@ func getAccessToken(yaCode string) (string, error) {
 	return accessToken, nil
 }
 
-func getUserInfo(accessToken string) (*app.YandexUser, error) {
+func getUserInfo(accessToken string) (*app.User, error) {
 	// Создаем GET-запрос для получения данных пользователя
 	req, err := http.NewRequest("GET", userInfoURL, nil)
 	if err != nil {
@@ -109,7 +157,7 @@ func getUserInfo(accessToken string) (*app.YandexUser, error) {
 	}
 
 	// Парсим JSON-ответ
-	var user app.YandexUser           // Создаем структуру для хранения данных пользователя
+	var user app.User                 // Создаем структуру для хранения данных пользователя
 	err = json.Unmarshal(body, &user) // Преобразуем JSON в структуру
 	if err != nil {                   // Если произошла ошибка при парсинге
 		return nil, err // Возвращаем nil и ошибку
@@ -118,32 +166,52 @@ func getUserInfo(accessToken string) (*app.YandexUser, error) {
 	return &user, nil // Возвращаем указатель на структуру пользователя и nil как ошибку
 }
 
-func yandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
-	// Получаем параметр "code" из URL (он передается Яндексом после успешной авторизации)
-	yaCode := r.URL.Query().Get("YaCode")
-	if yaCode == "" {
-		newErr := errors.New(app.NotExistErr)
-		wrappedErr := errors.Wrap(newErr, "YaCode")
-		log.Printf("%+v", wrappedErr)
-		http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
-		return
-	}
+func yaLogIn(w http.ResponseWriter, r *http.Request, user *app.User,
+	store *sessions.CookieStore) error {
+	rememberMe := "true"
 
-	token, err := getAccessToken(yaCode)
+	cookie, err := r.Cookie("auth")
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
 		log.Printf("%+v", wrappedErr)
 		http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
-		return
+		return wrappedErr
 	}
 
-	user, err := getUserInfo(token)
+					err = app.UserCheck(w, r, *validatedLoginInput, true)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, app.UserNotExistURL, http.StatusFound)
+				return
+			}
+
+	err = app.UserAdd(w, r, user)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
+		return err
+	}
+
+	err = tools.TokenCreate(w, r, rememberMe, user)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
+		return err
+	}
+
+	lastActivity := time.Now().Add(3 * time.Hour)
+	session.Values["lastActivity"] = lastActivity
+	err = session.Save(r, w)
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
 		log.Printf("%+v", wrappedErr)
 		http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
-		return
 	}
 
-	fmt.Fprintf(w, "User Info: %+v", user)
+	w.Header().Set("auth", cookie.Value)
+	w.Write([]byte(cookie.Value))
+	http.Redirect(w, r, app.HomeURL, http.StatusFound)
+
+	return nil
 }
