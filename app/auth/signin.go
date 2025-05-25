@@ -70,13 +70,16 @@ func LogIn(store *sessions.CookieStore) http.HandlerFunc {
 			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
 		}
 
-		lastActivity := time.Now().Add(3 * time.Hour)
-		session.Values["lastActivity"] = lastActivity
-		err = session.Save(r, w)
-		if err != nil {
-			wrappedErr := errors.WithStack(err)
-			log.Printf("%+v", wrappedErr)
-			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
+		if rememberMe == "false" {
+			lastActivity := time.Now().Add(3 * time.Hour)
+			session.Values["lastActivity"] = lastActivity
+			err = session.Save(r, w)
+
+			if err != nil {
+				wrappedErr := errors.WithStack(err)
+				log.Printf("%+v", wrappedErr)
+				http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
+			}
 		}
 
 		w.Header().Set("auth", cookie.Value)

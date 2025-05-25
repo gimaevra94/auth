@@ -20,7 +20,7 @@ func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
 			http.Redirect(w, r, app.BadSignUpURL, http.StatusFound)
 		}
 
-		err = app.UserCheck(w, r, *validatedLoginInput, true)
+		err = app.UserCheck(w, r, *validatedLoginInput, false)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				err := tools.SessionUserSetMarshal(w, r, store, *validatedLoginInput)
@@ -126,13 +126,16 @@ func UserAdd(store *sessions.CookieStore) http.HandlerFunc {
 			return
 		}
 
-		lastActivity := time.Now().Add(3 * time.Hour)
-		session.Values["lastActivity"] = lastActivity
-		err = session.Save(r, w)
-		if err != nil {
-			wrappedErr := errors.WithStack(err)
-			log.Printf("%+v", wrappedErr)
-			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
+		if rememberMe == "false" {
+			lastActivity := time.Now().Add(3 * time.Hour)
+			session.Values["lastActivity"] = lastActivity
+			err = session.Save(r, w)
+			
+			if err != nil {
+				wrappedErr := errors.WithStack(err)
+				log.Printf("%+v", wrappedErr)
+				http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
+			}
 		}
 
 		w.Header().Set("auth", cookie.Value)

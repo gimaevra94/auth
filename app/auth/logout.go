@@ -34,24 +34,26 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 				return
 			}
 
-			expUnix := time.Unix(int64(exp), 0)
-			if time.Now().After(expUnix) {
-				lastActivity := session.Values["lastActivity"].(time.Time)
-				if time.Since(lastActivity) > 3*time.Hour {
-					newErr := errors.New("session ended")
-					wrappedErr := errors.WithStack(newErr)
-					log.Printf("%+v", wrappedErr)
-					http.Redirect(w, r, app.LogoutURL, http.StatusFound)
+			if exp != 0 {
+				expUnix := time.Unix(int64(exp), 0)
+				if time.Now().After(expUnix) {
+					lastActivity := session.Values["lastActivity"].(time.Time)
+					if time.Since(lastActivity) > 3*time.Hour {
+						newErr := errors.New("session ended")
+						wrappedErr := errors.WithStack(newErr)
+						log.Printf("%+v", wrappedErr)
+						http.Redirect(w, r, app.LogoutURL, http.StatusFound)
+						return
+					}
+				}
+
+				err = tools.TokenCreate(w, r, "3hours",
+					user)
+				if err != nil {
+					log.Printf("%+v", err)
+					http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
 					return
 				}
-			}
-
-			err = tools.TokenCreate(w, r, "3hours",
-				user)
-			if err != nil {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
-				return
 			}
 
 			next.ServeHTTP(w, r)

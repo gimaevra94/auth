@@ -81,7 +81,7 @@ func Router() *chi.Mux {
 	r.Get(app.AlreadyExistURL, templates.UserAllreadyExist)
 
 	r.Get("/yauth", auth.YandexAuthHandler)
-	r.Get("/yacallback", auth.YandexCallbackHandler(store))
+	r.Get("/yacallback", auth.YandexCallbackHandler)
 
 	r.Get(app.RequestErrorURL, templates.RequestError)
 

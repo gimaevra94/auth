@@ -14,7 +14,7 @@ import (
 var DB *sql.DB
 
 const (
-	selectQuery = "select passwordHash from users where email = ? limit 1"
+	selectQuery = "select email,passwordHash from users where email = ? and passwordHash = ? limit 1"
 	insertQuery = "insert into users (email,login,passwordHash) values(?,?,?)"
 )
 
@@ -64,7 +64,7 @@ func DBConn() error {
 }
 
 func UserCheck(w http.ResponseWriter, r *http.Request,
-	user User, userAddFromLogIn bool) error {
+	user User, userCheckFromLogIn bool) error {
 
 	if err := DB.Ping(); err != nil {
 		wrappedErr := errors.WithStack(err)
@@ -73,9 +73,11 @@ func UserCheck(w http.ResponseWriter, r *http.Request,
 	}
 
 	inputEmail := user.GetEmail()
-	row := DB.QueryRow("select passwordHash from users where email = ? limit 1", inputEmail)
-	var passwordHash string
-	err := row.Scan(&passwordHash)
+	inputPassword := user.GetPassword()
+
+	row := DB.QueryRow(selectQuery, inputEmail, inputPassword)
+	var email, passwordHash string
+	err := row.Scan(&email)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			newErr := errors.New(NotExistErr)
@@ -83,12 +85,27 @@ func UserCheck(w http.ResponseWriter, r *http.Request,
 			log.Printf("%+v", wrappedErr)
 			return wrappedErr
 		}
+
 		wrappedErr := errors.WithStack(err)
 		log.Printf("%+v", wrappedErr)
 		return wrappedErr
 	}
 
-	if userAddFromLogIn {
+	if userCheckFromLogIn {
+		err := row.Scan(&passwordHash)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				newErr := errors.New("invalid password")
+				wrappedErr := errors.WithStack(newErr)
+				log.Printf("%+v", wrappedErr)
+				return wrappedErr
+			}
+
+			wrappedErr := errors.WithStack(err)
+			log.Printf("%+v", wrappedErr)
+			return wrappedErr
+		}
+
 		inputPassword := user.GetPassword()
 		err = bcrypt.CompareHashAndPassword([]byte(passwordHash),
 			[]byte(inputPassword))
@@ -103,14 +120,14 @@ func UserCheck(w http.ResponseWriter, r *http.Request,
 }
 
 func UserAdd(w http.ResponseWriter, r *http.Request,
-	users User) error {
+	user User) error {
 	if err := DB.Ping(); err != nil {
 		log.Fatal(dbStartFailedErr)
 	}
 
-	email := users.GetEmail()
-	login := users.GetLogin()
-	password := users.GetPassword()
+	email := user.GetEmail()
+	login := user.GetLogin()
+	password := user.GetPassword()
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password),
 		bcrypt.DefaultCost)
