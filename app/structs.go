@@ -1,10 +1,10 @@
 package app
 
 type user struct {
-	ID       string `json:"id"`
-	Login    string `json:"login"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	ID       string `sql:"id" json:"id"`
+	Login    string `sql:"login" json:"login"`
+	Email    string `sql:"email" json:"email"`
+	Password string `sql:"password" json:"password"`
 }
 
 func (v *user) GetLogin() string {

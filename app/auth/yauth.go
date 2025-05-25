@@ -22,7 +22,6 @@ const (
 	userInfoURL  = "https://login.yandex.ru/info "
 )
 
-// Обработчик для начала авторизации через Яндекс
 func YandexAuthHandler(w http.ResponseWriter, r *http.Request) {
 	authParams := url.Values{
 		"responseType": {"YaCode"},
@@ -73,9 +72,6 @@ func YandexCallbackHandler(store *sessions.CookieStore) http.HandlerFunc {
 			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
 			return err
 		}
-
-
-
 	}
 }
 
@@ -88,8 +84,7 @@ func getAccessToken(yaCode string) (string, error) {
 		"redirectUrl":  {app.HomeURL},
 	}
 
-	// Отправляем POST-запрос для получения токена
-	resp, err := http.PostForm(tokenURL, tokenParams) // Отправляем данные через форму
+	resp, err := http.PostForm(tokenURL, tokenParams)
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
 		log.Printf("%+v", wrappedErr)
@@ -97,7 +92,6 @@ func getAccessToken(yaCode string) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	// Читаем тело ответа
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
@@ -105,7 +99,6 @@ func getAccessToken(yaCode string) (string, error) {
 		return "", wrappedErr
 	}
 
-	// Парсим JSON-ответ
 	var result map[string]interface{}
 	err = json.Unmarshal(body, &result)
 	if err != nil {
@@ -114,7 +107,6 @@ func getAccessToken(yaCode string) (string, error) {
 		return "", wrappedErr
 	}
 
-	// Извлекаем access_token из ответа
 	accessToken, ok := result["access_token"].(string)
 	if !ok {
 		newErr := errors.New(app.NotExistErr)
@@ -127,7 +119,6 @@ func getAccessToken(yaCode string) (string, error) {
 }
 
 func getUserInfo(accessToken string) (*app.User, error) {
-	// Создаем GET-запрос для получения данных пользователя
 	req, err := http.NewRequest("GET", userInfoURL, nil)
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
@@ -135,40 +126,35 @@ func getUserInfo(accessToken string) (*app.User, error) {
 		return nil, wrappedErr
 	}
 
-	// Добавляем заголовок Authorization с access_token
-	req.Header.Set("Authorization", "OAuth "+accessToken) // Устанавливаем заголовок для авторизации
+	req.Header.Set("Authorization", "OAuth "+accessToken)
 
-	// Отправляем запрос
-	client := &http.Client{}    // Создаем HTTP-клиент
-	resp, err := client.Do(req) // Отправляем запрос
-	if err != nil {             // Если произошла ошибка при отправке запроса
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
 		wrappedErr := errors.WithStack(err)
 		log.Printf("%+v", wrappedErr)
-		return nil, wrappedErr // Возвращаем nil и ошибку
+		return nil, wrappedErr
 	}
-	defer resp.Body.Close() // Закрываем тело ответа после завершения работы
+	defer resp.Body.Close()
 
-	// Читаем тело ответа
-	body, err := io.ReadAll(resp.Body) // Читаем все данные из тела ответа
-	if err != nil {                    // Если произошла ошибка при чтении
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
 		wrappedErr := errors.WithStack(err)
 		log.Printf("%+v", wrappedErr)
-		return nil, wrappedErr // Возвращаем nil и ошибку
+		return nil, wrappedErr
 	}
 
-	// Парсим JSON-ответ
-	var user app.User                 // Создаем структуру для хранения данных пользователя
-	err = json.Unmarshal(body, &user) // Преобразуем JSON в структуру
-	if err != nil {                   // Если произошла ошибка при парсинге
-		return nil, err // Возвращаем nil и ошибку
+	var user app.User
+	err = json.Unmarshal(body, &user)
+	if err != nil {
+		return nil, err
 	}
 
-	return &user, nil // Возвращаем указатель на структуру пользователя и nil как ошибку
+	return &user, nil
 }
 
 func yaLogIn(w http.ResponseWriter, r *http.Request, user *app.User,
 	store *sessions.CookieStore) error {
-	rememberMe := "true"
 
 	cookie, err := r.Cookie("auth")
 	if err != nil {
@@ -178,8 +164,8 @@ func yaLogIn(w http.ResponseWriter, r *http.Request, user *app.User,
 		return wrappedErr
 	}
 
-					err = app.UserCheck(w, r, *validatedLoginInput, true)
-		if err != nil {
+					err = app.UserCheck(w, r, *user, true)
+		if err != nil {8
 			if err == sql.ErrNoRows {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, app.UserNotExistURL, http.StatusFound)

@@ -14,8 +14,8 @@ import (
 var DB *sql.DB
 
 const (
-	selectQuery = "select password from users where email = ? limit 1"
-	insertQuery = "insert into users (email,login,password) values(?,?,?)"
+	selectQuery = "select passwordHash from users where email = ? limit 1"
+	insertQuery = "insert into users (email,login,passwordHash) values(?,?,?)"
 )
 
 const (
@@ -67,11 +67,13 @@ func UserCheck(w http.ResponseWriter, r *http.Request,
 	user User, userAddFromLogIn bool) error {
 
 	if err := DB.Ping(); err != nil {
-		log.Fatal(dbStartFailedErr)
+		wrappedErr := errors.WithStack(err)
+		log.Printf("%+v", wrappedErr)
+		log.Fatal(wrappedErr)
 	}
 
 	inputEmail := user.GetEmail()
-	row := DB.QueryRow(selectQuery, inputEmail)
+	row := DB.QueryRow("select passwordHash from users where email = ? limit 1", inputEmail)
 	var passwordHash string
 	err := row.Scan(&passwordHash)
 	if err != nil {
