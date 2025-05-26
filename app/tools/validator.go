@@ -58,7 +58,7 @@ func IsValidToken(r *http.Request) (*jwt.Token, error) {
 	return token, nil
 }
 
-func IsValidInput(w http.ResponseWriter, r *http.Request) (*app.User, error) {
+func IsValidInput(w http.ResponseWriter, r *http.Request) (app.User, error) {
 
 	id := ""
 	login := r.FormValue("login")
@@ -110,5 +110,5 @@ func IsValidInput(w http.ResponseWriter, r *http.Request) (*app.User, error) {
 		email,
 		password,
 	)
-	return &validatedLoginInput, nil
+	return validatedLoginInput, nil
 }

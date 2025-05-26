@@ -23,23 +23,23 @@ const (
 )
 
 func DBConn() error {
-	passwordFilePath := "/run/secrets/db_password"
-	password, err := os.ReadFile(passwordFilePath)
-	if err != nil {
-		wrappedErr := errors.WithStack(err)
+	dbPassword := []byte(os.Getenv("DB_PASSWORD"))
+	if len(dbPassword) == 0 {
+		newErr := errors.New(NotExistErr)
+		wrappedErr := errors.WithStack(newErr)
 		log.Printf("%+v", wrappedErr)
 		return wrappedErr
 	}
 
 	defer func() {
-		for i := range password {
-			password[i] = 0
+		for i := range dbPassword {
+			dbPassword[i] = 0
 		}
 	}()
 
 	cfg := mysql.Config{
 		User:   "root",
-		Passwd: string(password),
+		Passwd: string(dbPassword),
 		Net:    "tcp",
 		Addr:   "db:3306",
 		DBName: "db",
@@ -74,10 +74,10 @@ func UserCheck(w http.ResponseWriter, r *http.Request,
 
 	inputEmail := user.GetEmail()
 	inputPassword := user.GetPassword()
-
 	row := DB.QueryRow(selectQuery, inputEmail, inputPassword)
-	var email, passwordHash string
-	err := row.Scan(&email)
+	var email string
+
+	err := row.Scan(&email, nil)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			newErr := errors.New(NotExistErr)
@@ -92,7 +92,8 @@ func UserCheck(w http.ResponseWriter, r *http.Request,
 	}
 
 	if userCheckFromLogIn {
-		err := row.Scan(&passwordHash)
+		var passwordHash string
+		err := row.Scan(nil, &passwordHash)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				newErr := errors.New("invalid password")
@@ -106,7 +107,6 @@ func UserCheck(w http.ResponseWriter, r *http.Request,
 			return wrappedErr
 		}
 
-		inputPassword := user.GetPassword()
 		err = bcrypt.CompareHashAndPassword([]byte(passwordHash),
 			[]byte(inputPassword))
 		if err != nil {
@@ -125,19 +125,28 @@ func UserAdd(w http.ResponseWriter, r *http.Request,
 		log.Fatal(dbStartFailedErr)
 	}
 
-	email := user.GetEmail()
 	login := user.GetLogin()
+	email := user.GetEmail()
 	password := user.GetPassword()
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password),
-		bcrypt.DefaultCost)
-	if err != nil {
-		wrappedErr := errors.WithStack(err)
-		log.Printf("%+v", wrappedErr)
-		return wrappedErr
+	if password != "" {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password),
+			bcrypt.DefaultCost)
+		if err != nil {
+			wrappedErr := errors.WithStack(err)
+			log.Printf("%+v", wrappedErr)
+			return wrappedErr
+		}
+
+		_, err = DB.Exec(insertQuery, login, email, hashedPassword)
+		if err != nil {
+			wrappedErr := errors.WithStack(err)
+			log.Printf("%+v", wrappedErr)
+			return wrappedErr
+		}
 	}
 
-	_, err = DB.Exec(insertQuery, email, login, hashedPassword)
+	_, err := DB.Exec(insertQuery, login, email, password)
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
 		log.Printf("%+v", wrappedErr)

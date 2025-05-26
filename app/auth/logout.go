@@ -26,15 +26,14 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 
 			claims := token.Claims.(jwt.MapClaims)
 			exp := claims["exp"].(float64)
-			session, user, err := tools.SessionUserGetUnmarshal(r,
-				store)
+			session, user, err := tools.SessionUserGetUnmarshal(r, store)
 			if err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
 				return
 			}
 
-			if exp != 0 {
+			if exp != 253402300799 {
 				expUnix := time.Unix(int64(exp), 0)
 				if time.Now().After(expUnix) {
 					lastActivity := session.Values["lastActivity"].(time.Time)
@@ -47,8 +46,7 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 					}
 				}
 
-				err = tools.TokenCreate(w, r, "3hours",
-					user)
+				err = tools.TokenCreate(w, r, "3hours", user)
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)

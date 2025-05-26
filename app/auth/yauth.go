@@ -59,10 +59,10 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = app.UserCheck(w, r, *user, false)
+	err = app.UserCheck(w, r, user, false)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			err = app.UserAdd(w, r, *user)
+			err = app.UserAdd(w, r, user)
 			if err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
@@ -71,7 +71,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = tools.TokenCreate(w, r, "true", *user)
+	err = tools.TokenCreate(w, r, "true", user)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
@@ -134,7 +134,7 @@ func getAccessToken(yaCode string) (string, error) {
 	return accessToken, nil
 }
 
-func getUserInfo(accessToken string) (*app.User, error) {
+func getUserInfo(accessToken string) (app.User, error) {
 	req, err := http.NewRequest("GET", userInfoURL, nil)
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
@@ -166,5 +166,5 @@ func getUserInfo(accessToken string) (*app.User, error) {
 		return nil, err
 	}
 
-	return &user, nil
+	return user, nil
 }

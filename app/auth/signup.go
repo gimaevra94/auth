@@ -20,10 +20,10 @@ func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
 			http.Redirect(w, r, app.BadSignUpURL, http.StatusFound)
 		}
 
-		err = app.UserCheck(w, r, *validatedLoginInput, false)
+		err = app.UserCheck(w, r, validatedLoginInput, false)
 		if err != nil {
 			if err == sql.ErrNoRows {
-				err := tools.SessionUserSetMarshal(w, r, store, *validatedLoginInput)
+				err := tools.SessionUserSetMarshal(w, r, store, validatedLoginInput)
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
