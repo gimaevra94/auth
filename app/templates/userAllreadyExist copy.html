@@ -3,21 +3,92 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,minimum-scale=1,maximum-scale=10">
-    <title>Your title</title>
-    <link rel="stylesheet" href="./style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>User Already Exists</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --error-color: #dc2626;
+            --text-color: #e5e7eb;
+            --bg-color: #1f2937;
+            --container-bg: #374151;
+            --border-color: #4b5563;
+            --input-bg: #4b5563;
+            --hover-bg: #4b5563;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: var(--container-bg);
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .error-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 1rem;
+            color: var(--error-color);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .message {
+            margin-bottom: 1.5rem;
+            color: #9ca3af;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            background-color: #1d4ed8;
+        }
+    </style>
 </head>
 
 <body>
-    <div class="content-wrapper">
-        <div class="container clearfix">
-            <main class="content">
-                <p style="text-align: left; font-size: 30px; margin: 0;">user allready exist</p>
-                <form method="POST" action="/sign_in_login_input">
-                    <input type="submit" value="move to sign-in" />
-                </form>
-            </main>
-        </div>
+    <div class="container">
+        <svg class="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        <h1>User Already Exists</h1>
+        <p class="message">A user with this email is already registered. Please sign in or use a different email
+            address.</p>
+        <a href="/log_in" class="btn">Sign In</a>
     </div>
 </body>
 

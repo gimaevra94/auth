@@ -1,0 +1,33 @@
+name: db
+services:
+  db:
+    image: gimaevra94/db:latest
+    container_name: db
+    environment:
+       MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_password
+       MYSQL_DATABASE: db
+    volumes:
+      - db:/var/lib/mysql
+    ports: 
+      - 3306:3306
+    networks:
+      - net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    secrets:
+      - db_password
+    restart: unless-stopped
+
+volumes:
+  db:
+
+networks:
+  net:
+    driver: bridge
+
+secrets:
+  db_password: 
+    environment: DB_PASSWORD
