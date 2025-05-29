@@ -7,6 +7,7 @@ import (
 
 	"github.com/gimaevra94/auth/app"
 	"github.com/gimaevra94/auth/app/auth"
+	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
 
 	"github.com/gimaevra94/auth/app/templates"
@@ -23,7 +24,14 @@ const (
 )
 
 func main() {
-	err := app.DBConn()
+	err := godotenv.Load(".env")
+	if err != nil {
+		wrappedErr := errors.WithStack(err)
+		log.Printf("%+v", wrappedErr)
+		log.Fatal(wrappedErr)
+	}
+
+	err = app.DBConn()
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
 		log.Printf("%+v", wrappedErr)

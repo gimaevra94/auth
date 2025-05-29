@@ -26,7 +26,7 @@ func DBConn() error {
 	dbPassword := []byte(os.Getenv("DB_PASSWORD"))
 	if len(dbPassword) == 0 {
 		newErr := errors.New(NotExistErr)
-		wrappedErr := errors.WithStack(newErr)
+		wrappedErr := errors.Wrapf(newErr, "dbPassword")
 		log.Printf("%+v", wrappedErr)
 		return wrappedErr
 	}
@@ -41,7 +41,7 @@ func DBConn() error {
 		User:   "root",
 		Passwd: string(dbPassword),
 		Net:    "tcp",
-		Addr:   "db:3306",
+		Addr:   "localhost:3306",
 		DBName: "db",
 	}
 
