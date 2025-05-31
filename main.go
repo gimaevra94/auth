@@ -24,55 +24,51 @@ const (
 )
 
 func main() {
+	envStart()
+	dbStart()
+	r := routerStart()
+	srvStart(r)
+}
+
+func envStart() {
 	err := godotenv.Load(".env")
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
 		log.Printf("%+v", wrappedErr)
-		log.Fatal(wrappedErr)
+		return
 	}
 
-	err = app.DBConn()
+	envVars := []string{
+		"SESSION_SECRET",
+		"JWT_SECRET",
+		"DB_PASSWORD",
+	}
+
+	for _, v := range envVars {
+		if os.Getenv(v) == "" {
+			newErr := errors.New(app.NotExistErr)
+			wrappedErr := errors.Wrap(newErr, v)
+			log.Printf("%+v", wrappedErr)
+			return
+		}
+	}
+}
+
+func dbStart() {
+	err := app.DBConn()
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
 		log.Printf("%+v", wrappedErr)
-		log.Fatal(wrappedErr)
+		return
 	}
 	defer app.DB.Close()
-
-	r := Router()
-
-	err = http.ListenAndServe(":8080", r)
-	if err != nil {
-		wrappedErr := errors.WithStack(err)
-		log.Printf("%+v", wrappedErr)
-		log.Fatal(wrappedErr)
-	}
-
-	r.Get("/", authentication)
 }
 
-func authentication(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("auth")
-	if err != nil {
-		wrappedErr := errors.WithStack(err)
-		log.Printf("%+v", wrappedErr)
-		http.Redirect(w, r, signUpURL, http.StatusFound)
-	}
-
-	_, err = tools.IsValidToken(r)
-	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, logInURL, http.StatusFound)
-	}
-
-	w.Header().Set("auth", cookie.Value)
-	w.Write([]byte(cookie.Value))
-	http.Redirect(w, r, app.HomeURL, http.StatusFound)
-}
-
-func Router() *chi.Mux {
+func routerStart() *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(auth.IsExpiredTokenMW(store))
+
+	r.Get("/", authStart)
 
 	r.Get(signUpURL, templates.SignUp)
 	r.Post("/input_check", auth.InputCheck(store))
@@ -99,4 +95,49 @@ func Router() *chi.Mux {
 		auth.Logout(store))
 
 	return r
+}
+
+func srvStart(r *chi.Mux) {
+	err := http.ListenAndServe(":8080", r)
+	if err != nil {
+		wrappedErr := errors.WithStack(err)
+		log.Printf("%+v", wrappedErr)
+		log.Fatal(wrappedErr)
+	}
+}
+
+func authStart(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("auth")
+	if err != nil {
+		cookie := http.Cookie{
+			Name:     "auth",
+			Path:     "/set-token",
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteStrictMode,
+			Value:    "",
+		}
+		http.SetCookie(w, &cookie)
+		http.Redirect(w, r, signUpURL, http.StatusFound)
+		return
+	}
+	// проверить что все секреты есть убрать проверку секрета
+	//убедиться что если куки есть то значение тоже есть
+
+	token, err := tools.IsValidToken(r)
+	if token == nil && err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, logInURL, http.StatusFound)
+		return
+	}
+	if token == nil && err == nil {
+		newErr := errors.New(app.NotExistErr)
+		wrappedErr := errors.Wrap(newErr, "'tokenSecret'")
+		log.Printf("%+v", wrappedErr)
+		return
+	}
+
+	w.Header().Set("auth", cookie.Value)
+	w.Write([]byte(cookie.Value))
+	http.Redirect(w, r, app.HomeURL, http.StatusFound)
 }

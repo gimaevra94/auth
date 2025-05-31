@@ -3,6 +3,7 @@ package tools
 import (
 	"log"
 	"net/http"
+	"os"
 	"regexp"
 
 	"github.com/gimaevra94/auth/app"
@@ -22,24 +23,15 @@ const (
 )
 
 func IsValidToken(r *http.Request) (*jwt.Token, error) {
-	cookie, err := r.Cookie("cookie")
-	if err != nil {
-		wrappedErr := errors.WithStack(err)
-		log.Printf("%+v", wrappedErr)
-		return nil, wrappedErr
+	tokenSecret := os.Getenv("JWT_SECRET")
+	if tokenSecret == "" {
+		return nil, nil
 	}
 
+	cookie, _ := r.Cookie("auth")
 	tokenValue := cookie.Value
-	if tokenValue == "" {
-		newErr := errors.New(getFailedErr)
-		wrappedErr := errors.Wrap(newErr, "'tokenValue'")
-		log.Printf("%+v", wrappedErr)
-		return nil, wrappedErr
-	}
-
-	token, err := jwt.Parse(tokenValue, func(t *jwt.Token) (interface{},
-		error) {
-		return []byte("my-super-secret-key"), nil
+	token, err := jwt.Parse(tokenValue, func(t *jwt.Token) (interface{}, error) {
+		return []byte(tokenSecret), nil
 	})
 
 	if err != nil {

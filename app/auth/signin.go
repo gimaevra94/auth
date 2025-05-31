@@ -18,50 +18,43 @@ func LogIn(store *sessions.CookieStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		rememberMe := r.FormValue("'rememberMe'")
 		if rememberMe == "" {
-			newErr := errors.New(app.NotExistErr)
-			wrappedErr := errors.Wrap(newErr, "'rememberMe'")
-			log.Printf("%+v", wrappedErr)
-			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
+			tools.WrappingErrPrintRedir(w, r, app.RequestErrorURL,
+				app.NotExistErr, "'rememberMe'")
 			return
 		}
 
 		session, err := store.Get(r, "auth")
 		if err != nil {
-			wrappedErr := errors.WithStack(err)
-			log.Printf("%+v", wrappedErr)
-			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
+			tools.WithStackingErrPrintRedir(w, r, app.RequestErrorURL, err)
+			return
 		}
 
 		cookie, err := r.Cookie("auth")
 		if err != nil {
-			wrappedErr := errors.WithStack(err)
-			log.Printf("%+v", wrappedErr)
-			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
+			tools.WithStackingErrPrintRedir(w, r, app.RequestErrorURL, err)
+			return
 		}
 
 		validatedLoginInput, err := tools.IsValidInput(w, r)
 		if err != nil {
-			log.Printf("%+v", err)
-			http.Redirect(w, r, app.BadSignInURL, http.StatusFound)
+			tools.WrappedErrPrintRedir(w, r, app.BadSignInURL, err)
 			return
 		}
 
 		err = app.UserCheck(w, r, validatedLoginInput, true)
 		if err != nil {
 			if err == sql.ErrNoRows {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, app.UserNotExistURL, http.StatusFound)
+				tools.WrappedErrPrintRedir(w, r, app.UserNotExistURL, err)
 				return
 			}
 
 			if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, app.BadSignInURL, http.StatusFound)
+				tools.WrappedErrPrintRedir(w, r, app.BadSignInURL, err)
 				return
 			}
 
-			log.Printf("%+v", err)
-			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
+			tools.WrappedErrPrintRedir(w, r, app.RequestErrorURL, err)
+			return
 		}
 
 		err = tools.TokenCreate(w, r, rememberMe, validatedLoginInput)
@@ -71,14 +64,10 @@ func LogIn(store *sessions.CookieStore) http.HandlerFunc {
 		}
 
 		if rememberMe == "false" {
-			lastActivity := time.Now().Add(3 * time.Hour)
-			session.Values["lastActivity"] = lastActivity
-			err = session.Save(r, w)
-
+			err := setlastActivityKeyForSession(w, r, session)
 			if err != nil {
-				wrappedErr := errors.WithStack(err)
-				log.Printf("%+v", wrappedErr)
-				http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
+				tools.WithStackingErrPrintRedir(w, r, app.RequestErrorURL, err)
+				return
 			}
 		}
 
@@ -86,4 +75,12 @@ func LogIn(store *sessions.CookieStore) http.HandlerFunc {
 		w.Write([]byte(cookie.Value))
 		http.Redirect(w, r, app.HomeURL, http.StatusFound)
 	}
+}
+
+func setlastActivityKeyForSession(w http.ResponseWriter, r *http.Request,
+	session *sessions.Session) error {
+	lastActivity := time.Now().Add(3 * time.Hour)
+	session.Values["lastActivity"] = lastActivity
+	err := session.Save(r, w)
+	return err
 }
