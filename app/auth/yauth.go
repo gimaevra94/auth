@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/gimaevra94/auth/app"
+	"github.com/gimaevra94/auth/app/dataspace"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/pkg/errors"
 )
@@ -25,7 +25,7 @@ func YandexAuthHandler(w http.ResponseWriter, r *http.Request) {
 	authParams := url.Values{
 		"responseType": {"YaCode"},
 		"clientId":     {clientID},
-		"redirectUri":  {app.HomeURL},
+		"redirectUri":  {dataspace.HomeURL},
 	}
 
 	authURLWithParamsUrl := authURL + "?" + authParams.Encode()
@@ -36,10 +36,10 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	yaCode := r.URL.Query().Get("YaCode")
 
 	if yaCode == "" {
-		newErr := errors.New(app.NotExistErr)
+		newErr := errors.New(dataspace.NotExistErr)
 		wrappedErr := errors.Wrap(newErr, "YaCode")
 		log.Printf("%+v", wrappedErr)
-		http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
+		http.Redirect(w, r, dataspace.RequestErrorURL, http.StatusFound)
 		return
 	}
 
@@ -47,7 +47,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
 		log.Printf("%+v", wrappedErr)
-		http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
+		http.Redirect(w, r, dataspace.RequestErrorURL, http.StatusFound)
 		return
 	}
 
@@ -55,17 +55,17 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
 		log.Printf("%+v", wrappedErr)
-		http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
+		http.Redirect(w, r, dataspace.RequestErrorURL, http.StatusFound)
 		return
 	}
 
-	err = app.UserCheck(w, r, user, false)
+	err = dataspace.UserCheck(w, r, user, false)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			err = app.UserAdd(w, r, user)
+			err = dataspace.UserAdd(w, r, user)
 			if err != nil {
 				log.Printf("%+v", err)
-				http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
+				http.Redirect(w, r, dataspace.RequestErrorURL, http.StatusFound)
 				return
 			}
 		}
@@ -74,7 +74,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	err = tools.TokenCreate(w, r, "true", user)
 	if err != nil {
 		log.Printf("%+v", err)
-		http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
+		http.Redirect(w, r, dataspace.RequestErrorURL, http.StatusFound)
 		return
 	}
 
@@ -82,13 +82,13 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
 		log.Printf("%+v", wrappedErr)
-		http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
+		http.Redirect(w, r, dataspace.RequestErrorURL, http.StatusFound)
 		return
 	}
 
 	w.Header().Set("auth", cookie.Value)
 	w.Write([]byte(cookie.Value))
-	http.Redirect(w, r, app.HomeURL, http.StatusFound)
+	http.Redirect(w, r, dataspace.HomeURL, http.StatusFound)
 }
 
 func getAccessToken(yaCode string) (string, error) {
@@ -97,7 +97,7 @@ func getAccessToken(yaCode string) (string, error) {
 		"yaCode":       {yaCode},
 		"clientId":     {clientID},
 		"clientSecret": {clientSecret},
-		"redirectUrl":  {app.HomeURL},
+		"redirectUrl":  {dataspace.HomeURL},
 	}
 
 	resp, err := http.PostForm(tokenURL, tokenParams)
@@ -125,7 +125,7 @@ func getAccessToken(yaCode string) (string, error) {
 
 	accessToken, ok := result["access_token"].(string)
 	if !ok {
-		newErr := errors.New(app.NotExistErr)
+		newErr := errors.New(dataspace.NotExistErr)
 		wrappedErr := errors.Wrap(newErr, "'access_token'")
 		log.Printf("%+v", wrappedErr)
 		return "", wrappedErr
@@ -134,7 +134,7 @@ func getAccessToken(yaCode string) (string, error) {
 	return accessToken, nil
 }
 
-func getUserInfo(accessToken string) (app.User, error) {
+func getUserInfo(accessToken string) (dataspace.User, error) {
 	req, err := http.NewRequest("GET", userInfoURL, nil)
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
@@ -160,7 +160,7 @@ func getUserInfo(accessToken string) (app.User, error) {
 		return nil, wrappedErr
 	}
 
-	var user app.User
+	var user dataspace.User
 	err = json.Unmarshal(body, &user)
 	if err != nil {
 		return nil, err

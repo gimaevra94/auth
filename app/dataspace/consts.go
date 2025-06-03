@@ -1,4 +1,4 @@
-package app
+package dataspace
 
 const (
 	CodeSendURL     = "/code_send"

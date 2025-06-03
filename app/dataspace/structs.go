@@ -1,4 +1,4 @@
-package app
+package dataspace
 
 type user struct {
 	ID       string `sql:"id" json:"id"`

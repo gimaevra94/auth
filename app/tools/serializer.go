@@ -5,13 +5,13 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gimaevra94/auth/app"
+	"github.com/gimaevra94/auth/app/dataspace"
 	"github.com/gorilla/sessions"
 	"github.com/pkg/errors"
 )
 
 func SessionUserGetUnmarshal(r *http.Request,
-	store *sessions.CookieStore) (*sessions.Session, app.User, error) {
+	store *sessions.CookieStore) (*sessions.Session, dataspace.User, error) {
 
 	session, err := store.Get(r, "auth")
 	if err != nil {
@@ -22,13 +22,13 @@ func SessionUserGetUnmarshal(r *http.Request,
 
 	jsonData, ok := session.Values["user"].([]byte)
 	if !ok {
-		newErr := errors.New(app.NotExistErr)
+		newErr := errors.New(dataspace.NotExistErr)
 		wrappedErr := errors.Wrap(newErr, "user")
 		log.Printf("%+v", wrappedErr)
 		return nil, nil, wrappedErr
 	}
 
-	var user app.User
+	var user dataspace.User
 	err = json.Unmarshal([]byte(jsonData), &user)
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
@@ -40,7 +40,7 @@ func SessionUserGetUnmarshal(r *http.Request,
 }
 
 func SessionUserSetMarshal(w http.ResponseWriter, r *http.Request,
-	store *sessions.CookieStore, user app.User) error {
+	store *sessions.CookieStore, user dataspace.User) error {
 
 	session, err := store.Get(r, "auth")
 	if err != nil {

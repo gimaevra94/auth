@@ -8,8 +8,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/gimaevra94/auth/app"
 	"github.com/gimaevra94/auth/app/tools"
+	"github.com/gimaevra94/auth/app/dataspace"
 	"github.com/gorilla/sessions"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -18,62 +18,62 @@ func LogIn(store *sessions.CookieStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		rememberMe := r.FormValue("'rememberMe'")
 		if rememberMe == "" {
-			tools.WrappingErrPrintRedir(w, r, app.RequestErrorURL,
-				app.NotExistErr, "'rememberMe'")
+			tools.WrappingErrPrintRedir(w, r, dataspace.RequestErrorURL,
+				dataspace.NotExistErr, "'rememberMe'")
 			return
 		}
 
 		session, err := store.Get(r, "auth")
 		if err != nil {
-			tools.WithStackingErrPrintRedir(w, r, app.RequestErrorURL, err)
+			tools.WithStackingErrPrintRedir(w, r, dataspace.RequestErrorURL, err)
 			return
 		}
 
 		cookie, err := r.Cookie("auth")
 		if err != nil {
-			tools.WithStackingErrPrintRedir(w, r, app.RequestErrorURL, err)
+			tools.WithStackingErrPrintRedir(w, r, dataspace.RequestErrorURL, err)
 			return
 		}
 
 		validatedLoginInput, err := tools.IsValidInput(w, r)
 		if err != nil {
-			tools.WrappedErrPrintRedir(w, r, app.BadSignInURL, err)
+			tools.WrappedErrPrintRedir(w, r, dataspace.BadSignInURL, err)
 			return
 		}
 
-		err = app.UserCheck(w, r, validatedLoginInput, true)
+		err = dataspace.UserCheck(w, r, validatedLoginInput, true)
 		if err != nil {
 			if err == sql.ErrNoRows {
-				tools.WrappedErrPrintRedir(w, r, app.UserNotExistURL, err)
+				tools.WrappedErrPrintRedir(w, r, dataspace.UserNotExistURL, err)
 				return
 			}
 
 			if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-				tools.WrappedErrPrintRedir(w, r, app.BadSignInURL, err)
+				tools.WrappedErrPrintRedir(w, r, dataspace.BadSignInURL, err)
 				return
 			}
 
-			tools.WrappedErrPrintRedir(w, r, app.RequestErrorURL, err)
+			tools.WrappedErrPrintRedir(w, r, dataspace.RequestErrorURL, err)
 			return
 		}
 
 		err = tools.TokenCreate(w, r, rememberMe, validatedLoginInput)
 		if err != nil {
 			log.Printf("%+v", err)
-			http.Redirect(w, r, app.RequestErrorURL, http.StatusFound)
+			http.Redirect(w, r, dataspace.RequestErrorURL, http.StatusFound)
 		}
 
 		if rememberMe == "false" {
 			err := setlastActivityKeyForSession(w, r, session)
 			if err != nil {
-				tools.WithStackingErrPrintRedir(w, r, app.RequestErrorURL, err)
+				tools.WithStackingErrPrintRedir(w, r, dataspace.RequestErrorURL, err)
 				return
 			}
 		}
 
 		w.Header().Set("auth", cookie.Value)
 		w.Write([]byte(cookie.Value))
-		http.Redirect(w, r, app.HomeURL, http.StatusFound)
+		http.Redirect(w, r, dataspace.HomeURL, http.StatusFound)
 	}
 }
 

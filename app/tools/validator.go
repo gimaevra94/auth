@@ -6,7 +6,7 @@ import (
 	"os"
 	"regexp"
 
-	"github.com/gimaevra94/auth/app"
+	"github.com/gimaevra94/auth/app/dataspace"
 	"github.com/golang-jwt/jwt"
 	"github.com/pkg/errors"
 )
@@ -50,7 +50,7 @@ func IsValidToken(r *http.Request) (*jwt.Token, error) {
 	return token, nil
 }
 
-func IsValidInput(w http.ResponseWriter, r *http.Request) (app.User, error) {
+func IsValidInput(w http.ResponseWriter, r *http.Request) (dataspace.User, error) {
 
 	id := ""
 	login := r.FormValue("login")
@@ -96,7 +96,7 @@ func IsValidInput(w http.ResponseWriter, r *http.Request) (app.User, error) {
 		return nil, wrappedErr
 	}
 
-	validatedLoginInput := app.NewUser(
+	validatedLoginInput := dataspace.NewUser(
 		id,
 		login,
 		email,

@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/gimaevra94/auth/app"
 	"github.com/gimaevra94/auth/app/auth"
 	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
