@@ -1,4 +1,4 @@
-package tools
+package errs
 
 import (
 	"log"
@@ -14,16 +14,22 @@ func WrappedErrPrintRedir(w http.ResponseWriter, r *http.Request,
 }
 
 func WithStackingErrPrintRedir(w http.ResponseWriter, r *http.Request,
-	path string, err error) {
+	path string, err error) error {
 	WithStackedErr := errors.WithStack(err)
 	log.Printf("%+v", WithStackedErr)
-	http.Redirect(w, r, path, http.StatusFound)
+	if path != "" {
+		http.Redirect(w, r, path, http.StatusFound)
+	}
+	return WithStackedErr
 }
 
 func WrappingErrPrintRedir(w http.ResponseWriter, r *http.Request,
-	path string, err string, key string) {
+	path string, err string, key string) error {
 	newErr := errors.New(err)
 	wrappedErr := errors.Wrap(newErr, key)
 	log.Printf("%+v", wrappedErr)
-	http.Redirect(w, r, path, http.StatusFound)
+	if path != "" {
+		http.Redirect(w, r, path, http.StatusFound)
+	}
+	return wrappedErr
 }

@@ -5,12 +5,11 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/gimaevra94/auth/app/auth"
 	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
 
-	"github.com/gimaevra94/auth/app/dataspace"
-	"github.com/gimaevra94/auth/app/templates"
+	"github.com/gimaevra94/auth/app/auth"
+	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/go-chi/chi"
 	"github.com/gorilla/sessions"
@@ -46,7 +45,7 @@ func envStart() {
 
 	for _, v := range envVars {
 		if os.Getenv(v) == "" {
-			newErr := errors.New(dataspace.NotExistErr)
+			newErr := errors.New(data.NotExistErr)
 			wrappedErr := errors.Wrap(newErr, v)
 			log.Printf("%+v", wrappedErr)
 			return
@@ -55,13 +54,13 @@ func envStart() {
 }
 
 func dbStart() {
-	err := dataspace.DBConn()
+	err := data.DBConn()
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
 		log.Printf("%+v", wrappedErr)
 		return
 	}
-	defer dataspace.DB.Close()
+	defer data.DB.Close()
 }
 
 func routerStart() *chi.Mux {
@@ -70,28 +69,28 @@ func routerStart() *chi.Mux {
 
 	r.Get("/", authStart)
 
-	r.Get(signUpURL, templates.SignUp)
+	r.Get(signUpURL, data.SignUp)
 	r.Post("/input_check", auth.InputCheck(store))
-	r.Get(dataspace.CodeSendURL, auth.CodeSend(store))
+	r.Get(data.CodeSendURL, auth.CodeSend(store))
 	r.Post("/user_add", auth.UserAdd(store))
 
-	r.Get(dataspace.BadSignUpURL, templates.BadSignUp)
-	r.Get(dataspace.WrongCodeURL, templates.WrongCode)
-	r.Get(dataspace.UserNotExistURL, templates.UserNotExist)
+	r.Get(data.BadSignUpURL, data.BadSignUp)
+	r.Get(data.WrongCodeURL, data.WrongCode)
+	r.Get(data.UserNotExistURL, data.UserNotExist)
 
-	r.Get(dataspace.SignInURL, templates.SignIn)
+	r.Get(data.SignInURL, data.SignIn)
 	r.Post(logInURL, auth.LogIn(store))
-	r.Get(dataspace.BadSignInURL, templates.BadSignIn)
-	r.Get(dataspace.AlreadyExistURL, templates.UserAllreadyExist)
+	r.Get(data.BadSignInURL, data.BadSignIn)
+	r.Get(data.AlreadyExistURL, data.UserAllreadyExist)
 
 	r.Get("/yauth", auth.YandexAuthHandler)
 	r.Get("/yacallback", auth.YandexCallbackHandler)
 
-	r.Get(dataspace.RequestErrorURL, templates.RequestError)
+	r.Get(data.RequestErrorURL, data.RequestError)
 
-	r.With(auth.IsExpiredTokenMW(store)).Get(dataspace.HomeURL,
-		templates.Home)
-	r.With(auth.IsExpiredTokenMW(store)).Post(dataspace.LogoutURL,
+	r.With(auth.IsExpiredTokenMW(store)).Get(data.HomeURL,
+		data.Home)
+	r.With(auth.IsExpiredTokenMW(store)).Post(data.LogoutURL,
 		auth.Logout(store))
 
 	return r
@@ -124,14 +123,14 @@ func authStart(w http.ResponseWriter, r *http.Request) {
 	// проверить что все секреты есть убрать проверку секрета
 	//убедиться что если куки есть то значение тоже есть
 
-	token, err := tools.IsValidToken(r)
+	token, err := tools.IsValidToken(w, r)
 	if token == nil && err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, logInURL, http.StatusFound)
 		return
 	}
 	if token == nil && err == nil {
-		newErr := errors.New(dataspace.NotExistErr)
+		newErr := errors.New(data.NotExistErr)
 		wrappedErr := errors.Wrap(newErr, "'tokenSecret'")
 		log.Printf("%+v", wrappedErr)
 		return
@@ -139,5 +138,5 @@ func authStart(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("auth", cookie.Value)
 	w.Write([]byte(cookie.Value))
-	http.Redirect(w, r, dataspace.HomeURL, http.StatusFound)
+	http.Redirect(w, r, data.HomeURL, http.StatusFound)
 }

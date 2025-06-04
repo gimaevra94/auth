@@ -1,18 +1,17 @@
 package tools
 
 import (
-	"log"
 	"net/http"
 	"os"
 	"time"
 
-	"github.com/gimaevra94/auth/app/dataspace"
+	"github.com/gimaevra94/auth/app/data"
+	"github.com/gimaevra94/auth/app/errs"
 	"github.com/golang-jwt/jwt"
-	"github.com/pkg/errors"
 )
 
 func TokenCreate(w http.ResponseWriter, r *http.Request, command string,
-	value dataspace.User) error {
+	value data.User) error {
 
 	var token *jwt.Token
 	user := value.GetLogin()
@@ -41,9 +40,7 @@ func TokenCreate(w http.ResponseWriter, r *http.Request, command string,
 
 	SignedToken, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
 	if err != nil {
-		wrappedErr := errors.WithStack(err)
-		log.Printf("%+v", wrappedErr)
-		return err
+		return errs.WithStackingErrPrintRedir(w, r, "", err)
 	}
 
 	cookie := http.Cookie{

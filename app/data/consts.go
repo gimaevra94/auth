@@ -1,4 +1,4 @@
-package dataspace
+package data
 
 const (
 	CodeSendURL     = "/code_send"
@@ -13,4 +13,5 @@ const (
 	AlreadyExistURL = "/already_exist"
 
 	NotExistErr = "not exist"
+	InvalidErr = "invalid"
 )

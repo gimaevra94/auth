@@ -1,4 +1,4 @@
-package templates
+package data
 
 import (
 	"net/http"

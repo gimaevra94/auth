@@ -1,14 +1,13 @@
 package tools
 
 import (
-	"log"
 	"net/http"
 	"os"
 	"regexp"
 
-	"github.com/gimaevra94/auth/app/dataspace"
+	"github.com/gimaevra94/auth/app/data"
+	"github.com/gimaevra94/auth/app/errs"
 	"github.com/golang-jwt/jwt"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -17,12 +16,7 @@ var (
 	passwordRegex = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ\d!@#$%^&*]{3,30}$`)
 )
 
-const (
-	getFailedErr = "failed to get"
-	invalidErr   = "invalid"
-)
-
-func IsValidToken(r *http.Request) (*jwt.Token, error) {
+func IsValidToken(w http.ResponseWriter, r *http.Request) (*jwt.Token, error) {
 	tokenSecret := os.Getenv("JWT_SECRET")
 	if tokenSecret == "" {
 		return nil, nil
@@ -35,22 +29,17 @@ func IsValidToken(r *http.Request) (*jwt.Token, error) {
 	})
 
 	if err != nil {
-		wrappedErr := errors.WithStack(err)
-		log.Printf("%+v", wrappedErr)
-		return nil, wrappedErr
+		return nil, errs.WithStackingErrPrintRedir(w, r, "", err)
 	}
 
 	if !token.Valid {
-		newErr := errors.New(invalidErr)
-		wrappedErr := errors.Wrap(newErr, "token")
-		log.Printf("%+v", wrappedErr)
-		return nil, wrappedErr
+		return nil, errs.WrappingErrPrintRedir(w, r, "", data.InvalidErr, "token")
 	}
 
 	return token, nil
 }
 
-func IsValidInput(w http.ResponseWriter, r *http.Request) (dataspace.User, error) {
+func IsValidInput(w http.ResponseWriter, r *http.Request) (data.User, error) {
 
 	id := ""
 	login := r.FormValue("login")
@@ -58,45 +47,28 @@ func IsValidInput(w http.ResponseWriter, r *http.Request) (dataspace.User, error
 	password := r.FormValue("password")
 
 	if login == "" {
-		newErr := errors.New(getFailedErr)
-		wrappedErr := errors.Wrap(newErr, "login")
-		log.Printf("%+v", wrappedErr)
-		return nil, wrappedErr
+		return nil, errs.WrappingErrPrintRedir(w, r, "", data.NotExistErr,
+			"login")
 	}
 	if !loginRegex.MatchString(login) {
-		newErr := errors.New(invalidErr)
-		wrappedErr := errors.Wrap(newErr, "login")
-		log.Printf("%+v", wrappedErr)
-		return nil, wrappedErr
+		return nil, errs.WrappingErrPrintRedir(w, r, "", data.InvalidErr, "login")
 	}
 
 	if email == "" {
-		newErr := errors.New(getFailedErr)
-		wrappedErr := errors.Wrap(newErr, "email")
-		log.Printf("%+v", wrappedErr)
-		return nil, wrappedErr
+		return nil, errs.WrappingErrPrintRedir(w, r, "", data.NotExistErr, "email")
 	}
 	if !emailRegex.MatchString(email) {
-		newErr := errors.New(invalidErr)
-		wrappedErr := errors.Wrap(newErr, "email")
-		log.Printf("%+v", wrappedErr)
-		return nil, wrappedErr
+		return nil, errs.WrappingErrPrintRedir(w, r, "", data.InvalidErr, "email")
 	}
 
 	if password == "" {
-		newErr := errors.New(getFailedErr)
-		wrappedErr := errors.Wrap(newErr, "password")
-		log.Printf("%+v", wrappedErr)
-		return nil, wrappedErr
+		return nil, errs.WrappingErrPrintRedir(w, r, "", data.NotExistErr, "password")
 	}
 	if !passwordRegex.MatchString(password) {
-		newErr := errors.New(invalidErr)
-		wrappedErr := errors.Wrap(newErr, "password")
-		log.Printf("%+v", wrappedErr)
-		return nil, wrappedErr
+		return nil, errs.WrappingErrPrintRedir(w, r, "", data.InvalidErr, "password")
 	}
 
-	validatedLoginInput := dataspace.NewUser(
+	validatedLoginInput := data.NewUser(
 		id,
 		login,
 		email,
