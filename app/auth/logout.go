@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gimaevra94/auth/app/tools"
 	"github.com/gimaevra94/auth/app/dataspace"
+	"github.com/gimaevra94/auth/app/tools"
 	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/sessions"
 )
