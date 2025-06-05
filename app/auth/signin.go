@@ -60,6 +60,7 @@ func LogIn(store *sessions.CookieStore) http.HandlerFunc {
 		if err != nil {
 			log.Printf("%+v", err)
 			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
+			return
 		}
 
 		if rememberMe == "false" {

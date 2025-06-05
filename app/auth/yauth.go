@@ -4,13 +4,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 
 	"github.com/gimaevra94/auth/app/data"
+	"github.com/gimaevra94/auth/app/errs"
 	"github.com/gimaevra94/auth/app/tools"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -36,26 +35,19 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	yaCode := r.URL.Query().Get("YaCode")
 
 	if yaCode == "" {
-		newErr := errors.New(data.NotExistErr)
-		wrappedErr := errors.Wrap(newErr, "YaCode")
-		log.Printf("%+v", wrappedErr)
-		http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
+		errs.WrappingErrPrintRedir(w, r, data.RequestErrorURL, data.NotExistErr, "YaCode")
 		return
 	}
 
-	token, err := getAccessToken(yaCode)
+	token, err := getAccessToken(w, r, yaCode)
 	if err != nil {
-		wrappedErr := errors.WithStack(err)
-		log.Printf("%+v", wrappedErr)
-		http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
+		errs.WithStackingErrPrintRedir(w, r, data.RequestErrorURL, err)
 		return
 	}
 
-	user, err := getUserInfo(token)
+	user, err := getUserInfo(w, r, token)
 	if err != nil {
-		wrappedErr := errors.WithStack(err)
-		log.Printf("%+v", wrappedErr)
-		http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
+		errs.WithStackingErrPrintRedir(w, r, data.RequestErrorURL, err)
 		return
 	}
 
@@ -64,8 +56,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		if err == sql.ErrNoRows {
 			err = data.UserAdd(w, r, user)
 			if err != nil {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
+				errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
 				return
 			}
 		}
@@ -73,16 +64,13 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = tools.TokenCreate(w, r, "true", user)
 	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
+		errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
 		return
 	}
 
 	cookie, err := r.Cookie("auth")
 	if err != nil {
-		wrappedErr := errors.WithStack(err)
-		log.Printf("%+v", wrappedErr)
-		http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
+		errs.WithStackingErrPrintRedir(w, r, data.RequestErrorURL, err)
 		return
 	}
 
@@ -91,7 +79,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, data.HomeURL, http.StatusFound)
 }
 
-func getAccessToken(yaCode string) (string, error) {
+func getAccessToken(w http.ResponseWriter, r *http.Request, yaCode string) (string, error) {
 	tokenParams := url.Values{
 		"grandType":    {"authorixation_code"},
 		"yaCode":       {yaCode},
@@ -102,68 +90,52 @@ func getAccessToken(yaCode string) (string, error) {
 
 	resp, err := http.PostForm(tokenURL, tokenParams)
 	if err != nil {
-		wrappedErr := errors.WithStack(err)
-		log.Printf("%+v", wrappedErr)
-		return "", wrappedErr
+		return "", errs.WithStackingErrPrintRedir(w, r, "", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		wrappedErr := errors.WithStack(err)
-		log.Printf("%+v", wrappedErr)
-		return "", wrappedErr
+		return "", errs.WithStackingErrPrintRedir(w, r, "", err)
 	}
 
 	var result map[string]interface{}
 	err = json.Unmarshal(body, &result)
 	if err != nil {
-		wrappedErr := errors.WithStack(err)
-		log.Printf("%+v", wrappedErr)
-		return "", wrappedErr
+		return "", errs.WithStackingErrPrintRedir(w, r, "", err)
 	}
 
 	accessToken, ok := result["access_token"].(string)
 	if !ok {
-		newErr := errors.New(data.NotExistErr)
-		wrappedErr := errors.Wrap(newErr, "'access_token'")
-		log.Printf("%+v", wrappedErr)
-		return "", wrappedErr
+		return "", errs.WrappingErrPrintRedir(w, r, "", data.NotExistErr, "'access_token'")
 	}
 
 	return accessToken, nil
 }
 
-func getUserInfo(accessToken string) (data.User, error) {
+func getUserInfo(w http.ResponseWriter, r *http.Request, accessToken string) (data.User, error) {
 	req, err := http.NewRequest("GET", userInfoURL, nil)
 	if err != nil {
-		wrappedErr := errors.WithStack(err)
-		log.Printf("%+v", wrappedErr)
-		return nil, wrappedErr
+		return nil, errs.WithStackingErrPrintRedir(w, r, "", err)
 	}
 
 	req.Header.Set("Authorization", "OAuth "+accessToken)
-
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		wrappedErr := errors.WithStack(err)
-		log.Printf("%+v", wrappedErr)
-		return nil, wrappedErr
+		return nil, errs.WithStackingErrPrintRedir(w, r, "", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		wrappedErr := errors.WithStack(err)
-		log.Printf("%+v", wrappedErr)
-		return nil, wrappedErr
+		return nil, errs.WithStackingErrPrintRedir(w, r, "", err)
 	}
 
 	var user data.User
 	err = json.Unmarshal(body, &user)
 	if err != nil {
-		return nil, err
+		return nil, errs.WithStackingErrPrintRedir(w, r, "", err)
 	}
 
 	return user, nil

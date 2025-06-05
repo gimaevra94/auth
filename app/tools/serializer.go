@@ -59,5 +59,8 @@ func SetlastActivityKeyForSession(w http.ResponseWriter, r *http.Request,
 	lastActivity := time.Now().Add(3 * time.Hour)
 	session.Values["lastActivity"] = lastActivity
 	err := session.Save(r, w)
-	return errs.WithStackingErrPrintRedir(w, r, "", err)
+	if err != nil {
+		errs.WithStackingErrPrintRedir(w, r, "", err)
+	}
+	return nil
 }
