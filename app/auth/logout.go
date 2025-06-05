@@ -66,7 +66,7 @@ func Logout(store *sessions.CookieStore) http.HandlerFunc {
 			return
 		}
 
-		cookie := http.Cookie{
+		cooki3e := http.Cookie{
 			Name:     "auth",
 			Path:     "/set-token",
 			HttpOnly: true,
@@ -75,6 +75,8 @@ func Logout(store *sessions.CookieStore) http.HandlerFunc {
 			Value:    "",
 			MaxAge:   -1,
 		}
+
+		cookie := data.NewCookie()
 
 		http.SetCookie(w, &cookie)
 		http.Redirect(w, r, data.SignInURL, http.StatusFound)
