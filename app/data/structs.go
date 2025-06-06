@@ -61,7 +61,7 @@ func (c *cookie) SetMaxAge(v int) *http.Cookie {
 type Cookie interface {
 	GetValue() string
 	SetValue(v string) *http.Cookie
-
+// e
 	GetMaxAge() int
 	SetMaxAge(v int) *http.Cookie
 }
