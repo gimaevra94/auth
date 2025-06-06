@@ -108,18 +108,12 @@ func srvStart(r *chi.Mux) {
 func authStart(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("auth")
 	if err != nil {
-		cookie := http.Cookie{
-			Name:     "auth",
-			Path:     "/set-token",
-			HttpOnly: true,
-			Secure:   true,
-			SameSite: http.SameSiteStrictMode,
-			Value:    "",
-		}
+		data
 		http.SetCookie(w, &cookie)
 		http.Redirect(w, r, signUpURL, http.StatusFound)
 		return
 	}
+
 	// проверить что все секреты есть убрать проверку секрета
 	//убедиться что если куки есть то значение тоже есть
 

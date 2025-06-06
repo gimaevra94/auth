@@ -21,18 +21,21 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 				return
 			}
 
-			claims := token.Claims.(jwt.MapClaims)
-			exp := claims["exp"].(float64)
 			session, user, err := tools.SessionUserGetUnmarshal(w, r, store)
 			if err != nil {
 				errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
 				return
 			}
 
+			claims := token.Claims.(jwt.MapClaims)
+			exp := claims["exp"].(float64)
+
 			if exp != 253402300799 {
 				expUnix := time.Unix(int64(exp), 0)
+
 				if time.Now().After(expUnix) {
 					lastActivity := session.Values["lastActivity"].(time.Time)
+					
 					if time.Since(lastActivity) > 3*time.Hour {
 						errs.WrappingErrPrintRedir(w, r, data.LogoutURL, "session ended", "")
 						return
@@ -66,19 +69,11 @@ func Logout(store *sessions.CookieStore) http.HandlerFunc {
 			return
 		}
 
-		cooki3e := http.Cookie{
-			Name:     "auth",
-			Path:     "/set-token",
-			HttpOnly: true,
-			Secure:   true,
-			SameSite: http.SameSiteStrictMode,
-			Value:    "",
-			MaxAge:   -1,
-		}
+		dataCookie := data.NewCookie()
+		dataCookie.SetMaxAge(-1)
+		httpCookie := dataCookie.GetCookie()
 
-		cookie := data.NewCookie()
-
-		http.SetCookie(w, &cookie)
+		http.SetCookie(w, httpCookie)
 		http.Redirect(w, r, data.SignInURL, http.StatusFound)
 	}
 }

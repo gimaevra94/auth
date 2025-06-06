@@ -43,27 +43,20 @@ type cookie struct {
 func (c *cookie) GetValue() string {
 	return c.cookie.Value
 }
-func (c *cookie) SetValue(v string) *http.Cookie {
-	cookie := c.cookie
-	cookie.Value = v
-	return &cookie
+func (c *cookie) SetValue(v string) {
+	c.cookie.Value = v
 }
-
-func (c *cookie) GetMaxAge() int {
-	return c.cookie.MaxAge
+func (c *cookie) SetMaxAge(v int) {
+	c.cookie.MaxAge = v
 }
-func (c *cookie) SetMaxAge(v int) *http.Cookie {
-	cookie := c.cookie
-	cookie.MaxAge = v
-	return &cookie
+func (c *cookie) GetCookie() *http.Cookie {
+	return &c.cookie
 }
 
 type Cookie interface {
 	GetValue() string
-	SetValue(v string) *http.Cookie
-// fstrs
-	GetMaxAge() int
-	SetMaxAge(v int) *http.Cookie
+	SetValue(v string)
+	SetMaxAge(v int)
 }
 
 func NewCookie() Cookie {
@@ -74,8 +67,6 @@ func NewCookie() Cookie {
 			HttpOnly: true,
 			Secure:   true,
 			SameSite: http.SameSiteStrictMode,
-			Value:    "",
-			MaxAge:   0,
 		},
 	}
 }
