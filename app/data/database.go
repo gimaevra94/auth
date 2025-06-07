@@ -15,7 +15,7 @@ import (
 var DB *sql.DB
 
 const (
-	selectQuery = "select email,passwordHash from users where email = ? and passwordHash = ? limit 1"
+	selectQuery = "select passwordHash from users where email = ? limit 1"
 	insertQuery = "insert into users (email,login,passwordHash) values(?,?,?)"
 )
 
@@ -60,19 +60,17 @@ func DBConn() error {
 	return nil
 }
 
-func UserCheck(w http.ResponseWriter, r *http.Request,
-	user User, userCheckFromLogIn bool) error {
+func UserCheck(w http.ResponseWriter, r *http.Request, user User) error {
 
 	if err := DB.Ping(); err != nil {
 		return errs.WithStackingErrPrintRedir(w, r, "", err)
 	}
 
-	inputEmail := user.GetEmail()
-	inputPassword := user.GetPassword()
-	row := DB.QueryRow(selectQuery, inputEmail, inputPassword)
-	var email string
+	email := user.GetEmail()
+	row := DB.QueryRow(selectQuery, email)
 
-	err := row.Scan(&email, nil)
+	var passwordHash string
+	err := row.Scan(&passwordHash)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return errs.WrappingErrPrintRedir(w, r, "", NotExistErr, "user")
@@ -81,22 +79,11 @@ func UserCheck(w http.ResponseWriter, r *http.Request,
 		return errs.WithStackingErrPrintRedir(w, r, "", err)
 	}
 
-	if userCheckFromLogIn {
-		var passwordHash string
-		err := row.Scan(nil, &passwordHash)
-		if err != nil {
-			if err == sql.ErrNoRows {
-				return errs.WrappingErrPrintRedir(w, r, "", InvalidErr, "password")
-			}
-
-			return errs.WithStackingErrPrintRedir(w, r, "", err)
-		}
-
-		err = bcrypt.CompareHashAndPassword([]byte(passwordHash),
-			[]byte(inputPassword))
-		if err != nil {
-			return errs.WithStackingErrPrintRedir(w, r, "", err)
-		}
+	password := user.GetPassword()
+	err = bcrypt.CompareHashAndPassword([]byte(passwordHash),
+		[]byte(password))
+	if err != nil {
+		return errs.WithStackingErrPrintRedir(w, r, "", err)
 	}
 
 	return nil
@@ -112,20 +99,13 @@ func UserAdd(w http.ResponseWriter, r *http.Request,
 	email := user.GetEmail()
 	password := user.GetPassword()
 
-	if password != "" {
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password),
-			bcrypt.DefaultCost)
-		if err != nil {
-			return errs.WithStackingErrPrintRedir(w, r, "", err)
-		}
-
-		_, err = DB.Exec(insertQuery, login, email, hashedPassword)
-		if err != nil {
-			return errs.WithStackingErrPrintRedir(w, r, "", err)
-		}
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password),
+		bcrypt.DefaultCost)
+	if err != nil {
+		return errs.WithStackingErrPrintRedir(w, r, "", err)
 	}
 
-	_, err := DB.Exec(insertQuery, login, email, password)
+	_, err = DB.Exec(insertQuery, login, email, hashedPassword)
 	if err != nil {
 		return errs.WithStackingErrPrintRedir(w, r, "", err)
 	}

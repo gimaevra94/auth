@@ -41,6 +41,8 @@ func envStart() {
 		"SESSION_SECRET",
 		"JWT_SECRET",
 		"DB_PASSWORD",
+		"MAIL_SENDER_EMAIL",
+		"MAIL_PASSWORD_FILE",
 	}
 
 	for _, v := range envVars {
@@ -84,14 +86,12 @@ func routerStart() *chi.Mux {
 	r.Get(data.AlreadyExistURL, data.UserAllreadyExist)
 
 	r.Get("/yauth", auth.YandexAuthHandler)
-	r.Get("/yacallback", auth.YandexCallbackHandler)
+	r.Get("/ya_callback", auth.YandexCallbackHandler)
 
 	r.Get(data.RequestErrorURL, data.RequestError)
 
 	r.With(auth.IsExpiredTokenMW(store)).Get(data.HomeURL,
 		data.Home)
-	r.With(auth.IsExpiredTokenMW(store)).Post(data.LogoutURL,
-		auth.Logout(store))
 
 	return r
 }
@@ -106,10 +106,11 @@ func srvStart(r *chi.Mux) {
 }
 
 func authStart(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("auth")
+	httpCookie, err := r.Cookie("auth")
 	if err != nil {
-		data
-		http.SetCookie(w, &cookie)
+		dataCookie := data.NewCookie()
+		httpCookie := dataCookie.GetCookie()
+		http.SetCookie(w, httpCookie)
 		http.Redirect(w, r, signUpURL, http.StatusFound)
 		return
 	}
@@ -130,7 +131,6 @@ func authStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("auth", cookie.Value)
-	w.Write([]byte(cookie.Value))
+	w.Header().Set("auth", httpCookie.Value)
 	http.Redirect(w, r, data.HomeURL, http.StatusFound)
 }

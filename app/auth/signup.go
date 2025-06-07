@@ -8,6 +8,8 @@ import (
 	"github.com/gimaevra94/auth/app/errs"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/gorilla/sessions"
+	"github.com/pkg/errors"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
@@ -18,7 +20,7 @@ func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
 			return
 		}
 
-		err = data.UserCheck(w, r, validatedLoginInput, false)
+		err = data.UserCheck(w, r, validatedLoginInput)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				err := tools.SessionUserSetMarshal(w, r, store, validatedLoginInput)
@@ -27,6 +29,11 @@ func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
 					return
 				}
 				http.Redirect(w, r, data.CodeSendURL, http.StatusFound)
+				return
+			}
+
+			if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+				errs.WrappedErrPrintRedir(w, r, data.BadSignUpURL, err)
 				return
 			}
 
@@ -115,7 +122,6 @@ func UserAdd(store *sessions.CookieStore) http.HandlerFunc {
 		}
 
 		w.Header().Set("auth", cookie.Value)
-		w.Write([]byte(cookie.Value))
 		http.Redirect(w, r, data.HomeURL, http.StatusFound)
 	}
 }

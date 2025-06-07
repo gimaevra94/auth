@@ -10,32 +10,35 @@ import (
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/errs"
 	"github.com/gimaevra94/auth/app/tools"
+	"github.com/gorilla/sessions"
 )
 
 const (
 	clientID     = "0c0c69265b9549b7ae1b994a2aecbcfb"
 	clientSecret = "a72af8c056c647c99d6b0ab470569b0b"
-	authURL      = "https://oauth.yandex.ru/authorize "
-	tokenURL     = "https://oauth.yandex.ru/token "
-	userInfoURL  = "https://login.yandex.ru/info "
+	authURL      = "https://oauth.yandex.ru/authorize"
+	tokenURL     = "https://oauth.yandex.ru/token"
+	userInfoURL  = "https://login.yandex.ru/info"
 )
 
 func YandexAuthHandler(w http.ResponseWriter, r *http.Request) {
 	authParams := url.Values{
-		"responseType": {"YaCode"},
-		"clientId":     {clientID},
-		"redirectUri":  {data.HomeURL},
+		"response_type": {"code"},
+		"client_id":     {clientID},
+		"redirect_uri":  {"/ya_callback"},
 	}
 
 	authURLWithParamsUrl := authURL + "?" + authParams.Encode()
 	http.Redirect(w, r, authURLWithParamsUrl, http.StatusFound)
 }
 
-func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
-	yaCode := r.URL.Query().Get("YaCode")
+func YandexCallbackHandler(store *sessions.CookieStore) http.HandlerFunc{
+	return func(w http.ResponseWriter, r *http.Request)
+}
+	yaCode := r.URL.Query().Get("code")
 
 	if yaCode == "" {
-		errs.WrappingErrPrintRedir(w, r, data.RequestErrorURL, data.NotExistErr, "YaCode")
+		errs.WrappingErrPrintRedir(w, r, data.RequestErrorURL, data.NotExistErr, "code")
 		return
 	}
 
@@ -51,7 +54,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = data.UserCheck(w, r, user, false)
+	err = data.UserCheck(w, r, user)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			err = data.UserAdd(w, r, user)
@@ -74,18 +77,22 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	err = tools.SessionUserSetMarshal(w, r, store, user)
+	if err != nil {
+		errs.WithStackingErrPrintRedir(w, r, "", err)
+	}
+
 	w.Header().Set("auth", cookie.Value)
-	w.Write([]byte(cookie.Value))
 	http.Redirect(w, r, data.HomeURL, http.StatusFound)
 }
 
 func getAccessToken(w http.ResponseWriter, r *http.Request, yaCode string) (string, error) {
 	tokenParams := url.Values{
-		"grandType":    {"authorixation_code"},
-		"yaCode":       {yaCode},
-		"clientId":     {clientID},
-		"clientSecret": {clientSecret},
-		"redirectUrl":  {data.HomeURL},
+		"grant_type":    {"authorization_code"},
+		"code":          {yaCode},
+		"client_id":     {clientID},
+		"client_secret": {clientSecret},
+		"redirect_uri":  {data.HomeURL},
 	}
 
 	resp, err := http.PostForm(tokenURL, tokenParams)

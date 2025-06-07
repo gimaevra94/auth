@@ -40,7 +40,7 @@ func LogIn(store *sessions.CookieStore) http.HandlerFunc {
 			return
 		}
 
-		err = data.UserCheck(w, r, validatedLoginInput, true)
+		err = data.UserCheck(w, r, validatedLoginInput)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				errs.WrappedErrPrintRedir(w, r, data.UserNotExistURL, err)
@@ -71,8 +71,7 @@ func LogIn(store *sessions.CookieStore) http.HandlerFunc {
 			}
 		}
 
-		w.Header().Set("auth", cookie.Value)
-		w.Write([]byte(cookie.Value))
+		w.Header().Set("auth", cookie.Value)	
 		http.Redirect(w, r, data.HomeURL, http.StatusFound)
 	}
 }

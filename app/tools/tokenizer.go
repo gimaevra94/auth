@@ -42,19 +42,13 @@ func TokenCreate(w http.ResponseWriter, r *http.Request, command string,
 	if err != nil {
 		return errs.WithStackingErrPrintRedir(w, r, "", err)
 	}
+	
+	dataCookie := data.NewCookie()
+	dataCookie.SetValue(SignedToken)
+	httpCookie := dataCookie.GetCookie()
+	http.SetCookie(w, httpCookie)
 
-	cookie := http.Cookie{
-		Name:     "auth",
-		Path:     "/set-token",
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
-		Value:    SignedToken,
-	}
-
-	http.SetCookie(w, &cookie)
-	w.Header().Set("auth", cookie.Value)
-	w.Write([]byte(cookie.Value))
+	w.Header().Set("auth", httpCookie.Value)
 
 	return nil
 }

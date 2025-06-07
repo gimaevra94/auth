@@ -17,9 +17,9 @@ func MailSendler(w http.ResponseWriter, r *http.Request, email string) (string, 
 	msCode := strconv.Itoa(msCodeItn)
 	msg := []byte("Access code: " + msCode)
 	// работоспособность ящика под вопросом
-	username := "gimaevra94@ya.ru"
+	username := os.Getenv("MAIL_SENDER_EMAIL")
 
-	passwordFilePath := "/run/secrets/mail_password"
+	passwordFilePath := os.Getenv("MAIL_PASSWORD_FILE")
 	password, err := os.ReadFile(passwordFilePath)
 	if err != nil {
 		return "", errs.WithStackingErrPrintRedir(w, r, "", err)
