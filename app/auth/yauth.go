@@ -32,58 +32,58 @@ func YandexAuthHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, authURLWithParamsUrl, http.StatusFound)
 }
 
-func YandexCallbackHandler(store *sessions.CookieStore) http.HandlerFunc{
-	return func(w http.ResponseWriter, r *http.Request)
-}
-	yaCode := r.URL.Query().Get("code")
+func YandexCallbackHandler(store *sessions.CookieStore) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		yaCode := r.URL.Query().Get("code")
 
-	if yaCode == "" {
-		errs.WrappingErrPrintRedir(w, r, data.RequestErrorURL, data.NotExistErr, "code")
-		return
-	}
+		if yaCode == "" {
+			errs.WrappingErrPrintRedir(w, r, data.RequestErrorURL, data.NotExistErr, "code")
+			return
+		}
 
-	token, err := getAccessToken(w, r, yaCode)
-	if err != nil {
-		errs.WithStackingErrPrintRedir(w, r, data.RequestErrorURL, err)
-		return
-	}
+		token, err := getAccessToken(w, r, yaCode)
+		if err != nil {
+			errs.WithStackingErrPrintRedir(w, r, data.RequestErrorURL, err)
+			return
+		}
 
-	user, err := getUserInfo(w, r, token)
-	if err != nil {
-		errs.WithStackingErrPrintRedir(w, r, data.RequestErrorURL, err)
-		return
-	}
+		user, err := getUserInfo(w, r, token)
+		if err != nil {
+			errs.WithStackingErrPrintRedir(w, r, data.RequestErrorURL, err)
+			return
+		}
 
-	err = data.UserCheck(w, r, user)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			err = data.UserAdd(w, r, user)
-			if err != nil {
-				errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
-				return
+		err = data.YauthUserCheck(w, r, user)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				err = data.YauthUserAdd(w, r, user)
+				if err != nil {
+					errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
+					return
+				}
 			}
 		}
-	}
 
-	err = tools.TokenCreate(w, r, "true", user)
-	if err != nil {
-		errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
-		return
-	}
+		err = tools.TokenCreate(w, r, "true", user)
+		if err != nil {
+			errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
+			return
+		}
 
-	cookie, err := r.Cookie("auth")
-	if err != nil {
-		errs.WithStackingErrPrintRedir(w, r, data.RequestErrorURL, err)
-		return
-	}
+		cookie, err := r.Cookie("auth")
+		if err != nil {
+			errs.WithStackingErrPrintRedir(w, r, data.RequestErrorURL, err)
+			return
+		}
 
-	err = tools.SessionUserSetMarshal(w, r, store, user)
-	if err != nil {
-		errs.WithStackingErrPrintRedir(w, r, "", err)
-	}
+		err = tools.SessionUserSetMarshal(w, r, store, user)
+		if err != nil {
+			errs.WithStackingErrPrintRedir(w, r, "", err)
+		}
 
-	w.Header().Set("auth", cookie.Value)
-	http.Redirect(w, r, data.HomeURL, http.StatusFound)
+		w.Header().Set("auth", cookie.Value)
+		http.Redirect(w, r, data.HomeURL, http.StatusFound)
+	}
 }
 
 func getAccessToken(w http.ResponseWriter, r *http.Request, yaCode string) (string, error) {

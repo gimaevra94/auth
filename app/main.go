@@ -15,7 +15,7 @@ import (
 	"github.com/gorilla/sessions"
 )
 
-var store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET_KEY")))
+var store *sessions.CookieStore
 
 const (
 	signUpURL = "/sign_up"
@@ -23,13 +23,15 @@ const (
 )
 
 func main() {
-	envStart()
-	dbStart()
-	r := routerStart()
-	srvStart(r)
+	initEnv()
+	initStore()
+	initDB()
+	r := initRouter()
+	
+	serverStart(r)
 }
 
-func envStart() {
+func initEnv() {
 	err := godotenv.Load(".env")
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
@@ -55,7 +57,11 @@ func envStart() {
 	}
 }
 
-func dbStart() {
+func initStore() {
+	sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
+}
+
+func initDB() {
 	err := data.DBConn()
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
@@ -65,7 +71,7 @@ func dbStart() {
 	defer data.DB.Close()
 }
 
-func routerStart() *chi.Mux {
+func initRouter() *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(auth.IsExpiredTokenMW(store))
 
@@ -86,7 +92,7 @@ func routerStart() *chi.Mux {
 	r.Get(data.AlreadyExistURL, data.UserAllreadyExist)
 
 	r.Get("/yauth", auth.YandexAuthHandler)
-	r.Get("/ya_callback", auth.YandexCallbackHandler)
+	r.Get("/ya_callback", auth.YandexCallbackHandler(store))
 
 	r.Get(data.RequestErrorURL, data.RequestError)
 
@@ -96,7 +102,7 @@ func routerStart() *chi.Mux {
 	return r
 }
 
-func srvStart(r *chi.Mux) {
+func serverStart(r *chi.Mux) {
 	err := http.ListenAndServe(":8080", r)
 	if err != nil {
 		wrappedErr := errors.WithStack(err)

@@ -15,8 +15,10 @@ import (
 var DB *sql.DB
 
 const (
-	selectQuery = "select passwordHash from users where email = ? limit 1"
-	insertQuery = "insert into users (email,login,passwordHash) values(?,?,?)"
+	selectQuery      = "select passwordHash from users where email = ? limit 1"
+	insertQuery      = "insert into users (email,login,passwordHash) values(?,?,?)"
+	yauthSelectQuery = "select email from users where email = ? limit 1"
+	yauthInsertQuery = "insert into users (email,login) values(?,?)"
 )
 
 func DBConn() error {
@@ -61,21 +63,19 @@ func DBConn() error {
 }
 
 func UserCheck(w http.ResponseWriter, r *http.Request, user User) error {
-
 	if err := DB.Ping(); err != nil {
 		return errs.WithStackingErrPrintRedir(w, r, "", err)
 	}
 
 	email := user.GetEmail()
 	row := DB.QueryRow(selectQuery, email)
-
 	var passwordHash string
 	err := row.Scan(&passwordHash)
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return errs.WrappingErrPrintRedir(w, r, "", NotExistErr, "user")
 		}
-
 		return errs.WithStackingErrPrintRedir(w, r, "", err)
 	}
 
@@ -87,10 +87,10 @@ func UserCheck(w http.ResponseWriter, r *http.Request, user User) error {
 	}
 
 	return nil
+
 }
 
-func UserAdd(w http.ResponseWriter, r *http.Request,
-	user User) error {
+func UserAdd(w http.ResponseWriter, r *http.Request, user User) error {
 	if err := DB.Ping(); err != nil {
 		return errs.WithStackingErrPrintRedir(w, r, "", err)
 	}
@@ -106,6 +106,38 @@ func UserAdd(w http.ResponseWriter, r *http.Request,
 	}
 
 	_, err = DB.Exec(insertQuery, login, email, hashedPassword)
+	if err != nil {
+		return errs.WithStackingErrPrintRedir(w, r, "", err)
+	}
+
+	return nil
+}
+
+func YauthUserCheck(w http.ResponseWriter, r *http.Request, user User) error {
+	if err := DB.Ping(); err != nil {
+		return errs.WithStackingErrPrintRedir(w, r, "", err)
+	}
+
+	email := user.GetEmail()
+	row := DB.QueryRow(yauthSelectQuery, email)
+	var existingEmail string
+	err := row.Scan(&existingEmail)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return errs.WrappingErrPrintRedir(w, r, "", NotExistErr, "user")
+		}
+		return errs.WithStackingErrPrintRedir(w, r, "", err)
+	}
+
+	return nil
+}
+
+func YauthUserAdd(w http.ResponseWriter, r *http.Request, user User) error {
+	login := user.GetLogin()
+	email := user.GetEmail()
+
+	_, err := DB.Exec(yauthInsertQuery, login, email)
 	if err != nil {
 		return errs.WithStackingErrPrintRedir(w, r, "", err)
 	}
