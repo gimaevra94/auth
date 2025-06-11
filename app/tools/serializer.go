@@ -15,18 +15,18 @@ func SessionUserGetUnmarshal(w http.ResponseWriter, r *http.Request,
 
 	session, err := store.Get(r, "auth")
 	if err != nil {
-		return nil, nil, errs.WithStackingErrPrintRedir(w, r, "", err)
+		return nil, nil, errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
 	jsonData, ok := session.Values["user"].([]byte)
 	if !ok {
-		return nil, nil, errs.WrappingErrPrintRedir(w, r, "", data.NotExistErr, "user")
+		return nil, nil, errs.NewErrWrapPrintRedir(w, r, "", data.NotExistErr, "user")
 	}
 
 	var user data.User
 	err = json.Unmarshal([]byte(jsonData), &user)
 	if err != nil {
-		return nil, nil, errs.WithStackingErrPrintRedir(w, r, "", err)
+		return nil, nil, errs.OrigErrWrapPrintRedir(w, r, "", err)
 
 	}
 
@@ -38,17 +38,18 @@ func SessionUserSetMarshal(w http.ResponseWriter, r *http.Request,
 
 	session, err := store.Get(r, "auth")
 	if err != nil {
-		return errs.WithStackingErrPrintRedir(w, r, "", err)
+		return errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
+
 	jsonData, err := json.Marshal(user)
 	if err != nil {
-		return errs.WithStackingErrPrintRedir(w, r, "", err)
+		return errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
 	session.Values["user"] = jsonData
 	err = session.Save(r, w)
 	if err != nil {
-		return errs.WithStackingErrPrintRedir(w, r, "", err)
+		return errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
 	return nil
@@ -60,7 +61,7 @@ func SetlastActivityKeyForSession(w http.ResponseWriter, r *http.Request,
 	session.Values["lastActivity"] = lastActivity
 	err := session.Save(r, w)
 	if err != nil {
-		errs.WithStackingErrPrintRedir(w, r, "", err)
+		errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 	return nil
 }

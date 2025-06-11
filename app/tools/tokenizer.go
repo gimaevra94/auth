@@ -40,9 +40,9 @@ func TokenCreate(w http.ResponseWriter, r *http.Request, command string,
 
 	SignedToken, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
 	if err != nil {
-		return errs.WithStackingErrPrintRedir(w, r, "", err)
+		return errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
-	
+
 	dataCookie := data.NewCookie()
 	dataCookie.SetValue(SignedToken)
 	httpCookie := dataCookie.GetCookie()

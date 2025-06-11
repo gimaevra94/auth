@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Request Error</title>
+    <title>404 — Page Not Found</title>
     <style>
         :root {
             --primary-color: #2563eb;
@@ -75,17 +75,6 @@
         .btn:hover {
             background-color: #1d4ed8;
         }
-
-        .btn-secondary {
-            background-color: transparent;
-            color: var(--text-color);
-            border: 1px solid var(--border-color);
-            margin-left: 1rem;
-        }
-
-        .btn-secondary:hover {
-            background-color: var(--hover-bg);
-        }
     </style>
 </head>
 
@@ -93,14 +82,12 @@
     <div class="container">
         <svg class="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
+            <line x1="8" y1="12" x2="16" y2="12" />
         </svg>
-        <h1>Request Error</h1>
-        <p class="message">An error occurred while processing your request. Please try again later or contact support.
-        </p>
+        <h1>404 — Page Not Found</h1>
+        <p class="message">Sorry, the page you are looking for does not exist or has been removed.<br>Please check the URL or go back to the previous page.</p>
         <div>
-            <a href="javascript:history.back()" class="btn btn-secondary">Back</a>
+            <a href="javascript:history.back()" class="btn">Back</a>
         </div>
     </div>
 </body>

@@ -3,6 +3,7 @@ package auth
 import (
 	"database/sql"
 	"net/http"
+	"strings"
 
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/errs"
@@ -16,13 +17,27 @@ func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		validatedLoginInput, err := tools.IsValidInput(w, r)
 		if err != nil {
+
+			if strings.Contains(err.Error(),
+				"login: "+data.InvalidErr) ||
+				strings.Contains(err.Error(),
+					"password: "+data.InvalidErr) {
+				errs.WrappedErrPrintRedir(w, r, data.BadSignUpURL, err)
+				return
+			}
+
+			if strings.Contains(err.Error(), "email: "+data.InvalidErr) {
+				errs.WrappedErrPrintRedir(w, r, data.BadEmailURL, err)
+				return
+			}
+
 			errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
 			return
 		}
 
 		err = data.UserCheck(w, r, validatedLoginInput)
 		if err != nil {
-			if err == sql.ErrNoRows {
+			if errors.Is(err, sql.ErrNoRows) {
 				err := tools.SessionUserSetMarshal(w, r, store, validatedLoginInput)
 				if err != nil {
 					errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
@@ -79,25 +94,25 @@ func UserAdd(store *sessions.CookieStore) http.HandlerFunc {
 
 		rememberMe := r.FormValue("rememberMe")
 		if rememberMe == "" {
-			errs.WrappingErrPrintRedir(w, r, data.RequestErrorURL, data.NotExistErr, "rememberMe")
+			errs.NewErrWrapPrintRedir(w, r, data.RequestErrorURL, data.NotExistErr, "rememberMe")
 			return
 		}
 
 		cookie, err := r.Cookie("auth")
 		if err != nil {
-			errs.WithStackingErrPrintRedir(w, r, data.RequestErrorURL, err)
+			errs.OrigErrWrapPrintRedir(w, r, data.RequestErrorURL, err)
 			return
 		}
 
 		userCode := r.FormValue("user")
 		msCode, ok := session.Values["mscode"].(string)
 		if !ok {
-			errs.WrappingErrPrintRedir(w, r, data.RequestErrorURL, data.NotExistErr, "msCode")
+			errs.NewErrWrapPrintRedir(w, r, data.RequestErrorURL, data.NotExistErr, "msCode")
 			return
 		}
 
 		if userCode != msCode {
-			errs.WrappingErrPrintRedir(w, r, data.WrongCodeURL, "not match 'userCode'", "msCode")
+			errs.NewErrWrapPrintRedir(w, r, data.WrongCodeURL, "not match 'userCode'", "msCode")
 			return
 		}
 

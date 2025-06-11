@@ -8,10 +8,11 @@ const (
 	RequestErrorURL = "/request_error"
 	BadSignInURL    = "/bad_sign_in"
 	BadSignUpURL    = "/bad_sign_up"
+	BadEmailURL     = "/bad_email"
 	UserNotExistURL = "/user_not_exist"
 	WrongCodeURL    = "/wrong_code"
 	AlreadyExistURL = "/already_exist"
 
 	NotExistErr = "not exist"
-	InvalidErr = "invalid"
+	InvalidErr  = "invalid"
 )

@@ -13,7 +13,7 @@ func WrappedErrPrintRedir(w http.ResponseWriter, r *http.Request,
 	http.Redirect(w, r, path, http.StatusFound)
 }
 
-func WithStackingErrPrintRedir(w http.ResponseWriter, r *http.Request,
+func OrigErrWrapPrintRedir(w http.ResponseWriter, r *http.Request,
 	path string, err error) error {
 	WithStackedErr := errors.WithStack(err)
 	log.Printf("%+v", WithStackedErr)
@@ -23,10 +23,10 @@ func WithStackingErrPrintRedir(w http.ResponseWriter, r *http.Request,
 	return WithStackedErr
 }
 
-func WrappingErrPrintRedir(w http.ResponseWriter, r *http.Request,
+func NewErrWrapPrintRedir(w http.ResponseWriter, r *http.Request,
 	path string, err string, key string) error {
-	newErr := errors.New(err)
-	wrappedErr := errors.Wrap(newErr, key)
+	newErr := errors.New(key + ": " + err)
+	wrappedErr := errors.WithStack(newErr)
 	log.Printf("%+v", wrappedErr)
 	if path != "" {
 		http.Redirect(w, r, path, http.StatusFound)

@@ -26,13 +26,16 @@ func main() {
 	initEnv()
 	initStore()
 	initDB()
+
+	defer data.DB.Close()
+
 	r := initRouter()
-	
+
 	serverStart(r)
 }
 
 func initEnv() {
-	err := godotenv.Load(".env")
+	err := godotenv.Load("../.env")
 	if err != nil {
 		wrappedErr := errors.WithStack(err)
 		log.Printf("%+v", wrappedErr)
@@ -58,7 +61,7 @@ func initEnv() {
 }
 
 func initStore() {
-	sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
+	store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
 }
 
 func initDB() {
@@ -68,12 +71,10 @@ func initDB() {
 		log.Printf("%+v", wrappedErr)
 		return
 	}
-	defer data.DB.Close()
 }
 
 func initRouter() *chi.Mux {
 	r := chi.NewRouter()
-	r.Use(auth.IsExpiredTokenMW(store))
 
 	r.Get("/", authStart)
 
@@ -83,6 +84,7 @@ func initRouter() *chi.Mux {
 	r.Post("/user_add", auth.UserAdd(store))
 
 	r.Get(data.BadSignUpURL, data.BadSignUp)
+	r.Get(data.BadEmailURL, data.BadEmail)
 	r.Get(data.WrongCodeURL, data.WrongCode)
 	r.Get(data.UserNotExistURL, data.UserNotExist)
 
@@ -121,8 +123,10 @@ func authStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// проверить что все секреты есть убрать проверку секрета
-	//убедиться что если куки есть то значение тоже есть
+	if httpCookie.Value == "" {
+		http.Redirect(w, r, signUpURL, http.StatusFound)
+		return
+	}
 
 	token, err := tools.IsValidToken(w, r)
 	if token == nil && err != nil {
@@ -130,13 +134,8 @@ func authStart(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, logInURL, http.StatusFound)
 		return
 	}
-	if token == nil && err == nil {
-		newErr := errors.New(data.NotExistErr)
-		wrappedErr := errors.Wrap(newErr, "'tokenSecret'")
-		log.Printf("%+v", wrappedErr)
-		return
-	}
 
 	w.Header().Set("auth", httpCookie.Value)
+
 	http.Redirect(w, r, data.HomeURL, http.StatusFound)
 }

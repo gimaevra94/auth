@@ -41,7 +41,7 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 					lastActivity := session.Values["lastActivity"].(time.Time)
 
 					if time.Since(lastActivity) > 3*time.Hour {
-						errs.WrappingErrPrintRedir(w, r, "", "session ended", "")
+						errs.NewErrWrapPrintRedir(w, r, "", "session ended", "")
 						logout(w, r, store)
 						return
 					}
@@ -62,14 +62,14 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 func logout(w http.ResponseWriter, r *http.Request, store *sessions.CookieStore) {
 	session, err := store.Get(r, "auth")
 	if err != nil {
-		errs.WithStackingErrPrintRedir(w, r, data.RequestErrorURL, err)
+		errs.OrigErrWrapPrintRedir(w, r, data.RequestErrorURL, err)
 		return
 	}
 
 	session.Options.MaxAge = -1
 	err = session.Save(r, w)
 	if err != nil {
-		errs.WithStackingErrPrintRedir(w, r, data.RequestErrorURL, err)
+		errs.OrigErrWrapPrintRedir(w, r, data.RequestErrorURL, err)
 		return
 	}
 

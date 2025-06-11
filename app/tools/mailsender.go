@@ -22,7 +22,7 @@ func MailSendler(w http.ResponseWriter, r *http.Request, email string) (string, 
 	passwordFilePath := os.Getenv("MAIL_PASSWORD_FILE")
 	password, err := os.ReadFile(passwordFilePath)
 	if err != nil {
-		return "", errs.WithStackingErrPrintRedir(w, r, "", err)
+		return "", errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
 	host := "smtp.yandex.ru"
@@ -34,7 +34,7 @@ func MailSendler(w http.ResponseWriter, r *http.Request, email string) (string, 
 
 	err = smtp.SendMail(addr, auth, from, to, msg)
 	if err != nil {
-		return "", errs.WithStackingErrPrintRedir(w, r, "", err)
+		return "", errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
 	return msCode, nil

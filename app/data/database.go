@@ -15,10 +15,10 @@ import (
 var DB *sql.DB
 
 const (
-	selectQuery      = "select passwordHash from users where email = ? limit 1"
-	insertQuery      = "insert into users (email,login,passwordHash) values(?,?,?)"
-	yauthSelectQuery = "select email from users where email = ? limit 1"
-	yauthInsertQuery = "insert into users (email,login) values(?,?)"
+	selectQuery      = "select passwordHash from user where email = ? limit 1"
+	insertQuery      = "insert into user (email,login,passwordHash) values(?,?,?)"
+	yauthSelectQuery = "select email from user where email = ? limit 1"
+	yauthInsertQuery = "insert into user (email,login) values(?,?)"
 )
 
 func DBConn() error {
@@ -44,7 +44,8 @@ func DBConn() error {
 		DBName: "db",
 	}
 
-	DB, err := sql.Open("mysql", cfg.FormatDSN())
+	var err error
+	DB, err = sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
 		WithStackedErr := errors.WithStack(err)
 		log.Printf("%+v", WithStackedErr)
@@ -64,7 +65,7 @@ func DBConn() error {
 
 func UserCheck(w http.ResponseWriter, r *http.Request, user User) error {
 	if err := DB.Ping(); err != nil {
-		return errs.WithStackingErrPrintRedir(w, r, "", err)
+		return errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
 	email := user.GetEmail()
@@ -74,16 +75,16 @@ func UserCheck(w http.ResponseWriter, r *http.Request, user User) error {
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return errs.WrappingErrPrintRedir(w, r, "", NotExistErr, "user")
+			return errs.OrigErrWrapPrintRedir(w, r, "", err)
 		}
-		return errs.WithStackingErrPrintRedir(w, r, "", err)
+		return errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
 	password := user.GetPassword()
 	err = bcrypt.CompareHashAndPassword([]byte(passwordHash),
 		[]byte(password))
 	if err != nil {
-		return errs.WithStackingErrPrintRedir(w, r, "", err)
+		return errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
 	return nil
@@ -92,7 +93,7 @@ func UserCheck(w http.ResponseWriter, r *http.Request, user User) error {
 
 func UserAdd(w http.ResponseWriter, r *http.Request, user User) error {
 	if err := DB.Ping(); err != nil {
-		return errs.WithStackingErrPrintRedir(w, r, "", err)
+		return errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
 	login := user.GetLogin()
@@ -102,12 +103,12 @@ func UserAdd(w http.ResponseWriter, r *http.Request, user User) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password),
 		bcrypt.DefaultCost)
 	if err != nil {
-		return errs.WithStackingErrPrintRedir(w, r, "", err)
+		return errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
 	_, err = DB.Exec(insertQuery, login, email, hashedPassword)
 	if err != nil {
-		return errs.WithStackingErrPrintRedir(w, r, "", err)
+		return errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
 	return nil
@@ -115,7 +116,7 @@ func UserAdd(w http.ResponseWriter, r *http.Request, user User) error {
 
 func YauthUserCheck(w http.ResponseWriter, r *http.Request, user User) error {
 	if err := DB.Ping(); err != nil {
-		return errs.WithStackingErrPrintRedir(w, r, "", err)
+		return errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
 	email := user.GetEmail()
@@ -125,9 +126,9 @@ func YauthUserCheck(w http.ResponseWriter, r *http.Request, user User) error {
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return errs.WrappingErrPrintRedir(w, r, "", NotExistErr, "user")
+			return errs.NewErrWrapPrintRedir(w, r, "", NotExistErr, "user")
 		}
-		return errs.WithStackingErrPrintRedir(w, r, "", err)
+		return errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
 	return nil
@@ -139,7 +140,7 @@ func YauthUserAdd(w http.ResponseWriter, r *http.Request, user User) error {
 
 	_, err := DB.Exec(yauthInsertQuery, login, email)
 	if err != nil {
-		return errs.WithStackingErrPrintRedir(w, r, "", err)
+		return errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
 	return nil

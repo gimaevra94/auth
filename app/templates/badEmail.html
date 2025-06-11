@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Request Error</title>
+    <title>Invalid Email</title>
     <style>
         :root {
             --primary-color: #2563eb;
@@ -58,6 +58,31 @@
             color: #9ca3af;
         }
 
+        .requirements {
+            text-align: left;
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: var(--input-bg);
+            border-radius: 4px;
+        }
+
+        .requirements h2 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-color);
+        }
+
+        .requirements ul {
+            list-style: none;
+            padding-left: 1rem;
+        }
+
+        .requirements li {
+            color: #9ca3af;
+            margin-bottom: 0.25rem;
+            font-size: 0.9rem;
+        }
+
         .btn {
             display: inline-block;
             padding: 0.75rem 1.5rem;
@@ -96,11 +121,23 @@
             <line x1="12" y1="8" x2="12" y2="12" />
             <line x1="12" y1="16" x2="12.01" y2="16" />
         </svg>
-        <h1>Request Error</h1>
-        <p class="message">An error occurred while processing your request. Please try again later or contact support.
-        </p>
+        <h1>Invalid Email</h1>
+        <p class="message">Please check the following requirements for your email address:</p>
+
+        <div class="requirements">
+            <h2>Email Requirements:</h2>
+            <ul>
+                <li>• Must contain only Latin letters (a-z, A-Z), numbers (0-9), and allowed special characters: . _ % + -</li>
+                <li>• Must contain exactly one "@" symbol</li>
+                <li>• Must have a valid domain name after "@" (letters, numbers, hyphens, dots)</li>
+                <li>• Domain must end with a dot and at least two Latin letters (e.g., .com, .ru, .org)</li>
+                <li>• No spaces or invalid characters allowed</li>
+            </ul>
+        </div>
+
         <div>
-            <a href="javascript:history.back()" class="btn btn-secondary">Back</a>
+            <a href="/sign_up" class="btn">Try Again</a>
+            <a href="/log_in" class="btn btn-secondary">Sign In</a>
         </div>
     </div>
 </body>

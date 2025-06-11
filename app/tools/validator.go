@@ -13,27 +13,23 @@ import (
 var (
 	loginRegex    = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ0-9]{3,30}$`)
 	emailRegex    = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$`)
-	passwordRegex = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ\d!@#$%^&*]{3,30}$`)
+	passwordRegex = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ\d!@#$%^&*\-\)]{4,30}$`)
 )
 
 func IsValidToken(w http.ResponseWriter, r *http.Request) (*jwt.Token, error) {
-	tokenSecret := os.Getenv("JWT_SECRET")
-	if tokenSecret == "" {
-		return nil, nil
-	}
-
-	cookie, _ := r.Cookie("auth")
-	tokenValue := cookie.Value
+	httpCookie, _ := r.Cookie("auth")
+	tokenValue := httpCookie.Value
 	token, err := jwt.Parse(tokenValue, func(t *jwt.Token) (interface{}, error) {
+		tokenSecret := os.Getenv("JWT_SECRET")
 		return []byte(tokenSecret), nil
 	})
 
 	if err != nil {
-		return nil, errs.WithStackingErrPrintRedir(w, r, "", err)
+		return nil, errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
 	if !token.Valid {
-		return nil, errs.WrappingErrPrintRedir(w, r, "", data.InvalidErr, "token")
+		return nil, errs.NewErrWrapPrintRedir(w, r, "", data.InvalidErr, "token")
 	}
 
 	return token, nil
@@ -47,25 +43,25 @@ func IsValidInput(w http.ResponseWriter, r *http.Request) (data.User, error) {
 	password := r.FormValue("password")
 
 	if login == "" {
-		return nil, errs.WrappingErrPrintRedir(w, r, "", data.NotExistErr,
+		return nil, errs.NewErrWrapPrintRedir(w, r, "", data.NotExistErr,
 			"login")
 	}
 	if !loginRegex.MatchString(login) {
-		return nil, errs.WrappingErrPrintRedir(w, r, "", data.InvalidErr, "login")
+		return nil, errs.NewErrWrapPrintRedir(w, r, "", data.InvalidErr, "login")
 	}
 
 	if email == "" {
-		return nil, errs.WrappingErrPrintRedir(w, r, "", data.NotExistErr, "email")
+		return nil, errs.NewErrWrapPrintRedir(w, r, "", data.NotExistErr, "email")
 	}
 	if !emailRegex.MatchString(email) {
-		return nil, errs.WrappingErrPrintRedir(w, r, "", data.InvalidErr, "email")
+		return nil, errs.NewErrWrapPrintRedir(w, r, "", data.InvalidErr, "email")
 	}
 
 	if password == "" {
-		return nil, errs.WrappingErrPrintRedir(w, r, "", data.NotExistErr, "password")
+		return nil, errs.NewErrWrapPrintRedir(w, r, "", data.NotExistErr, "password")
 	}
 	if !passwordRegex.MatchString(password) {
-		return nil, errs.WrappingErrPrintRedir(w, r, "", data.InvalidErr, "password")
+		return nil, errs.NewErrWrapPrintRedir(w, r, "", data.InvalidErr, "password")
 	}
 
 	validatedLoginInput := data.NewUser(

@@ -37,19 +37,19 @@ func YandexCallbackHandler(store *sessions.CookieStore) http.HandlerFunc {
 		yaCode := r.URL.Query().Get("code")
 
 		if yaCode == "" {
-			errs.WrappingErrPrintRedir(w, r, data.RequestErrorURL, data.NotExistErr, "code")
+			errs.NewErrWrapPrintRedir(w, r, data.RequestErrorURL, data.NotExistErr, "code")
 			return
 		}
 
 		token, err := getAccessToken(w, r, yaCode)
 		if err != nil {
-			errs.WithStackingErrPrintRedir(w, r, data.RequestErrorURL, err)
+			errs.OrigErrWrapPrintRedir(w, r, data.RequestErrorURL, err)
 			return
 		}
 
 		user, err := getUserInfo(w, r, token)
 		if err != nil {
-			errs.WithStackingErrPrintRedir(w, r, data.RequestErrorURL, err)
+			errs.OrigErrWrapPrintRedir(w, r, data.RequestErrorURL, err)
 			return
 		}
 
@@ -72,13 +72,13 @@ func YandexCallbackHandler(store *sessions.CookieStore) http.HandlerFunc {
 
 		cookie, err := r.Cookie("auth")
 		if err != nil {
-			errs.WithStackingErrPrintRedir(w, r, data.RequestErrorURL, err)
+			errs.OrigErrWrapPrintRedir(w, r, data.RequestErrorURL, err)
 			return
 		}
 
 		err = tools.SessionUserSetMarshal(w, r, store, user)
 		if err != nil {
-			errs.WithStackingErrPrintRedir(w, r, "", err)
+			errs.OrigErrWrapPrintRedir(w, r, "", err)
 		}
 
 		w.Header().Set("auth", cookie.Value)
@@ -97,24 +97,24 @@ func getAccessToken(w http.ResponseWriter, r *http.Request, yaCode string) (stri
 
 	resp, err := http.PostForm(tokenURL, tokenParams)
 	if err != nil {
-		return "", errs.WithStackingErrPrintRedir(w, r, "", err)
+		return "", errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", errs.WithStackingErrPrintRedir(w, r, "", err)
+		return "", errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
 	var result map[string]interface{}
 	err = json.Unmarshal(body, &result)
 	if err != nil {
-		return "", errs.WithStackingErrPrintRedir(w, r, "", err)
+		return "", errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
 	accessToken, ok := result["access_token"].(string)
 	if !ok {
-		return "", errs.WrappingErrPrintRedir(w, r, "", data.NotExistErr, "'access_token'")
+		return "", errs.NewErrWrapPrintRedir(w, r, "", data.NotExistErr, "'access_token'")
 	}
 
 	return accessToken, nil
@@ -123,26 +123,26 @@ func getAccessToken(w http.ResponseWriter, r *http.Request, yaCode string) (stri
 func getUserInfo(w http.ResponseWriter, r *http.Request, accessToken string) (data.User, error) {
 	req, err := http.NewRequest("GET", userInfoURL, nil)
 	if err != nil {
-		return nil, errs.WithStackingErrPrintRedir(w, r, "", err)
+		return nil, errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
 	req.Header.Set("Authorization", "OAuth "+accessToken)
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, errs.WithStackingErrPrintRedir(w, r, "", err)
+		return nil, errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errs.WithStackingErrPrintRedir(w, r, "", err)
+		return nil, errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
 	var user data.User
 	err = json.Unmarshal(body, &user)
 	if err != nil {
-		return nil, errs.WithStackingErrPrintRedir(w, r, "", err)
+		return nil, errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
 	return user, nil
