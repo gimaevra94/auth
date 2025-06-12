@@ -38,7 +38,7 @@ func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
 		err = data.UserCheck(w, r, validatedLoginInput)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				err := tools.SessionUserSetMarshal(w, r, store, validatedLoginInput)
+				err := tools.SessionUserSet(w, r, store, validatedLoginInput)
 				if err != nil {
 					errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
 					return
@@ -63,7 +63,7 @@ func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
 func CodeSend(store *sessions.CookieStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "codeSend.html")
-		session, user, err := tools.SessionUserGetUnmarshal(w, r, store)
+		session, user, err := tools.SessionUserGet(w, r, store)
 		if err != nil {
 			errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
 			return
@@ -86,7 +86,7 @@ func CodeSend(store *sessions.CookieStore) http.HandlerFunc {
 
 func UserAdd(store *sessions.CookieStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		session, user, err := tools.SessionUserGetUnmarshal(w, r, store)
+		session, user, err := tools.SessionUserGet(w, r, store)
 		if err != nil {
 			errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
 			return

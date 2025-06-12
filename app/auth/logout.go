@@ -31,7 +31,7 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 			if exp != noExpiration {
 				expUnix := time.Unix(int64(exp), 0)
 
-				session, user, err := tools.SessionUserGetUnmarshal(w, r, store)
+				session, user, err := tools.SessionUserGet(w, r, store)
 				if err != nil {
 					errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
 					return

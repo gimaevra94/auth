@@ -1,6 +1,8 @@
 package data
 
-import "net/http"
+import (
+	"net/http"
+)
 
 type user struct {
 	ID       string `sql:"id" json:"id"`
@@ -9,16 +11,16 @@ type user struct {
 	Password string `sql:"password" json:"password"`
 }
 
-func (v *user) GetLogin() string {
-	return v.Login
+func (u *user) GetLogin() string {
+	return u.Login
 }
 
-func (v *user) GetEmail() string {
-	return v.Email
+func (u *user) GetEmail() string {
+	return u.Email
 }
 
-func (v *user) GetPassword() string {
-	return v.Password
+func (u *user) GetPassword() string {
+	return u.Password
 }
 
 type User interface {

@@ -10,30 +10,7 @@ import (
 	"github.com/gorilla/sessions"
 )
 
-func SessionUserGetUnmarshal(w http.ResponseWriter, r *http.Request,
-	store *sessions.CookieStore) (*sessions.Session, data.User, error) {
-
-	session, err := store.Get(r, "auth")
-	if err != nil {
-		return nil, nil, errs.OrigErrWrapPrintRedir(w, r, "", err)
-	}
-
-	jsonData, ok := session.Values["user"].([]byte)
-	if !ok {
-		return nil, nil, errs.NewErrWrapPrintRedir(w, r, "", data.NotExistErr, "user")
-	}
-
-	var user data.User
-	err = json.Unmarshal([]byte(jsonData), &user)
-	if err != nil {
-		return nil, nil, errs.OrigErrWrapPrintRedir(w, r, "", err)
-
-	}
-
-	return session, user, nil
-}
-
-func SessionUserSetMarshal(w http.ResponseWriter, r *http.Request,
+func SessionUserSet(w http.ResponseWriter, r *http.Request,
 	store *sessions.CookieStore, user data.User) error {
 
 	session, err := store.Get(r, "auth")
@@ -53,6 +30,37 @@ func SessionUserSetMarshal(w http.ResponseWriter, r *http.Request,
 	}
 
 	return nil
+}
+
+func SessionUserGet(w http.ResponseWriter, r *http.Request,
+	store *sessions.CookieStore) (*sessions.Session, data.User, error) {
+
+	session, err := store.Get(r, "auth")
+	if err != nil {
+		return nil, nil, errs.OrigErrWrapPrintRedir(w, r, "", err)
+	}
+
+	jsonData, ok := session.Values["user"].([]byte)
+	if !ok {
+		return nil, nil, errs.NewErrWrapPrintRedir(w, r, "", data.NotExistErr, "user")
+	}
+
+	var u struct {
+		ID       string `json:"id"`
+		Login    string `json:"login"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	err = json.Unmarshal([]byte(jsonData), &u)
+	if err != nil {
+		return nil, nil, errs.OrigErrWrapPrintRedir(w, r, "", err)
+
+	}
+
+	user := data.NewUser(u.ID, u.Login, u.Email, u.Password)
+
+	return session, user, nil
 }
 
 func SetlastActivityKeyForSession(w http.ResponseWriter, r *http.Request,
