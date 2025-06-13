@@ -123,26 +123,26 @@ func getAccessToken(w http.ResponseWriter, r *http.Request, yaCode string) (stri
 func getUserInfo(w http.ResponseWriter, r *http.Request, accessToken string) (data.User, error) {
 	req, err := http.NewRequest("GET", userInfoURL, nil)
 	if err != nil {
-		return nil, errs.OrigErrWrapPrintRedir(w, r, "", err)
+		return data.User{}, errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
 	req.Header.Set("Authorization", "OAuth "+accessToken)
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, errs.OrigErrWrapPrintRedir(w, r, "", err)
+		return data.User{}, errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errs.OrigErrWrapPrintRedir(w, r, "", err)
+		return data.User{}, errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
 	var user data.User
 	err = json.Unmarshal(body, &user)
 	if err != nil {
-		return nil, errs.OrigErrWrapPrintRedir(w, r, "", err)
+		return data.User{}, errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
 	return user, nil

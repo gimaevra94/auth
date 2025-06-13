@@ -43,32 +43,33 @@ func IsValidInput(w http.ResponseWriter, r *http.Request) (data.User, error) {
 	password := r.FormValue("password")
 
 	if login == "" {
-		return nil, errs.NewErrWrapPrintRedir(w, r, "", data.NotExistErr,
+		return data.User{}, errs.NewErrWrapPrintRedir(w, r, "", data.NotExistErr,
 			"login")
 	}
 	if !loginRegex.MatchString(login) {
-		return nil, errs.NewErrWrapPrintRedir(w, r, "", data.InvalidErr, "login")
+		return data.User{}, errs.NewErrWrapPrintRedir(w, r, "", data.InvalidErr, "login")
 	}
 
 	if email == "" {
-		return nil, errs.NewErrWrapPrintRedir(w, r, "", data.NotExistErr, "email")
+		return data.User{}, errs.NewErrWrapPrintRedir(w, r, "", data.NotExistErr, "email")
 	}
 	if !emailRegex.MatchString(email) {
-		return nil, errs.NewErrWrapPrintRedir(w, r, "", data.InvalidErr, "email")
+		return data.User{}, errs.NewErrWrapPrintRedir(w, r, "", data.InvalidErr, "email")
 	}
 
 	if password == "" {
-		return nil, errs.NewErrWrapPrintRedir(w, r, "", data.NotExistErr, "password")
+		return data.User{}, errs.NewErrWrapPrintRedir(w, r, "", data.NotExistErr, "password")
 	}
 	if !passwordRegex.MatchString(password) {
-		return nil, errs.NewErrWrapPrintRedir(w, r, "", data.InvalidErr, "password")
+		return data.User{}, errs.NewErrWrapPrintRedir(w, r, "", data.InvalidErr, "password")
 	}
 
-	validatedLoginInput := data.NewUser(
-		id,
-		login,
-		email,
-		password,
-	)
+	validatedLoginInput := data.User{
+		ID:       id,
+		Login:    login,
+		Email:    email,
+		Password: password,
+	}
+
 	return validatedLoginInput, nil
 }

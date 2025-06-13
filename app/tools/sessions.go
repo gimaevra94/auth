@@ -37,28 +37,20 @@ func SessionUserGet(w http.ResponseWriter, r *http.Request,
 
 	session, err := store.Get(r, "auth")
 	if err != nil {
-		return nil, nil, errs.OrigErrWrapPrintRedir(w, r, "", err)
+		return nil, data.User{}, errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
 	jsonData, ok := session.Values["user"].([]byte)
 	if !ok {
-		return nil, nil, errs.NewErrWrapPrintRedir(w, r, "", data.NotExistErr, "user")
+		return nil, data.User{}, errs.NewErrWrapPrintRedir(w, r, "", data.NotExistErr, "user")
 	}
 
-	var u struct {
-		ID       string `json:"id"`
-		Login    string `json:"login"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
-
-	err = json.Unmarshal([]byte(jsonData), &u)
+	var user data.User
+	err = json.Unmarshal([]byte(jsonData), &user)
 	if err != nil {
-		return nil, nil, errs.OrigErrWrapPrintRedir(w, r, "", err)
+		return nil, data.User{}, errs.OrigErrWrapPrintRedir(w, r, "", err)
 
 	}
-
-	user := data.NewUser(u.ID, u.Login, u.Email, u.Password)
 
 	return session, user, nil
 }

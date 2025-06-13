@@ -11,10 +11,9 @@ import (
 )
 
 func TokenCreate(w http.ResponseWriter, r *http.Request, command string,
-	value data.User) error {
+	user data.User) error {
 
 	var token *jwt.Token
-	user := value.GetLogin()
 
 	switch command {
 	case "false":

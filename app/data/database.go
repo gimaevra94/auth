@@ -68,8 +68,7 @@ func UserCheck(w http.ResponseWriter, r *http.Request, user User) error {
 		return errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
-	email := user.GetEmail()
-	row := DB.QueryRow(selectQuery, email)
+	row := DB.QueryRow(selectQuery, user.Email)
 	var passwordHash string
 	err := row.Scan(&passwordHash)
 
@@ -80,9 +79,8 @@ func UserCheck(w http.ResponseWriter, r *http.Request, user User) error {
 		return errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
-	password := user.GetPassword()
 	err = bcrypt.CompareHashAndPassword([]byte(passwordHash),
-		[]byte(password))
+		[]byte(user.Password))
 	if err != nil {
 		return errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
@@ -96,17 +94,13 @@ func UserAdd(w http.ResponseWriter, r *http.Request, user User) error {
 		return errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
-	login := user.GetLogin()
-	email := user.GetEmail()
-	password := user.GetPassword()
-
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password),
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password),
 		bcrypt.DefaultCost)
 	if err != nil {
 		return errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
-	_, err = DB.Exec(insertQuery, login, email, hashedPassword)
+	_, err = DB.Exec(insertQuery, user.Login, user.Email, hashedPassword)
 	if err != nil {
 		return errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
@@ -119,8 +113,7 @@ func YauthUserCheck(w http.ResponseWriter, r *http.Request, user User) error {
 		return errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}
 
-	email := user.GetEmail()
-	row := DB.QueryRow(yauthSelectQuery, email)
+	row := DB.QueryRow(yauthSelectQuery, user.Email)
 	var existingEmail string
 	err := row.Scan(&existingEmail)
 
@@ -135,10 +128,7 @@ func YauthUserCheck(w http.ResponseWriter, r *http.Request, user User) error {
 }
 
 func YauthUserAdd(w http.ResponseWriter, r *http.Request, user User) error {
-	login := user.GetLogin()
-	email := user.GetEmail()
-
-	_, err := DB.Exec(yauthInsertQuery, login, email)
+	_, err := DB.Exec(yauthInsertQuery, user.Login, user.Email)
 	if err != nil {
 		return errs.OrigErrWrapPrintRedir(w, r, "", err)
 	}

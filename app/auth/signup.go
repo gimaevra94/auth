@@ -69,8 +69,7 @@ func CodeSend(store *sessions.CookieStore) http.HandlerFunc {
 			return
 		}
 
-		email := user.GetEmail()
-		msCode, err := tools.MailSendler(w, r, email)
+		msCode, err := tools.MailSendler(w, r, user.Email)
 		if err != nil {
 			errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
 			return

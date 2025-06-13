@@ -4,38 +4,11 @@ import (
 	"net/http"
 )
 
-type user struct {
+type User struct {
 	ID       string `sql:"id" json:"id"`
 	Login    string `sql:"login" json:"login"`
 	Email    string `sql:"email" json:"email"`
 	Password string `sql:"password" json:"password"`
-}
-
-func (u *user) GetLogin() string {
-	return u.Login
-}
-
-func (u *user) GetEmail() string {
-	return u.Email
-}
-
-func (u *user) GetPassword() string {
-	return u.Password
-}
-
-type User interface {
-	GetLogin() string
-	GetEmail() string
-	GetPassword() string
-}
-
-func NewUser(id, login, email, password string) User {
-	return &user{
-		ID:       id,
-		Login:    login,
-		Email:    email,
-		Password: password,
-	}
 }
 
 type cookie struct {
