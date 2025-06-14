@@ -23,18 +23,6 @@ const (
 
 func DBConn() error {
 	dbPassword := []byte(os.Getenv("DB_PASSWORD"))
-	if len(dbPassword) == 0 {
-		newErr := errors.New(NotExistErr)
-		wrappedErr := errors.Wrapf(newErr, "dbPassword")
-		log.Printf("%+v", wrappedErr)
-		return wrappedErr
-	}
-
-	defer func() {
-		for i := range dbPassword {
-			dbPassword[i] = 0
-		}
-	}()
 
 	cfg := mysql.Config{
 		User:   "root",

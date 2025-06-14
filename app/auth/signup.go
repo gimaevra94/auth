@@ -62,7 +62,7 @@ func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
 
 func CodeSend(store *sessions.CookieStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "codeSend.html")
+		data.CodeSend(w,r)
 		session, user, err := tools.SessionUserGet(w, r, store)
 		if err != nil {
 			errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)

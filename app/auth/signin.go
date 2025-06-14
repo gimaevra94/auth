@@ -17,20 +17,22 @@ func LogIn(store *sessions.CookieStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		rememberMe := r.FormValue("'rememberMe'")
 		if rememberMe == "" {
-			errs.NewErrWrapPrintRedir(w, r, data.RequestErrorURL,
-				data.NotExistErr, "'rememberMe'")
+			log.Printf("%+v", errors.WithStack(errors.New("rememberMe: "+data.NotExistErr)))
+			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 			return
 		}
 
 		session, err := store.Get(r, "auth")
 		if err != nil {
-			errs.OrigErrWrapPrintRedir(w, r, data.RequestErrorURL, err)
+			log.Printf("%+v", err)
+			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 			return
 		}
 
 		cookie, err := r.Cookie("auth")
 		if err != nil {
-			errs.OrigErrWrapPrintRedir(w, r, data.RequestErrorURL, err)
+			log.Printf("%+v", err)
+			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 			return
 		}
 

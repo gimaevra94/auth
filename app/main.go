@@ -37,8 +37,7 @@ func main() {
 func initEnv() {
 	err := godotenv.Load("../.env")
 	if err != nil {
-		wrappedErr := errors.WithStack(err)
-		log.Printf("%+v", wrappedErr)
+		log.Printf("%+v", errors.WithStack(err))
 		return
 	}
 
@@ -47,14 +46,12 @@ func initEnv() {
 		"JWT_SECRET",
 		"DB_PASSWORD",
 		"MAIL_SENDER_EMAIL",
-		"MAIL_PASSWORD_FILE",
+		"MAIL_PASSWORD",
 	}
 
 	for _, v := range envVars {
 		if os.Getenv(v) == "" {
-			newErr := errors.New(data.NotExistErr)
-			wrappedErr := errors.Wrap(newErr, v)
-			log.Printf("%+v", wrappedErr)
+			log.Printf("%+v", errors.WithStack(errors.New(v+": "+data.NotExistErr)))
 			return
 		}
 	}
@@ -67,8 +64,7 @@ func initStore() {
 func initDB() {
 	err := data.DBConn()
 	if err != nil {
-		wrappedErr := errors.WithStack(err)
-		log.Printf("%+v", wrappedErr)
+		log.Printf("%+v", errors.WithStack(err))
 		return
 	}
 }
@@ -107,9 +103,8 @@ func initRouter() *chi.Mux {
 func serverStart(r *chi.Mux) {
 	err := http.ListenAndServe(":8080", r)
 	if err != nil {
-		wrappedErr := errors.WithStack(err)
-		log.Printf("%+v", wrappedErr)
-		log.Fatal(wrappedErr)
+		log.Printf("%+v", errors.WithStack(err))
+		return
 	}
 }
 
@@ -119,23 +114,24 @@ func authStart(w http.ResponseWriter, r *http.Request) {
 		dataCookie := data.NewCookie()
 		httpCookie := dataCookie.GetCookie()
 		http.SetCookie(w, httpCookie)
+
+		log.Printf("%+v", errors.WithStack(err))
 		http.Redirect(w, r, signUpURL, http.StatusFound)
 		return
 	}
 
 	if httpCookie.Value == "" {
+		errors.WithStack(errors.New("token: " + data.NotExistErr))
 		http.Redirect(w, r, signUpURL, http.StatusFound)
 		return
 	}
 
-	token, err := tools.IsValidToken(w, r)
-	if token == nil && err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, logInURL, http.StatusFound)
+	_, err = tools.IsValidToken(w, r)
+	if err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		http.Redirect(w, r, signUpURL, http.StatusFound)
 		return
 	}
-
-	w.Header().Set("auth", httpCookie.Value)
 
 	http.Redirect(w, r, data.HomeURL, http.StatusFound)
 }

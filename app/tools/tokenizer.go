@@ -47,7 +47,5 @@ func TokenCreate(w http.ResponseWriter, r *http.Request, command string,
 	httpCookie := dataCookie.GetCookie()
 	http.SetCookie(w, httpCookie)
 
-	w.Header().Set("auth", httpCookie.Value)
-
 	return nil
 }

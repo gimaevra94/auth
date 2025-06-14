@@ -66,3 +66,7 @@ func UserNotExist(w http.ResponseWriter, r *http.Request) {
 func WrongCode(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, templatesPath+"wrongCode.html")
 }
+
+func CodeSend(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, templatesPath+"codeSend.html")
+}
