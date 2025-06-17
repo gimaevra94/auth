@@ -161,11 +161,13 @@
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" required autocomplete="current-password">
             </div>
-            <div class="checkbox-group">
-                <input type="checkbox" id="rememberMe" name="rememberMe" value="true">
-                <label for="rememberMe">Remember me</label>
+            <div class="form-group" style="margin-top:1em;">
+                <input type="hidden" name="rememberMe" value="false">
+                <label style="display:flex;align-items:center;gap:0.5em;">
+                    <input type="checkbox" name="rememberMe" value="true">
+                    Remember me
+                </label>
             </div>
-            <input type="hidden" name="rememberMe" value="false">
             <button type="submit" class="btn">Sign In</button>
         </form>
         <div class="divider">

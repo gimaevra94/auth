@@ -6,8 +6,8 @@ import (
 	"regexp"
 
 	"github.com/gimaevra94/auth/app/data"
-	"github.com/gimaevra94/auth/app/errs"
 	"github.com/golang-jwt/jwt"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -25,11 +25,12 @@ func IsValidToken(w http.ResponseWriter, r *http.Request) (*jwt.Token, error) {
 	})
 
 	if err != nil {
-		return nil, errs.OrigErrWrapPrintRedir(w, r, "", err)
+		return nil, errors.WithStack(err)
+
 	}
 
 	if !token.Valid {
-		return nil, errs.NewErrWrapPrintRedir(w, r, "", data.InvalidErr, "token")
+		return nil, errors.WithStack(errors.New("token: " + data.InvalidErr))
 	}
 
 	return token, nil
@@ -43,25 +44,24 @@ func IsValidInput(w http.ResponseWriter, r *http.Request) (data.User, error) {
 	password := r.FormValue("password")
 
 	if login == "" {
-		return data.User{}, errs.NewErrWrapPrintRedir(w, r, "", data.NotExistErr,
-			"login")
+		return data.User{}, errors.WithStack(errors.New("login: " + data.NotExistErr))
 	}
 	if !loginRegex.MatchString(login) {
-		return data.User{}, errs.NewErrWrapPrintRedir(w, r, "", data.InvalidErr, "login")
+		return data.User{}, errors.WithStack(errors.New("login: " + data.InvalidErr))
 	}
 
 	if email == "" {
-		return data.User{}, errs.NewErrWrapPrintRedir(w, r, "", data.NotExistErr, "email")
+		return data.User{}, errors.WithStack(errors.New("email: " + data.NotExistErr))
 	}
 	if !emailRegex.MatchString(email) {
-		return data.User{}, errs.NewErrWrapPrintRedir(w, r, "", data.InvalidErr, "email")
+		return data.User{}, errors.WithStack(errors.New("email: " + data.InvalidErr))
 	}
 
 	if password == "" {
-		return data.User{}, errs.NewErrWrapPrintRedir(w, r, "", data.NotExistErr, "password")
+		return data.User{}, errors.WithStack(errors.New("password: " + data.NotExistErr))
 	}
 	if !passwordRegex.MatchString(password) {
-		return data.User{}, errs.NewErrWrapPrintRedir(w, r, "", data.InvalidErr, "password")
+		return data.User{}, errors.WithStack(errors.New("password: " + data.InvalidErr))
 	}
 
 	validatedLoginInput := data.User{

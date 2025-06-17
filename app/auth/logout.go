@@ -55,7 +55,6 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 					}
 				}
 			}
-
 			next.ServeHTTP(w, r)
 		})
 	}

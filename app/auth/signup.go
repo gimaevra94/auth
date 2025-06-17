@@ -2,11 +2,11 @@ package auth
 
 import (
 	"database/sql"
+	"log"
 	"net/http"
 	"strings"
 
 	"github.com/gimaevra94/auth/app/data"
-	"github.com/gimaevra94/auth/app/errs"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/gorilla/sessions"
 	"github.com/pkg/errors"
@@ -22,16 +22,19 @@ func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
 				"login: "+data.InvalidErr) ||
 				strings.Contains(err.Error(),
 					"password: "+data.InvalidErr) {
-				errs.WrappedErrPrintRedir(w, r, data.BadSignUpURL, err)
+				log.Printf("%+v", err)
+				http.Redirect(w, r, data.BadSignUpURL, http.StatusFound)
 				return
 			}
 
 			if strings.Contains(err.Error(), "email: "+data.InvalidErr) {
-				errs.WrappedErrPrintRedir(w, r, data.BadEmailURL, err)
+				log.Printf("%+v", err)
+				http.Redirect(w, r, data.BadEmailURL, http.StatusFound)
 				return
 			}
 
-			errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
+			log.Printf("%+v", err)
+			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 			return
 		}
 
@@ -40,7 +43,8 @@ func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
 			if errors.Is(err, sql.ErrNoRows) {
 				err := tools.SessionUserSet(w, r, store, validatedLoginInput)
 				if err != nil {
-					errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
+					log.Printf("%+v", err)
+					http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 					return
 				}
 				http.Redirect(w, r, data.CodeSendURL, http.StatusFound)
@@ -48,11 +52,13 @@ func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
 			}
 
 			if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-				errs.WrappedErrPrintRedir(w, r, data.BadSignUpURL, err)
+				log.Printf("%+v", err)
+				http.Redirect(w, r, data.BadSignUpURL, http.StatusFound)
 				return
 			}
 
-			errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
+			log.Printf("%+v", err)
+			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 			return
 		}
 
@@ -62,23 +68,26 @@ func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
 
 func CodeSend(store *sessions.CookieStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		data.CodeSend(w,r)
+		data.CodeSend(w, r)
 		session, user, err := tools.SessionUserGet(w, r, store)
 		if err != nil {
-			errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
+			log.Printf("%+v", err)
+			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 			return
 		}
 
 		msCode, err := tools.MailSendler(w, r, user.Email)
 		if err != nil {
-			errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
+			log.Printf("%+v", err)
+			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 			return
 		}
 
-		session.Values["mscode"] = msCode
+		session.Values["msCode"] = msCode
 		err = session.Save(r, w)
 		if err != nil {
-			errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
+			log.Printf("%+v", errors.WithStack(err))
+			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 		}
 	}
 }
@@ -87,55 +96,55 @@ func UserAdd(store *sessions.CookieStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		session, user, err := tools.SessionUserGet(w, r, store)
 		if err != nil {
-			errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
+			log.Printf("%+v", err)
+			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 			return
 		}
 
 		rememberMe := r.FormValue("rememberMe")
 		if rememberMe == "" {
-			errs.NewErrWrapPrintRedir(w, r, data.RequestErrorURL, data.NotExistErr, "rememberMe")
+			log.Printf("%+v", errors.WithStack(errors.New("rememberMe: "+data.NotExistErr)))
+			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 			return
 		}
 
-		cookie, err := r.Cookie("auth")
-		if err != nil {
-			errs.OrigErrWrapPrintRedir(w, r, data.RequestErrorURL, err)
-			return
-		}
-
-		userCode := r.FormValue("user")
-		msCode, ok := session.Values["mscode"].(string)
+		userCode := r.FormValue("userCode")
+		msCode, ok := session.Values["msCode"].(string)
 		if !ok {
-			errs.NewErrWrapPrintRedir(w, r, data.RequestErrorURL, data.NotExistErr, "msCode")
+			log.Printf("%+v", errors.WithStack(errors.New("msCode: "+data.NotExistErr)))
+			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 			return
 		}
 
 		if userCode != msCode {
-			errs.NewErrWrapPrintRedir(w, r, data.WrongCodeURL, "not match 'userCode'", "msCode")
+			log.Printf("%+v", errors.WithStack(errors.New("msCode not match userCode")))
+			http.Redirect(w, r, data.WrongCodeURL, http.StatusFound)
 			return
 		}
 
 		err = data.UserAdd(w, r, user)
 		if err != nil {
-			errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
+			log.Printf("%+v", err)
+			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 			return
 		}
 
 		err = tools.TokenCreate(w, r, rememberMe, user)
 		if err != nil {
-			errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
+			log.Printf("%+v", err)
+			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 			return
 		}
 
 		if rememberMe == "false" {
 			err := tools.SetlastActivityKeyForSession(w, r, session)
 			if err != nil {
-				errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
+				log.Printf("%+v", err)
+				http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 				return
 			}
 		}
 
-		w.Header().Set("auth", cookie.Value)
 		http.Redirect(w, r, data.HomeURL, http.StatusFound)
 	}
 }

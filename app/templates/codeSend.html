@@ -120,9 +120,10 @@
         <h1>Verification</h1>
         <p class="message">We've sent a verification code to your email. Please enter it below.</p>
         <form method="POST" action="/user_add">
+            <input type="hidden" name="rememberMe" value="false">
             <div class="form-group">
-                <label for="code">Verification Code</label>
-                <input type="text" id="code" name="code" required maxlength="6" pattern="[0-9]*" inputmode="numeric">
+                <label for="userCode">Verification Code</label>
+                <input type="text" id="userCode" name="userCode" required maxlength="6" pattern="[0-9]*" inputmode="numeric">
             </div>
             <button type="submit" class="btn">Verify</button>
         </form>

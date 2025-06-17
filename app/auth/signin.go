@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/gimaevra94/auth/app/data"
-	"github.com/gimaevra94/auth/app/errs"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/gorilla/sessions"
 	"github.com/pkg/errors"
@@ -15,7 +14,7 @@ import (
 
 func LogIn(store *sessions.CookieStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		rememberMe := r.FormValue("'rememberMe'")
+		rememberMe := r.FormValue("rememberMe")
 		if rememberMe == "" {
 			log.Printf("%+v", errors.WithStack(errors.New("rememberMe: "+data.NotExistErr)))
 			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
@@ -24,37 +23,34 @@ func LogIn(store *sessions.CookieStore) http.HandlerFunc {
 
 		session, err := store.Get(r, "auth")
 		if err != nil {
-			log.Printf("%+v", err)
-			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
-			return
-		}
-
-		cookie, err := r.Cookie("auth")
-		if err != nil {
-			log.Printf("%+v", err)
+			log.Printf("%+v", errors.WithStack(err))
 			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 			return
 		}
 
 		validatedLoginInput, err := tools.IsValidInput(w, r)
 		if err != nil {
-			errs.WrappedErrPrintRedir(w, r, data.BadSignInURL, err)
+			log.Printf("%+v", err)
+			http.Redirect(w, r, data.BadSignInURL, http.StatusFound)
 			return
 		}
 
 		err = data.UserCheck(w, r, validatedLoginInput)
 		if err != nil {
 			if err == sql.ErrNoRows {
-				errs.WrappedErrPrintRedir(w, r, data.UserNotExistURL, err)
+				log.Printf("%+v", err)
+				http.Redirect(w, r, data.UserNotExistURL, http.StatusFound)
 				return
 			}
 
 			if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-				errs.WrappedErrPrintRedir(w, r, data.BadSignInURL, err)
+				log.Printf("%+v", err)
+				http.Redirect(w, r, data.BadSignInURL, http.StatusFound)
 				return
 			}
 
-			errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
+			log.Printf("%+v", err)
+			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 			return
 		}
 
@@ -68,12 +64,12 @@ func LogIn(store *sessions.CookieStore) http.HandlerFunc {
 		if rememberMe == "false" {
 			err := tools.SetlastActivityKeyForSession(w, r, session)
 			if err != nil {
-				errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
+				log.Printf("%+v", err)
+				http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 				return
 			}
 		}
 
-		w.Header().Set("auth", cookie.Value)
 		http.Redirect(w, r, data.HomeURL, http.StatusFound)
 	}
 }

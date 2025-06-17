@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/gimaevra94/auth/app/data"
-	"github.com/gimaevra94/auth/app/errs"
 	"github.com/golang-jwt/jwt"
+	"github.com/pkg/errors"
 )
 
 func TokenCreate(w http.ResponseWriter, r *http.Request, command string,
@@ -39,7 +39,7 @@ func TokenCreate(w http.ResponseWriter, r *http.Request, command string,
 
 	SignedToken, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
 	if err != nil {
-		return errs.OrigErrWrapPrintRedir(w, r, "", err)
+		return errors.WithStack(err)
 	}
 
 	dataCookie := data.NewCookie()

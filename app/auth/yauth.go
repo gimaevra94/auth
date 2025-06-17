@@ -4,13 +4,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 
 	"github.com/gimaevra94/auth/app/data"
-	"github.com/gimaevra94/auth/app/errs"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/gorilla/sessions"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -37,19 +38,22 @@ func YandexCallbackHandler(store *sessions.CookieStore) http.HandlerFunc {
 		yaCode := r.URL.Query().Get("code")
 
 		if yaCode == "" {
-			errs.NewErrWrapPrintRedir(w, r, data.RequestErrorURL, data.NotExistErr, "code")
+			log.Printf("%+v", errors.WithStack(errors.New("code: "+data.NotExistErr)))
+			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 			return
 		}
 
-		token, err := getAccessToken(w, r, yaCode)
+		token, err := getAccessToken(yaCode)
 		if err != nil {
-			errs.OrigErrWrapPrintRedir(w, r, data.RequestErrorURL, err)
+			log.Printf("%+v", err)
+			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 			return
 		}
 
-		user, err := getUserInfo(w, r, token)
+		user, err := getUserInfo(token)
 		if err != nil {
-			errs.OrigErrWrapPrintRedir(w, r, data.RequestErrorURL, err)
+			log.Printf("%+v", err)
+			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 			return
 		}
 
@@ -58,7 +62,8 @@ func YandexCallbackHandler(store *sessions.CookieStore) http.HandlerFunc {
 			if err == sql.ErrNoRows {
 				err = data.YauthUserAdd(w, r, user)
 				if err != nil {
-					errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
+					log.Printf("%+v", err)
+					http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 					return
 				}
 			}
@@ -66,27 +71,22 @@ func YandexCallbackHandler(store *sessions.CookieStore) http.HandlerFunc {
 
 		err = tools.TokenCreate(w, r, "true", user)
 		if err != nil {
-			errs.WrappedErrPrintRedir(w, r, data.RequestErrorURL, err)
-			return
-		}
-
-		cookie, err := r.Cookie("auth")
-		if err != nil {
-			errs.OrigErrWrapPrintRedir(w, r, data.RequestErrorURL, err)
+			log.Printf("%+v", err)
+			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 			return
 		}
 
 		err = tools.SessionUserSet(w, r, store, user)
 		if err != nil {
-			errs.OrigErrWrapPrintRedir(w, r, "", err)
+			log.Printf("%+v", err)
+			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 		}
 
-		w.Header().Set("auth", cookie.Value)
 		http.Redirect(w, r, data.HomeURL, http.StatusFound)
 	}
 }
 
-func getAccessToken(w http.ResponseWriter, r *http.Request, yaCode string) (string, error) {
+func getAccessToken(yaCode string) (string, error) {
 	tokenParams := url.Values{
 		"grant_type":    {"authorization_code"},
 		"code":          {yaCode},
@@ -97,52 +97,52 @@ func getAccessToken(w http.ResponseWriter, r *http.Request, yaCode string) (stri
 
 	resp, err := http.PostForm(tokenURL, tokenParams)
 	if err != nil {
-		return "", errs.OrigErrWrapPrintRedir(w, r, "", err)
+		return "", errors.WithStack(err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", errs.OrigErrWrapPrintRedir(w, r, "", err)
+		return "", errors.WithStack(err)
 	}
 
 	var result map[string]interface{}
 	err = json.Unmarshal(body, &result)
 	if err != nil {
-		return "", errs.OrigErrWrapPrintRedir(w, r, "", err)
+		return "", errors.WithStack(err)
 	}
 
 	accessToken, ok := result["access_token"].(string)
 	if !ok {
-		return "", errs.NewErrWrapPrintRedir(w, r, "", data.NotExistErr, "'access_token'")
+		return "", errors.WithStack(errors.New("access_token: " + data.NotExistErr))
 	}
 
 	return accessToken, nil
 }
 
-func getUserInfo(w http.ResponseWriter, r *http.Request, accessToken string) (data.User, error) {
+func getUserInfo(accessToken string) (data.User, error) {
 	req, err := http.NewRequest("GET", userInfoURL, nil)
 	if err != nil {
-		return data.User{}, errs.OrigErrWrapPrintRedir(w, r, "", err)
+		return data.User{}, errors.WithStack(err)
 	}
 
 	req.Header.Set("Authorization", "OAuth "+accessToken)
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return data.User{}, errs.OrigErrWrapPrintRedir(w, r, "", err)
+		return data.User{}, errors.WithStack(err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return data.User{}, errs.OrigErrWrapPrintRedir(w, r, "", err)
+		return data.User{}, errors.WithStack(err)
 	}
 
 	var user data.User
 	err = json.Unmarshal(body, &user)
 	if err != nil {
-		return data.User{}, errs.OrigErrWrapPrintRedir(w, r, "", err)
+		return data.User{}, errors.WithStack(err)
 	}
 
 	return user, nil

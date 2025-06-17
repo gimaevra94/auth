@@ -1,6 +1,8 @@
 package tools
 
 import (
+	"bytes"
+	"html/template"
 	"math/rand"
 	"net/http"
 	"net/smtp"
@@ -8,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gimaevra94/auth/app/errs"
+	"github.com/pkg/errors"
 )
 
 func MailSendler(w http.ResponseWriter, r *http.Request, email string) (string, error) {
@@ -20,16 +22,39 @@ func MailSendler(w http.ResponseWriter, r *http.Request, email string) (string, 
 	password := os.Getenv("MAIL_PASSWORD")
 
 	host := "smtp.yandex.ru"
-	auth := smtp.PlainAuth("", username, string(password), host)
+	auth := smtp.PlainAuth("", username, password, host)
 	addr := "smtp.yandex.ru:587"
 
-	msg := []byte("Access code: " + msCode)
+	tmplPath := "C:/Users/gimaevra94/Documents/git/auth/app/templates/mailCode.html"
+	tmpl, err := template.ParseFiles(tmplPath)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	var body bytes.Buffer
+
+	err = tmpl.Execute(&body, struct{ Code string }{Code: msCode})
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	subject := "Auth code"
+	msg := []byte(
+		"From: " + username + "\r\n" +
+			"To: " + email + "\r\n" +
+			"Subject: " + subject + "\r\n" +
+			"MIME-Version: 1.0\r\n" +
+			"Content-Type: text/html; charset=\"UTF-8\"\r\n" +
+			"\r\n" +
+			body.String(),
+	)
+
 	from := username
 	to := []string{email}
 
-	err := smtp.SendMail(addr, auth, from, to, msg)
+	err = smtp.SendMail(addr, auth, from, to, msg)
 	if err != nil {
-		return "", errs.OrigErrWrapPrintRedir(w, r, "", err)
+		return "", errors.WithStack(err)
 	}
 
 	return msCode, nil

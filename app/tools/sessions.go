@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/gimaevra94/auth/app/data"
-	"github.com/gimaevra94/auth/app/errs"
 	"github.com/gorilla/sessions"
+	"github.com/pkg/errors"
 )
 
 func SessionUserSet(w http.ResponseWriter, r *http.Request,
@@ -15,18 +15,18 @@ func SessionUserSet(w http.ResponseWriter, r *http.Request,
 
 	session, err := store.Get(r, "auth")
 	if err != nil {
-		return errs.OrigErrWrapPrintRedir(w, r, "", err)
+		return errors.WithStack(err)
 	}
 
 	jsonData, err := json.Marshal(user)
 	if err != nil {
-		return errs.OrigErrWrapPrintRedir(w, r, "", err)
+		return errors.WithStack(err)
 	}
 
 	session.Values["user"] = jsonData
 	err = session.Save(r, w)
 	if err != nil {
-		return errs.OrigErrWrapPrintRedir(w, r, "", err)
+		return errors.WithStack(err)
 	}
 
 	return nil
@@ -37,19 +37,18 @@ func SessionUserGet(w http.ResponseWriter, r *http.Request,
 
 	session, err := store.Get(r, "auth")
 	if err != nil {
-		return nil, data.User{}, errs.OrigErrWrapPrintRedir(w, r, "", err)
+		return nil, data.User{}, errors.WithStack(err)
 	}
 
 	jsonData, ok := session.Values["user"].([]byte)
 	if !ok {
-		return nil, data.User{}, errs.NewErrWrapPrintRedir(w, r, "", data.NotExistErr, "user")
+		return nil, data.User{}, errors.WithStack(errors.New("user: " + data.NotExistErr))
 	}
 
 	var user data.User
 	err = json.Unmarshal([]byte(jsonData), &user)
 	if err != nil {
-		return nil, data.User{}, errs.OrigErrWrapPrintRedir(w, r, "", err)
-
+		return nil, data.User{}, errors.WithStack(err)
 	}
 
 	return session, user, nil
@@ -61,7 +60,7 @@ func SetlastActivityKeyForSession(w http.ResponseWriter, r *http.Request,
 	session.Values["lastActivity"] = lastActivity
 	err := session.Save(r, w)
 	if err != nil {
-		errs.OrigErrWrapPrintRedir(w, r, "", err)
+		return errors.WithStack(err)
 	}
 	return nil
 }
