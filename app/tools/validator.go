@@ -17,7 +17,7 @@ var (
 )
 
 func IsValidToken(w http.ResponseWriter, r *http.Request) (*jwt.Token, error) {
-	httpCookie, _ := r.Cookie("auth")
+	httpCookie, _ := r.Cookie("token")
 	tokenValue := httpCookie.Value
 	token, err := jwt.Parse(tokenValue, func(t *jwt.Token) (interface{}, error) {
 		tokenSecret := os.Getenv("JWT_SECRET")

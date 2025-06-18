@@ -38,8 +38,8 @@ type Cookie interface {
 func NewCookie() Cookie {
 	return &cookie{
 		cookie: http.Cookie{
-			Name:     "auth",
-			Path:     "/set-token",
+			Name:     "token",
+			Path:     "/",
 			HttpOnly: true,
 			Secure:   true,
 			SameSite: http.SameSiteStrictMode,

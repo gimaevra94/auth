@@ -59,6 +59,14 @@ func initEnv() {
 
 func initStore() {
 	store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
+
+	store.Options = &sessions.Options{
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   86400,
+		Secure:   false,
+	}
 }
 
 func initDB() {
@@ -109,7 +117,7 @@ func serverStart(r *chi.Mux) {
 }
 
 func authStart(w http.ResponseWriter, r *http.Request) {
-	httpCookie, err := r.Cookie("auth")
+	httpCookie, err := r.Cookie("token")
 	if err != nil {
 		dataCookie := data.NewCookie()
 		httpCookie := dataCookie.GetCookie()

@@ -59,8 +59,8 @@ func UserCheck(w http.ResponseWriter, r *http.Request, user User) error {
 			return errors.WithStack(err)
 
 		}
+		
 		return errors.WithStack(err)
-
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(passwordHash),

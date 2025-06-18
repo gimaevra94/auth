@@ -2,6 +2,7 @@ package tools
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -28,7 +29,6 @@ func SessionUserSet(w http.ResponseWriter, r *http.Request,
 	if err != nil {
 		return errors.WithStack(err)
 	}
-
 	return nil
 }
 
@@ -56,8 +56,19 @@ func SessionUserGet(w http.ResponseWriter, r *http.Request,
 
 func SetlastActivityKeyForSession(w http.ResponseWriter, r *http.Request,
 	session *sessions.Session) error {
+	logValues := make(map[string]interface{})
+	for k, v := range session.Values {
+		logValues[fmt.Sprintf("%v", k)] = v
+	}
+
 	lastActivity := time.Now().Add(3 * time.Hour)
 	session.Values["lastActivity"] = lastActivity
+
+	logValuesAfter := make(map[string]interface{})
+	for k, v := range session.Values {
+		logValuesAfter[fmt.Sprintf("%v", k)] = v
+	}
+
 	err := session.Save(r, w)
 	if err != nil {
 		return errors.WithStack(err)
