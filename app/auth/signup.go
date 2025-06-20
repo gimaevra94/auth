@@ -41,13 +41,22 @@ func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
 		err = data.UserCheck(w, r, validatedLoginInput)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
+
 				err := tools.SessionUserSet(w, r, store, validatedLoginInput)
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 					return
 				}
-				http.Redirect(w, r, data.CodeSendURL, http.StatusFound)
+
+				err = tools.SessionDataSet(w, r, store, "1488")
+				if err != nil {
+					log.Printf("%+v", err)
+					http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
+					return
+				}
+
+				http.Redirect(w, r, data.CodeSendTmplURL, http.StatusFound)
 				return
 			}
 
@@ -68,7 +77,6 @@ func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
 
 func CodeSend(store *sessions.CookieStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		data.CodeSend(w, r)
 		session, user, err := tools.SessionUserGet(w, r, store)
 		if err != nil {
 			log.Printf("%+v", err)
@@ -76,7 +84,7 @@ func CodeSend(store *sessions.CookieStore) http.HandlerFunc {
 			return
 		}
 
-		msCode, err := tools.MailSendler(w, r, user.Email)
+		msCode, err := tools.MailSendler(user.Email)
 		if err != nil {
 			log.Printf("%+v", err)
 			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
@@ -89,6 +97,8 @@ func CodeSend(store *sessions.CookieStore) http.HandlerFunc {
 			log.Printf("%+v", errors.WithStack(err))
 			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 		}
+
+		http.Redirect(w, r, data.UserAddURL, http.StatusFound)
 	}
 }
 

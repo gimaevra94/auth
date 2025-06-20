@@ -32,6 +32,27 @@ func SessionUserSet(w http.ResponseWriter, r *http.Request,
 	return nil
 }
 
+func SessionDataSet(w http.ResponseWriter, r *http.Request,
+	store *sessions.CookieStore, data string) error {
+
+	session, err := store.Get(r, "auth")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	/*jsonData, err := json.Marshal(data)
+	if err != nil {
+		return errors.WithStack(err)
+	}*/
+
+	session.Values["data"] = data
+	err = session.Save(r, w)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
 func SessionUserGet(w http.ResponseWriter, r *http.Request,
 	store *sessions.CookieStore) (*sessions.Session, data.User, error) {
 

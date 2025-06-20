@@ -2,8 +2,10 @@ package data
 
 const (
 	CodeSendURL     = "/code_send"
+	CodeSendTmplURL = "/code_send_tmpl"
 	SignInURL       = "/sign_in"
 	HomeURL         = "/home"
+	UserAddURL         = "/user_add"
 	LogoutURL       = "/log_out"
 	RequestErrorURL = "/request_error"
 	BadSignInURL    = "/bad_sign_in"

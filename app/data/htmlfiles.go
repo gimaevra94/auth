@@ -67,6 +67,6 @@ func WrongCode(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, templatesPath+"wrongCode.html")
 }
 
-func CodeSend(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, templatesPath+"codeSend.html")
+func CodeSendTmpl(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, templatesPath+"codeSendTmpl.html")
 }

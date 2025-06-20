@@ -84,8 +84,9 @@ func initRouter() *chi.Mux {
 
 	r.Get(signUpURL, data.SignUp)
 	r.Post("/input_check", auth.InputCheck(store))
-	r.Get(data.CodeSendURL, auth.CodeSend(store))
-	r.Post("/user_add", auth.UserAdd(store))
+	r.Get(data.CodeSendTmplURL, data.CodeSendTmpl)
+	r.Post(data.CodeSendURL, auth.CodeSend(store))
+	r.Post(data.UserAddURL, auth.UserAdd(store))
 
 	r.Get(data.BadSignUpURL, data.BadSignUp)
 	r.Get(data.BadEmailURL, data.BadEmail)
