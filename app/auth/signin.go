@@ -35,7 +35,7 @@ func LogIn(store *sessions.CookieStore) http.HandlerFunc {
 			return
 		}
 
-		err = data.UserCheck(w, r, validatedLoginInput)
+		err = data.UserCheck(validatedLoginInput)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				log.Printf("%+v", err)

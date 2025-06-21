@@ -2,7 +2,6 @@ package tools
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -32,28 +31,7 @@ func SessionUserSet(w http.ResponseWriter, r *http.Request,
 	return nil
 }
 
-func SessionDataSet(w http.ResponseWriter, r *http.Request,
-	store *sessions.CookieStore, data string) error {
-
-	session, err := store.Get(r, "auth")
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	/*jsonData, err := json.Marshal(data)
-	if err != nil {
-		return errors.WithStack(err)
-	}*/
-
-	session.Values["data"] = data
-	err = session.Save(r, w)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	return nil
-}
-
-func SessionUserGet(w http.ResponseWriter, r *http.Request,
+func SessionUserGet(r *http.Request,
 	store *sessions.CookieStore) (*sessions.Session, data.User, error) {
 
 	session, err := store.Get(r, "auth")
@@ -77,18 +55,9 @@ func SessionUserGet(w http.ResponseWriter, r *http.Request,
 
 func SetlastActivityKeyForSession(w http.ResponseWriter, r *http.Request,
 	session *sessions.Session) error {
-	logValues := make(map[string]interface{})
-	for k, v := range session.Values {
-		logValues[fmt.Sprintf("%v", k)] = v
-	}
 
-	lastActivity := time.Now().Add(3 * time.Hour)
+	lastActivity := time.Now().Add(3 * time.Hour).Unix()
 	session.Values["lastActivity"] = lastActivity
-
-	logValuesAfter := make(map[string]interface{})
-	for k, v := range session.Values {
-		logValuesAfter[fmt.Sprintf("%v", k)] = v
-	}
 
 	err := session.Save(r, w)
 	if err != nil {

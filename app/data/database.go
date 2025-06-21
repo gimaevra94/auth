@@ -2,7 +2,6 @@ package data
 
 import (
 	"database/sql"
-	"net/http"
 	"os"
 
 	"github.com/go-sql-driver/mysql"
@@ -14,9 +13,9 @@ var DB *sql.DB
 
 const (
 	selectQuery      = "select passwordHash from user where email = ? limit 1"
-	insertQuery      = "insert into user (email,login,passwordHash) values(?,?,?)"
+	insertQuery      = "insert into user (login,email,passwordHash) values(?,?,?)"
 	yauthSelectQuery = "select email from user where email = ? limit 1"
-	yauthInsertQuery = "insert into user (email,login) values(?,?)"
+	yauthInsertQuery = "insert into user (login,email) values(?,?)"
 )
 
 func DBConn() error {
@@ -45,7 +44,7 @@ func DBConn() error {
 	return nil
 }
 
-func UserCheck(w http.ResponseWriter, r *http.Request, user User) error {
+func UserCheck(user User) error {
 	if err := DB.Ping(); err != nil {
 		return errors.WithStack(err)
 	}
@@ -59,7 +58,7 @@ func UserCheck(w http.ResponseWriter, r *http.Request, user User) error {
 			return errors.WithStack(err)
 
 		}
-		
+
 		return errors.WithStack(err)
 	}
 
@@ -73,7 +72,7 @@ func UserCheck(w http.ResponseWriter, r *http.Request, user User) error {
 
 }
 
-func UserAdd(w http.ResponseWriter, r *http.Request, user User) error {
+func UserAdd(user User) error {
 	if err := DB.Ping(); err != nil {
 		return errors.WithStack(err)
 	}
@@ -92,7 +91,7 @@ func UserAdd(w http.ResponseWriter, r *http.Request, user User) error {
 	return nil
 }
 
-func YauthUserCheck(w http.ResponseWriter, r *http.Request, user User) error {
+func YauthUserCheck(user User) error {
 	if err := DB.Ping(); err != nil {
 		return errors.WithStack(err)
 	}
@@ -111,7 +110,7 @@ func YauthUserCheck(w http.ResponseWriter, r *http.Request, user User) error {
 	return nil
 }
 
-func YauthUserAdd(w http.ResponseWriter, r *http.Request, user User) error {
+func YauthUserAdd(user User) error {
 	_, err := DB.Exec(yauthInsertQuery, user.Login, user.Email)
 	if err != nil {
 		return errors.WithStack(err)

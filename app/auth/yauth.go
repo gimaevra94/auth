@@ -57,10 +57,10 @@ func YandexCallbackHandler(store *sessions.CookieStore) http.HandlerFunc {
 			return
 		}
 
-		err = data.YauthUserCheck(w, r, user)
+		err = data.YauthUserCheck(user)
 		if err != nil {
 			if err == sql.ErrNoRows {
-				err = data.YauthUserAdd(w, r, user)
+				err = data.YauthUserAdd(user)
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)

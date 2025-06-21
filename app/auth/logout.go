@@ -33,7 +33,7 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 			if exp != noExpiration {
 				expUnix := time.Unix(int64(exp), 0)
 
-				session, user, err := tools.SessionUserGet(w, r, store)
+				session, user, err := tools.SessionUserGet(r, store)
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
@@ -41,8 +41,8 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 				}
 
 				if time.Now().After(expUnix) {
-					lastActivity := session.Values["lastActivity"].(time.Time)
-					if time.Since(lastActivity) > 3*time.Hour {
+					lastActivity := session.Values["lastActivity"].(int64)
+					if time.Since(time.Unix(lastActivity, 0)) > 3*time.Hour {
 						logout(w, r, store)
 						return
 					}
