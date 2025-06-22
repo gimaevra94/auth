@@ -15,7 +15,7 @@ import (
 
 func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		validatedLoginInput, err := tools.IsValidInput(w, r)
+		validatedLoginInput, err := tools.IsValidInput(w, r, false)
 		if err != nil {
 
 			if strings.Contains(err.Error(),
@@ -38,7 +38,7 @@ func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
 			return
 		}
 
-		err = data.UserCheck(validatedLoginInput)
+		err = data.UserCheck2("email", validatedLoginInput.Email, validatedLoginInput.Password)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 

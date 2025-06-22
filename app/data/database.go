@@ -2,6 +2,7 @@ package data
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 
 	"github.com/go-sql-driver/mysql"
@@ -12,11 +13,15 @@ import (
 var DB *sql.DB
 
 const (
-	selectQuery      = "select passwordHash from user where email = ? limit 1"
+	//selectQuery      = "select passwordHash from user where email = ? limit 1"
 	insertQuery      = "insert into user (login,email,passwordHash) values(?,?,?)"
 	yauthSelectQuery = "select email from user where email = ? limit 1"
 	yauthInsertQuery = "insert into user (login,email) values(?,?)"
 )
+
+func query(s string) string {
+	return fmt.Sprintf("select passwordHash from user where %s = ? limit 1", s)
+}
 
 func DBConn() error {
 	dbPassword := []byte(os.Getenv("DB_PASSWORD"))
@@ -44,7 +49,32 @@ func DBConn() error {
 	return nil
 }
 
-func UserCheck(user User) error {
+func UserCheck2(queryValue string, usrValue string, pswrd string) error {
+	if err := DB.Ping(); err != nil {
+		return errors.WithStack(err)
+	}
+
+	row := DB.QueryRow(query(queryValue), usrValue)
+	var passwordHash string
+	err := row.Scan(&passwordHash)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return errors.WithStack(err)
+		}
+		return errors.WithStack(err)
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(passwordHash),
+		[]byte(pswrd))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+/*func UserCheck(user User) error {
 	if err := DB.Ping(); err != nil {
 		return errors.WithStack(err)
 	}
@@ -56,7 +86,6 @@ func UserCheck(user User) error {
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return errors.WithStack(err)
-
 		}
 
 		return errors.WithStack(err)
@@ -69,8 +98,7 @@ func UserCheck(user User) error {
 	}
 
 	return nil
-
-}
+}*/
 
 func UserAdd(user User) error {
 	if err := DB.Ping(); err != nil {

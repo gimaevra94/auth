@@ -5,7 +5,7 @@ const (
 	SignInURL       = "/sign_in"
 	HomeURL         = "/home"
 	UserAddURL      = "/user_add"
-	LogoutURL       = "/log_out"
+	LogoutURL       = "/logout"
 	RequestErrorURL = "/request_error"
 	BadSignInURL    = "/bad_sign_in"
 	BadSignUpURL    = "/bad_sign_up"

@@ -36,7 +36,7 @@ func IsValidToken(w http.ResponseWriter, r *http.Request) (*jwt.Token, error) {
 	return token, nil
 }
 
-func IsValidInput(w http.ResponseWriter, r *http.Request) (data.User, error) {
+func IsValidInput(w http.ResponseWriter, r *http.Request, IsLogin bool) (data.User, error) {
 
 	id := ""
 	login := r.FormValue("login")
@@ -50,11 +50,13 @@ func IsValidInput(w http.ResponseWriter, r *http.Request) (data.User, error) {
 		return data.User{}, errors.WithStack(errors.New("login: " + data.InvalidErr))
 	}
 
-	if email == "" {
-		return data.User{}, errors.WithStack(errors.New("email: " + data.NotExistErr))
-	}
-	if !emailRegex.MatchString(email) {
-		return data.User{}, errors.WithStack(errors.New("email: " + data.InvalidErr))
+	if !IsLogin {
+		if email == "" {
+			return data.User{}, errors.WithStack(errors.New("email: " + data.NotExistErr))
+		}
+		if !emailRegex.MatchString(email) {
+			return data.User{}, errors.WithStack(errors.New("email: " + data.InvalidErr))
+		}
 	}
 
 	if password == "" {

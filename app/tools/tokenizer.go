@@ -17,7 +17,7 @@ func TokenCreate(w http.ResponseWriter, r *http.Request, command string,
 
 	switch command {
 	case "false":
-		exp := time.Now().Add(24 * time.Hour)
+		exp := time.Now().Add(24 * time.Hour).Unix()
 		token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 			"user": user,
 			"exp":  exp,

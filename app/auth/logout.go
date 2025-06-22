@@ -43,7 +43,7 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 				if time.Now().After(expUnix) {
 					lastActivity := session.Values["lastActivity"].(int64)
 					if time.Since(time.Unix(lastActivity, 0)) > 3*time.Hour {
-						logout(w, r, store)
+						Logout(store)
 						return
 					}
 
@@ -60,26 +60,28 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 	}
 }
 
-func logout(w http.ResponseWriter, r *http.Request, store *sessions.CookieStore) {
-	session, err := store.Get(r, "auth")
-	if err != nil {
-		log.Printf("%+v", errors.WithStack(err))
-		http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
-		return
+func Logout(store *sessions.CookieStore) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, err := store.Get(r, "auth")
+		if err != nil {
+			log.Printf("%+v", errors.WithStack(err))
+			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
+			return
+		}
+
+		session.Options.MaxAge = -1
+		err = session.Save(r, w)
+		if err != nil {
+			log.Printf("%+v", errors.WithStack(err))
+			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
+			return
+		}
+
+		dataCookie := data.NewCookie()
+		dataCookie.SetMaxAge(-1)
+		httpCookie := dataCookie.GetCookie()
+
+		http.SetCookie(w, httpCookie)
+		http.Redirect(w, r, data.SignInURL, http.StatusFound)
 	}
-
-	session.Options.MaxAge = -1
-	err = session.Save(r, w)
-	if err != nil {
-		log.Printf("%+v", errors.WithStack(err))
-		http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
-		return
-	}
-
-	dataCookie := data.NewCookie()
-	dataCookie.SetMaxAge(-1)
-	httpCookie := dataCookie.GetCookie()
-
-	http.SetCookie(w, httpCookie)
-	http.Redirect(w, r, data.SignInURL, http.StatusFound)
 }

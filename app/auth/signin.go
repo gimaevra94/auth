@@ -28,14 +28,14 @@ func LogIn(store *sessions.CookieStore) http.HandlerFunc {
 			return
 		}
 
-		validatedLoginInput, err := tools.IsValidInput(w, r)
+		validatedLoginInput, err := tools.IsValidInput(w, r, true)
 		if err != nil {
 			log.Printf("%+v", err)
 			http.Redirect(w, r, data.BadSignInURL, http.StatusFound)
 			return
 		}
 
-		err = data.UserCheck(validatedLoginInput)
+		err = data.UserCheck2("login", validatedLoginInput.Login, validatedLoginInput.Password)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				log.Printf("%+v", err)

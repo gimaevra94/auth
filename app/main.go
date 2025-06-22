@@ -104,6 +104,7 @@ func initRouter() *chi.Mux {
 
 	r.With(auth.IsExpiredTokenMW(store)).Get(data.HomeURL,
 		data.Home)
+	r.With(auth.IsExpiredTokenMW(store)).Post(data.LogoutURL, auth.Logout(store))
 
 	return r
 }
@@ -122,8 +123,6 @@ func authStart(w http.ResponseWriter, r *http.Request) {
 		dataCookie := data.NewCookie()
 		httpCookie := dataCookie.GetCookie()
 		http.SetCookie(w, httpCookie)
-
-		log.Printf("%+v", errors.WithStack(err))
 		http.Redirect(w, r, signUpURL, http.StatusFound)
 		return
 	}
