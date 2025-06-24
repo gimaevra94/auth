@@ -6,6 +6,7 @@ import (
 	"regexp"
 
 	"github.com/gimaevra94/auth/app/data"
+	"github.com/gimaevra94/auth/app/tmpls"
 	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/sessions"
 	"github.com/pkg/errors"
@@ -37,7 +38,7 @@ func IsValidToken(w http.ResponseWriter, r *http.Request) (*jwt.Token, error) {
 	return token, nil
 }
 
-func IsValidInput(w http.ResponseWriter, r *http.Request, store *sessions.CookieStore, IsLogin bool) (data.User, error) {
+func IsValidInput(w http.ResponseWriter, r *http.Request, store *sessions.CookieStore, IsLogin bool) (*data.User, error) {
 
 	id := ""
 	login := r.FormValue("login")
@@ -45,29 +46,33 @@ func IsValidInput(w http.ResponseWriter, r *http.Request, store *sessions.Cookie
 	password := r.FormValue("password")
 
 	if login == "" {
-		return data.User{}, errors.WithStack(errors.New("login: " + data.NotExistErr))
+		return &data.User{}, errors.WithStack(errors.New("login: " + data.NotExistErr))
 	}
 	if !loginRegex.MatchString(login) {
-		return data.User{}, errors.WithStack(errors.New("login: " + data.InvalidErr))
+		err := tmpls.TmplErrRenderer(w, tmpls.BaseTpl, tmpls.LoginMsg, tmpls.LoginReqs)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		return &data.User{}, errors.WithStack(errors.New("login: " + data.InvalidErr))
 	}
 
 	if !IsLogin {
 		if email == "" {
-			return data.User{}, errors.WithStack(errors.New("email: " + data.NotExistErr))
+			return &data.User{}, errors.WithStack(errors.New("email: " + data.NotExistErr))
 		}
 		if !emailRegex.MatchString(email) {
-			return data.User{}, errors.WithStack(errors.New("email: " + data.InvalidErr))
+			return &data.User{}, errors.WithStack(errors.New("email: " + data.InvalidErr))
 		}
 	}
 
 	if password == "" {
-		return data.User{}, errors.WithStack(errors.New("password: " + data.NotExistErr))
+		return &data.User{}, errors.WithStack(errors.New("password: " + data.NotExistErr))
 	}
 	if !passwordRegex.MatchString(password) {
-		return data.User{}, errors.WithStack(errors.New("password: " + data.InvalidErr))
+		return &data.User{}, errors.WithStack(errors.New("password: " + data.InvalidErr))
 	}
 
-	validatedLoginInput := data.User{
+	validatedLoginInput := &data.User{
 		ID:       id,
 		Login:    login,
 		Email:    email,

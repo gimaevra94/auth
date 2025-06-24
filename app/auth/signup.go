@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/tools"
@@ -16,23 +15,7 @@ import (
 func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		validatedLoginInput, err := tools.IsValidInput(w, r, store, false)
-		if err != nil {
-
-			if strings.Contains(err.Error(),
-				"login: "+data.InvalidErr) ||
-				strings.Contains(err.Error(),
-					"password: "+data.InvalidErr) {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, data.BadSignUpURL, http.StatusFound)
-				return
-			}
-
-			if strings.Contains(err.Error(), "email: "+data.InvalidErr) {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, data.BadEmailURL, http.StatusFound)
-				return
-			}
-
+		if err == nil && validatedLoginInput != nil {
 			log.Printf("%+v", err)
 			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 			return
