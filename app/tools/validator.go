@@ -7,6 +7,7 @@ import (
 
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/golang-jwt/jwt"
+	"github.com/gorilla/sessions"
 	"github.com/pkg/errors"
 )
 
@@ -36,7 +37,7 @@ func IsValidToken(w http.ResponseWriter, r *http.Request) (*jwt.Token, error) {
 	return token, nil
 }
 
-func IsValidInput(w http.ResponseWriter, r *http.Request, IsLogin bool) (data.User, error) {
+func IsValidInput(w http.ResponseWriter, r *http.Request, store *sessions.CookieStore, IsLogin bool) (data.User, error) {
 
 	id := ""
 	login := r.FormValue("login")

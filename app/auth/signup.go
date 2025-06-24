@@ -15,7 +15,7 @@ import (
 
 func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		validatedLoginInput, err := tools.IsValidInput(w, r, false)
+		validatedLoginInput, err := tools.IsValidInput(w, r, store, false)
 		if err != nil {
 
 			if strings.Contains(err.Error(),

@@ -1,0 +1,19 @@
+// templates/base.gohtml
+package templates
+
+const Base = `
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ block "title" . }}Default Title{{ end }}</title>
+    <link rel="stylesheet" href="/static/css/signup.css">
+</head>
+<body>
+    <div class="container">
+        {{ template "content" . }}
+    </div>
+</body>
+</html>
+`

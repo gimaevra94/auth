@@ -28,7 +28,7 @@ func LogIn(store *sessions.CookieStore) http.HandlerFunc {
 			return
 		}
 
-		validatedLoginInput, err := tools.IsValidInput(w, r, true)
+		validatedLoginInput, err := tools.IsValidInput(w, r, store, true)
 		if err != nil {
 			log.Printf("%+v", err)
 			http.Redirect(w, r, data.BadSignInURL, http.StatusFound)

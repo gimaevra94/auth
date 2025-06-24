@@ -122,8 +122,21 @@
             <line x1="12" y1="16" x2="12.01" y2="16" />
         </svg>
         <h1>Invalid Sign Up</h1>
-        <p class="message">Please check the following requirements for your username and password:</p>
+        <p class="message">Please check the following requirements for your username, password and email:</p>
 
+        <!-- Email Requirements -->
+        <div class="requirements">
+            <h2>Email Requirements:</h2>
+            <ul>
+                <li>• Must contain only Latin letters (a-z, A-Z), numbers (0-9), and allowed special characters: . _ % + -</li>
+                <li>• Must contain exactly one "@" symbol</li>
+                <li>• Must have a valid domain name after "@" (letters, numbers, hyphens, dots)</li>
+                <li>• Domain must end with a dot and at least two Latin letters (e.g., .com, .ru, .org)</li>
+                <li>• No spaces or invalid characters allowed</li>
+            </ul>
+        </div>
+
+        <!-- Username Requirements -->
         <div class="requirements">
             <h2>Username Requirements:</h2>
             <ul>
@@ -131,7 +144,10 @@
                 <li>• Latin or Cyrillic letters</li>
                 <li>• Numbers 0-9</li>
             </ul>
+        </div>
 
+        <!-- Password Requirements -->
+        <div class="requirements">
             <h2>Password Requirements:</h2>
             <ul>
                 <li>• 8-30 characters long</li>
@@ -141,6 +157,7 @@
             </ul>
         </div>
 
+        <!-- Buttons -->
         <div>
             <a href="/sign_up" class="btn">Try Again</a>
             <a href="/log_in" class="btn btn-secondary">Sign In</a>

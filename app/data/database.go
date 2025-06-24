@@ -19,10 +19,6 @@ const (
 	yauthInsertQuery = "insert into user (login,email) values(?,?)"
 )
 
-func query(s string) string {
-	return fmt.Sprintf("select passwordHash from user where %s = ? limit 1", s)
-}
-
 func DBConn() error {
 	dbPassword := []byte(os.Getenv("DB_PASSWORD"))
 
@@ -47,6 +43,10 @@ func DBConn() error {
 	}
 
 	return nil
+}
+
+func query(s string) string {
+	return fmt.Sprintf("select passwordHash from user where %s = ? limit 1", s)
 }
 
 func UserCheck2(queryValue string, usrValue string, pswrd string) error {
