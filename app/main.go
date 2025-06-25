@@ -101,6 +101,7 @@ func initRouter() *chi.Mux {
 	r.Get("/ya_callback", auth.YandexCallbackHandler(store))
 
 	r.Get(data.RequestErrorURL, data.RequestError)
+	r.Get(data.Err500URL, data.Err500)
 
 	r.With(auth.IsExpiredTokenMW(store)).Get(data.HomeURL,
 		data.Home)

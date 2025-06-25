@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gimaevra94/auth/app/data"
+	"github.com/gimaevra94/auth/app/tmpls"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/gorilla/sessions"
 	"github.com/pkg/errors"
@@ -15,9 +17,30 @@ import (
 func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		validatedLoginInput, err := tools.IsValidInput(w, r, store, false)
-		if err == nil && validatedLoginInput != nil {
+		if err != nil {
+			if strings.Contains(err.Error(), "login") {
+				err := tmpls.ErrRenderer(w, tmpls.BaseTmpl, tmpls.LoginMsg, tmpls.LoginReqs)
+				if err != nil {
+					http.Redirect(w, r, data.Err500URL, http.StatusFound)
+				}
+			}
+
+			if strings.Contains(err.Error(), "email") {
+				err := tmpls.ErrRenderer(w, tmpls.BaseTmpl, tmpls.EmailMsg, tmpls.EmailReqs)
+				if err != nil {
+					http.Redirect(w, r, data.Err500URL, http.StatusFound)
+				}
+			}
+
+			if strings.Contains(err.Error(), "password") {
+				err := tmpls.ErrRenderer(w, tmpls.BaseTmpl, tmpls.PasswrdMsg, tmpls.PswrdReqs)
+				if err != nil {
+					http.Redirect(w, r, data.Err500URL, http.StatusFound)
+				}
+			}
+
 			log.Printf("%+v", err)
-			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
+			http.Redirect(w, r, data.Err500URL, http.StatusFound)
 			return
 		}
 

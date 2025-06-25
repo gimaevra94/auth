@@ -13,6 +13,7 @@ const (
 	UserNotExistURL = "/user_not_exist"
 	WrongCodeURL    = "/wrong_code"
 	AlreadyExistURL = "/already_exist"
+	Err500URL       = "/500"
 
 	NotExistErr = "not exist"
 	InvalidErr  = "invalid"

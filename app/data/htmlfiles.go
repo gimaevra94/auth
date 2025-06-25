@@ -18,8 +18,16 @@ func SignIn(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, templatesPath+"signIn.html")
 }
 
+func CodeSend(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, templatesPath+"codeSend.html")
+}
+
 func Home(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, templatesPath+"home.html")
+}
+
+func Err500(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "500.html")
 }
 
 func RequestError(w http.ResponseWriter, r *http.Request) {
@@ -65,8 +73,4 @@ func UserNotExist(w http.ResponseWriter, r *http.Request) {
 
 func WrongCode(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, templatesPath+"wrongCode.html")
-}
-
-func CodeSend(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, templatesPath+"codeSend.html")
 }

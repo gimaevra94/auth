@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	BaseTpl = Must(template.New("base").Parse(base))
-	_       = Must(BaseTpl.Parse(signUp))
+	BaseTmpl = Must(template.New("base").Parse(base))
+	_        = Must(BaseTmpl.Parse(signUp))
 
 	LoginReqs = []string{
 		"3-30 characters long",
@@ -33,7 +33,7 @@ var (
 	EmailMsg   = "Email invalid"
 )
 
-func TmplErrRenderer(w http.ResponseWriter, baseTpl *template.Template, msg string, reqs []string) error {
+func ErrRenderer(w http.ResponseWriter, baseTmpl *template.Template, msg string, reqs []string) error {
 	data := struct {
 		Msg  string
 		Reqs []string
@@ -42,7 +42,7 @@ func TmplErrRenderer(w http.ResponseWriter, baseTpl *template.Template, msg stri
 		Reqs: reqs,
 	}
 
-	err := baseTpl.ExecuteTemplate(w, signUp, data)
+	err := baseTmpl.ExecuteTemplate(w, signUp, data)
 	if err != nil {
 		return errors.WithStack(err)
 	}
