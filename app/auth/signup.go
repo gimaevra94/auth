@@ -22,7 +22,9 @@ func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
 				err := tmpls.ErrRenderer(w, tmpls.BaseTmpl, tmpls.LoginMsg, tmpls.LoginReqs)
 				if err != nil {
 					http.Redirect(w, r, data.Err500URL, http.StatusFound)
+					return
 				}
+				return
 			}
 
 			if strings.Contains(err.Error(), "email") {
