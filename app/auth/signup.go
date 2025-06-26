@@ -1,23 +1,24 @@
 package auth
 
 import (
-	"database/sql"
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/tmpls"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/gorilla/sessions"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/bcrypt"
 )
 
 func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		validatedLoginInput, err := tools.IsValidInput(w, r, store, false)
+		validatedLoginInput, err := tools.IsValidInput(r, false)
 		if err != nil {
+
+
 			if strings.Contains(err.Error(), "login") {
 				err := tmpls.ErrRenderer(w, tmpls.BaseTmpl, tmpls.LoginMsg, tmpls.LoginReqs)
 				if err != nil {
@@ -31,14 +32,18 @@ func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
 				err := tmpls.ErrRenderer(w, tmpls.BaseTmpl, tmpls.EmailMsg, tmpls.EmailReqs)
 				if err != nil {
 					http.Redirect(w, r, data.Err500URL, http.StatusFound)
+					return
 				}
+				return
 			}
 
 			if strings.Contains(err.Error(), "password") {
 				err := tmpls.ErrRenderer(w, tmpls.BaseTmpl, tmpls.PasswrdMsg, tmpls.PswrdReqs)
 				if err != nil {
 					http.Redirect(w, r, data.Err500URL, http.StatusFound)
+					return
 				}
+				return
 			}
 
 			log.Printf("%+v", err)
@@ -46,35 +51,42 @@ func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
 			return
 		}
 
-		err = data.UserCheck2("email", validatedLoginInput.Email, validatedLoginInput.Password)
+		err = tools.SessionDataSet(w, r, validatedLoginInput)
 		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
+			log.Printf("%+v", err)
+			http.Redirect(w, r, data.Err500URL, http.StatusFound)
+			return
+		}
+	}
+}
 
-				err := tools.SessionUserSet(w, r, store, validatedLoginInput)
-				if err != nil {
-					log.Printf("%+v", err)
-					http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
-					return
-				}
+/*err = data.UserCheck2("email", validatedLoginInput.Email, validatedLoginInput.Password)
+if err != nil {
+	if errors.Is(err, sql.ErrNoRows) {
 
-				CodeSend(w, r, store)
-				return
-			}
-
-			if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, data.BadSignUpURL, http.StatusFound)
-				return
-			}
-
+		err := tools.SessionUserSet(w, r, store, validatedLoginInput)
+		if err != nil {
 			log.Printf("%+v", err)
 			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
 			return
 		}
 
-		http.Redirect(w, r, data.AlreadyExistURL, http.StatusFound)
+		CodeSend(w, r, store)
+		return
 	}
+
+	if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, data.BadSignUpURL, http.StatusFound)
+		return
+	}
+
+	log.Printf("%+v", err)
+	http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
+	return
 }
+
+http.Redirect(w, r, data.AlreadyExistURL, http.StatusFound)*/
 
 func CodeSend(w http.ResponseWriter, r *http.Request, store *sessions.CookieStore) {
 	session, user, err := tools.SessionUserGet(r, store)
@@ -146,7 +158,8 @@ func UserAdd(store *sessions.CookieStore) http.HandlerFunc {
 		}
 
 		if rememberMe == "false" {
-			err := tools.SetlastActivityKeyForSession(w, r, session)
+			lastActivity := time.Now().Add(3 * time.Hour)
+			err := tools.SessionDataSet(w, r, lastActivity)
 			if err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)

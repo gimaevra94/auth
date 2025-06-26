@@ -10,7 +10,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var DB *sql.DB
+var db *sql.DB
 
 const (
 	//selectQuery      = "select passwordHash from user where email = ? limit 1"
@@ -31,14 +31,14 @@ func DBConn() error {
 	}
 
 	var err error
-	DB, err = sql.Open("mysql", cfg.FormatDSN())
+	db, err = sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	err = DB.Ping()
+	err = db.Ping()
 	if err != nil {
-		DB.Close()
+		db.Close()
 		return errors.WithStack(err)
 	}
 
@@ -50,11 +50,7 @@ func query(s string) string {
 }
 
 func UserCheck2(queryValue string, usrValue string, pswrd string) error {
-	if err := DB.Ping(); err != nil {
-		return errors.WithStack(err)
-	}
-
-	row := DB.QueryRow(query(queryValue), usrValue)
+	row := db.QueryRow(query(queryValue), usrValue)
 	var passwordHash string
 	err := row.Scan(&passwordHash)
 
@@ -101,17 +97,13 @@ func UserCheck2(queryValue string, usrValue string, pswrd string) error {
 }*/
 
 func UserAdd(user User) error {
-	if err := DB.Ping(); err != nil {
-		return errors.WithStack(err)
-	}
-
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password),
 		bcrypt.DefaultCost)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	_, err = DB.Exec(insertQuery, user.Login, user.Email, hashedPassword)
+	_, err = db.Exec(insertQuery, user.Login, user.Email, hashedPassword)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -120,11 +112,7 @@ func UserAdd(user User) error {
 }
 
 func YauthUserCheck(user User) error {
-	if err := DB.Ping(); err != nil {
-		return errors.WithStack(err)
-	}
-
-	row := DB.QueryRow(yauthSelectQuery, user.Email)
+	row := db.QueryRow(yauthSelectQuery, user.Email)
 	var existingEmail string
 	err := row.Scan(&existingEmail)
 
@@ -139,10 +127,15 @@ func YauthUserCheck(user User) error {
 }
 
 func YauthUserAdd(user User) error {
-	_, err := DB.Exec(yauthInsertQuery, user.Login, user.Email)
+	_, err := db.Exec(yauthInsertQuery, user.Login, user.Email)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-
 	return nil
+}
+
+func DBClose() {
+	if db != nil {
+		db.Close()
+	}
 }

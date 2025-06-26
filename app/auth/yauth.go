@@ -76,7 +76,7 @@ func YandexCallbackHandler(store *sessions.CookieStore) http.HandlerFunc {
 			return
 		}
 
-		err = tools.SessionUserSet(w, r, store, user)
+		err = tools.SessionDataSet(w, r, user)
 		if err != nil {
 			log.Printf("%+v", err)
 			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)

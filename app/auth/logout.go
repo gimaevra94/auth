@@ -8,11 +8,10 @@ import (
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/golang-jwt/jwt"
-	"github.com/gorilla/sessions"
 	"github.com/pkg/errors"
 )
 
-func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handler {
+func IsExpiredTokenMW() func(http.Handler) http.Handler {
 
 	return func(next http.Handler) http.Handler {
 
@@ -33,7 +32,7 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 			if exp != noExpiration {
 				expUnix := time.Unix(int64(exp), 0)
 
-				session, user, err := tools.SessionUserGet(r, store)
+				session, user, err := tools.SessionUserGet(r)
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
@@ -43,7 +42,7 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 				if time.Now().After(expUnix) {
 					lastActivity := session.Values["lastActivity"].(int64)
 					if time.Since(time.Unix(lastActivity, 0)) > 3*time.Hour {
-						Logout(store)
+						Logout()
 						return
 					}
 
@@ -60,28 +59,26 @@ func IsExpiredTokenMW(store *sessions.CookieStore) func(http.Handler) http.Handl
 	}
 }
 
-func Logout(store *sessions.CookieStore) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		session, err := store.Get(r, "auth")
-		if err != nil {
-			log.Printf("%+v", errors.WithStack(err))
-			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
-			return
-		}
-
-		session.Options.MaxAge = -1
-		err = session.Save(r, w)
-		if err != nil {
-			log.Printf("%+v", errors.WithStack(err))
-			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
-			return
-		}
-
-		dataCookie := data.NewCookie()
-		dataCookie.SetMaxAge(-1)
-		httpCookie := dataCookie.GetCookie()
-
-		http.SetCookie(w, httpCookie)
-		http.Redirect(w, r, data.SignInURL, http.StatusFound)
+func Logout(w http.ResponseWriter, r *http.Request) {
+	session, err := store.Get(r, "auth")
+	if err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
+		return
 	}
+
+	session.Options.MaxAge = -1
+	err = session.Save(r, w)
+	if err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
+		return
+	}
+
+	dataCookie := data.NewCookie()
+	dataCookie.SetMaxAge(-1)
+	httpCookie := dataCookie.GetCookie()
+
+	http.SetCookie(w, httpCookie)
+	http.Redirect(w, r, data.SignInURL, http.StatusFound)
 }

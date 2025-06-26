@@ -3,6 +3,7 @@ package tools
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gimaevra94/auth/app/data"
@@ -10,15 +11,28 @@ import (
 	"github.com/pkg/errors"
 )
 
-func SessionUserSet(w http.ResponseWriter, r *http.Request,
-	store *sessions.CookieStore, user data.User) error {
+var store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
+
+func InitStore() *sessions.CookieStore {
+	store.Options = &sessions.Options{
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   86400,
+		Secure:   false,
+	}
+
+	return store
+}
+
+func SessionDataSet(w http.ResponseWriter, r *http.Request, data any) error {
 
 	session, err := store.Get(r, "auth")
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	jsonData, err := json.Marshal(user)
+	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -31,8 +45,7 @@ func SessionUserSet(w http.ResponseWriter, r *http.Request,
 	return nil
 }
 
-func SessionUserGet(r *http.Request,
-	store *sessions.CookieStore) (*sessions.Session, data.User, error) {
+func SessionUserGet(r *http.Request) (*sessions.Session, data.User, error) {
 
 	session, err := store.Get(r, "auth")
 	if err != nil {
@@ -53,15 +66,68 @@ func SessionUserGet(r *http.Request,
 	return session, user, nil
 }
 
-func SetlastActivityKeyForSession(w http.ResponseWriter, r *http.Request,
-	session *sessions.Session) error {
+func SessionCounterGet(r *http.Request,
+	store *sessions.CookieStore) (*sessions.Session, int, error) {
 
-	lastActivity := time.Now().Add(3 * time.Hour).Unix()
-	session.Values["lastActivity"] = lastActivity
-
-	err := session.Save(r, w)
+	session, err := store.Get(r, "auth")
 	if err != nil {
-		return errors.WithStack(err)
+		return nil, 0, errors.WithStack(err)
 	}
-	return nil
+
+	jsonData, ok := session.Values["counter"].([]byte)
+	if !ok {
+		return nil, 0, errors.WithStack(errors.New("counter: " + data.NotExistErr))
+	}
+
+	var counter int
+	err = json.Unmarshal([]byte(jsonData), &counter)
+	if err != nil {
+		return nil, 0, errors.WithStack(err)
+	}
+
+	return session, counter, nil
+}
+
+func SessionMsCodeGet(r *http.Request,
+	store *sessions.CookieStore) (*sessions.Session, string, error) {
+
+	session, err := store.Get(r, "auth")
+	if err != nil {
+		return nil, "", errors.WithStack(err)
+	}
+
+	jsonData, ok := session.Values["msCode"].([]byte)
+	if !ok {
+		return nil, "", errors.WithStack(errors.New("user: " + data.NotExistErr))
+	}
+
+	var msCode string
+	err = json.Unmarshal([]byte(jsonData), &msCode)
+	if err != nil {
+		return nil, "", errors.WithStack(err)
+	}
+
+	return session, msCode, nil
+}
+
+func SessionlastActivityGet(r *http.Request,
+	store *sessions.CookieStore) (*sessions.Session, time.Time, error) {
+
+	session, err := store.Get(r, "auth")
+	if err != nil {
+		return nil, time.Time{}, errors.WithStack(err)
+	}
+
+	jsonData, ok := session.Values["msCode"].([]byte)
+	if !ok {
+		return nil, time.Time{}, errors.WithStack(errors.New("user: " + data.NotExistErr))
+	}
+
+	var lastActivity time.Time
+	err = json.Unmarshal([]byte(jsonData), &lastActivity)
+	if err != nil {
+		return nil, time.Time{}, errors.WithStack(err)
+	}
+
+	return session, lastActivity, nil
 }

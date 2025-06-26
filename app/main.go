@@ -12,10 +12,7 @@ import (
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/go-chi/chi"
-	"github.com/gorilla/sessions"
 )
-
-var store *sessions.CookieStore
 
 const (
 	signUpURL = "/sign_up"
@@ -24,14 +21,11 @@ const (
 
 func main() {
 	initEnv()
-	initStore()
 	initDB()
-
-	defer data.DB.Close()
-
+	tools.InitStore()
 	r := initRouter()
-
 	serverStart(r)
+	defer data.DBClose()
 }
 
 func initEnv() {
@@ -57,18 +51,6 @@ func initEnv() {
 	}
 }
 
-func initStore() {
-	store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
-
-	store.Options = &sessions.Options{
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		Path:     "/",
-		MaxAge:   86400,
-		Secure:   false,
-	}
-}
-
 func initDB() {
 	err := data.DBConn()
 	if err != nil {
@@ -83,9 +65,9 @@ func initRouter() *chi.Mux {
 	r.Get("/", authStart)
 
 	r.Get(signUpURL, data.SignUp)
-	r.Post("/input_check", auth.InputCheck(store))
+	r.Post("/input_check", auth.InputCheck)
 	r.Get(data.CodeSendURL, data.CodeSend)
-	r.Post(data.UserAddURL, auth.UserAdd(store))
+	r.Post(data.UserAddURL, auth.UserAdd)
 
 	r.Get(data.BadSignUpURL, data.BadSignUp)
 	r.Get(data.BadEmailURL, data.BadEmail)
@@ -93,19 +75,19 @@ func initRouter() *chi.Mux {
 	r.Get(data.UserNotExistURL, data.UserNotExist)
 
 	r.Get(data.SignInURL, data.SignIn)
-	r.Post(logInURL, auth.LogIn(store))
+	r.Post(logInURL, auth.LogIn)
 	r.Get(data.BadSignInURL, data.BadSignIn)
 	r.Get(data.AlreadyExistURL, data.UserAllreadyExist)
 
 	r.Get("/yauth", auth.YandexAuthHandler)
-	r.Get("/ya_callback", auth.YandexCallbackHandler(store))
+	r.Get("/ya_callback", auth.YandexCallbackHandler)
 
 	r.Get(data.RequestErrorURL, data.RequestError)
 	r.Get(data.Err500URL, data.Err500)
 
-	r.With(auth.IsExpiredTokenMW(store)).Get(data.HomeURL,
+	r.With(auth.IsExpiredTokenMW).Get(data.HomeURL,
 		data.Home)
-	r.With(auth.IsExpiredTokenMW(store)).Post(data.LogoutURL, auth.Logout(store))
+	r.With(auth.IsExpiredTokenMW).Post(data.LogoutURL, auth.Logout)
 
 	return r
 }
@@ -119,6 +101,9 @@ func serverStart(r *chi.Mux) {
 }
 
 func authStart(w http.ResponseWriter, r *http.Request) {
+	loginCounter := 3
+	tools.SessionDataSet(w, r, loginCounter)
+
 	httpCookie, err := r.Cookie("token")
 	if err != nil {
 		dataCookie := data.NewCookie()
