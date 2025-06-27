@@ -25,6 +25,14 @@ func InitStore() *sessions.CookieStore {
 	return store
 }
 
+func GetSession(r *http.Request) (*sessions.Session, error) {
+	session, err := store.Get(r, "auth")
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return session, nil
+}
+
 func SessionDataSet(w http.ResponseWriter, r *http.Request, data any) error {
 
 	session, err := store.Get(r, "auth")

@@ -42,10 +42,7 @@ func TokenCreate(w http.ResponseWriter, r *http.Request, command string,
 		return errors.WithStack(err)
 	}
 
-	dataCookie := data.NewCookie()
-	dataCookie.SetValue(SignedToken)
-	httpCookie := dataCookie.GetCookie()
-	http.SetCookie(w, httpCookie)
+	SetCookieWithToken(w, SignedToken)
 
 	return nil
 }

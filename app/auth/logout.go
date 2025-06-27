@@ -60,10 +60,9 @@ func IsExpiredTokenMW() func(http.Handler) http.Handler {
 }
 
 func Logout(w http.ResponseWriter, r *http.Request) {
-	session, err := store.Get(r, "auth")
+	session, err := tools.GetSession(r)
 	if err != nil {
-		log.Printf("%+v", errors.WithStack(err))
-		http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
+		log.Printf("%+v", err)
 		return
 	}
 
@@ -71,14 +70,10 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	err = session.Save(r, w)
 	if err != nil {
 		log.Printf("%+v", errors.WithStack(err))
-		http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
+		http.Redirect(w, r, data.Err500URL, http.StatusFound)
 		return
 	}
 
-	dataCookie := data.NewCookie()
-	dataCookie.SetMaxAge(-1)
-	httpCookie := dataCookie.GetCookie()
-
-	http.SetCookie(w, httpCookie)
+	tools.ClearCookie(w)
 	http.Redirect(w, r, data.SignInURL, http.StatusFound)
 }

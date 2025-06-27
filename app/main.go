@@ -106,9 +106,6 @@ func authStart(w http.ResponseWriter, r *http.Request) {
 
 	httpCookie, err := r.Cookie("token")
 	if err != nil {
-		dataCookie := data.NewCookie()
-		httpCookie := dataCookie.GetCookie()
-		http.SetCookie(w, httpCookie)
 		http.Redirect(w, r, signUpURL, http.StatusFound)
 		return
 	}
