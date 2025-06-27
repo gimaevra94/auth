@@ -8,7 +8,6 @@ import (
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/golang-jwt/jwt"
-	"github.com/pkg/errors"
 )
 
 func IsExpiredTokenMW() func(http.Handler) http.Handler {
@@ -42,7 +41,7 @@ func IsExpiredTokenMW() func(http.Handler) http.Handler {
 				if time.Now().After(expUnix) {
 					lastActivity := session.Values["lastActivity"].(int64)
 					if time.Since(time.Unix(lastActivity, 0)) > 3*time.Hour {
-						Logout()
+						Logout(w, r)
 						return
 					}
 
@@ -60,16 +59,9 @@ func IsExpiredTokenMW() func(http.Handler) http.Handler {
 }
 
 func Logout(w http.ResponseWriter, r *http.Request) {
-	session, err := tools.GetSession(r)
+	err := tools.SessionEnd(w, r)
 	if err != nil {
 		log.Printf("%+v", err)
-		return
-	}
-
-	session.Options.MaxAge = -1
-	err = session.Save(r, w)
-	if err != nil {
-		log.Printf("%+v", errors.WithStack(err))
 		http.Redirect(w, r, data.Err500URL, http.StatusFound)
 		return
 	}
