@@ -2,6 +2,7 @@ package tools
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -14,24 +15,44 @@ import (
 var store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
 
 func InitStore() *sessions.CookieStore {
+	OneMonth := 2592000
 	store.Options = &sessions.Options{
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 		Path:     "/",
-		MaxAge:   86400,
+		MaxAge:   OneMonth,
 		Secure:   false,
 	}
 
 	return store
 }
 
-/*func GetSession(r *http.Request) (*sessions.Session, error) {
-	session, err := store.Get(r, "auth")
-	if err != nil {
-		return nil, errors.WithStack(err)
+func InitSessionVarsMW() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			session, err := store.Get(r, "auth")
+			if err != nil {
+				fmt.Printf("%+v", errors.WithStack(err))
+				http.Redirect(w, r, data.Err500URL, http.StatusFound)
+				return
+			}
+
+			if session.IsNew {
+				err := SessionDataSet(w, r, "loginCounter", 3)
+				if err != nil {
+					fmt.Printf("%+v", errors.WithStack(err))
+					http.Redirect(w, r, data.Err500URL, http.StatusFound)
+				}
+
+				err = SessionDataSet(w, r, "loginTimer", time.Time{})
+				if err != nil {
+					fmt.Printf("%+v", errors.WithStack(err))
+					http.Redirect(w, r, data.Err500URL, http.StatusFound)
+				}
+			}
+		})
 	}
-	return session, nil
-}*/
+}
 
 func SessionEnd(w http.ResponseWriter, r *http.Request) error {
 	session, err := store.Get(r, "auth")
@@ -47,7 +68,7 @@ func SessionEnd(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func SessionDataSet(w http.ResponseWriter, r *http.Request, data any) error {
+func SessionDataSet(w http.ResponseWriter, r *http.Request, key string, data any) error {
 
 	session, err := store.Get(r, "auth")
 	if err != nil {
@@ -59,7 +80,7 @@ func SessionDataSet(w http.ResponseWriter, r *http.Request, data any) error {
 		return errors.WithStack(err)
 	}
 
-	session.Values["user"] = jsonData
+	session.Values[key] = jsonData
 	err = session.Save(r, w)
 	if err != nil {
 		return errors.WithStack(err)
@@ -67,89 +88,82 @@ func SessionDataSet(w http.ResponseWriter, r *http.Request, data any) error {
 	return nil
 }
 
-func SessionUserGet(r *http.Request) (*sessions.Session, data.User, error) {
-
+func SessionUserDataGet(r *http.Request, key string) (data.User, error) {
 	session, err := store.Get(r, "auth")
 	if err != nil {
-		return nil, data.User{}, errors.WithStack(err)
+		return data.User{}, errors.WithStack(err)
 	}
 
-	jsonData, ok := session.Values["user"].([]byte)
+	byteData, ok := session.Values[key].([]byte)
 	if !ok {
-		return nil, data.User{}, errors.WithStack(errors.New("user: " + data.NotExistErr))
+		return data.User{}, errors.WithStack(errors.New(fmt.Sprintf("%s: "+data.NotExistErr, key)))
 	}
 
-	var user data.User
-	err = json.Unmarshal([]byte(jsonData), &user)
+	var userData data.User
+	err = json.Unmarshal([]byte(byteData), &userData)
 	if err != nil {
-		return nil, data.User{}, errors.WithStack(err)
+		return data.User{}, errors.WithStack(err)
 	}
 
-	return session, user, nil
+	return userData, nil
 }
 
-func SessionCounterGet(r *http.Request,
-	store *sessions.CookieStore) (*sessions.Session, int, error) {
-
+func SessionIntDataGet(r *http.Request, key string) (int64, error) {
 	session, err := store.Get(r, "auth")
 	if err != nil {
-		return nil, 0, errors.WithStack(err)
+		return 0, errors.WithStack(err)
 	}
 
-	jsonData, ok := session.Values["counter"].([]byte)
+	byteData, ok := session.Values[key].([]byte)
 	if !ok {
-		return nil, 0, errors.WithStack(errors.New("counter: " + data.NotExistErr))
+		return 0, errors.WithStack(errors.New(fmt.Sprintf("%s: "+data.NotExistErr, key)))
 	}
 
-	var counter int
-	err = json.Unmarshal([]byte(jsonData), &counter)
+	var intData int64
+	err = json.Unmarshal([]byte(byteData), &intData)
 	if err != nil {
-		return nil, 0, errors.WithStack(err)
+		return 0, errors.WithStack(err)
 	}
 
-	return session, counter, nil
+	return intData, nil
 }
 
-func SessionMsCodeGet(r *http.Request,
-	store *sessions.CookieStore) (*sessions.Session, string, error) {
-
+func SessionStringDataGet(r *http.Request, key string) (string, error) {
 	session, err := store.Get(r, "auth")
 	if err != nil {
-		return nil, "", errors.WithStack(err)
+		return "", errors.WithStack(err)
 	}
 
-	jsonData, ok := session.Values["msCode"].([]byte)
+	byteData, ok := session.Values[key].([]byte)
 	if !ok {
-		return nil, "", errors.WithStack(errors.New("user: " + data.NotExistErr))
+		return "", errors.WithStack(errors.New(fmt.Sprintf("%s: "+data.NotExistErr, key)))
 	}
 
-	var msCode string
-	err = json.Unmarshal([]byte(jsonData), &msCode)
+	var stringData string
+	err = json.Unmarshal([]byte(byteData), &stringData)
 	if err != nil {
-		return nil, "", errors.WithStack(err)
+		return "", errors.WithStack(err)
 	}
 
-	return session, msCode, nil
+	return stringData, nil
 }
 
-func SessionlastActivityGet(r *http.Request,
-	store *sessions.CookieStore) (*sessions.Session, time.Time, error) {
-
+func SessionTimeDataGet(r *http.Request, key string) (time.Time, error) {
 	session, err := store.Get(r, "auth")
 	if err != nil {
-		return nil, time.Time{}, errors.WithStack(err)
+		return time.Time{}, errors.WithStack(err)
 	}
 
-	jsonData, ok := session.Values["msCode"].([]byte)
+	byteData, ok := session.Values[key].([]byte)
 	if !ok {
-		return nil, time.Time{}, errors.WithStack(errors.New("user: " + data.NotExistErr))
+		return time.Time{}, errors.WithStack(errors.New(fmt.Sprintf("%s: "+data.NotExistErr, key)))
 	}
 
-	var lastActivity time.Time
-	err = json.Unmarshal([]byte(jsonData), &lastActivity)
+	var timeData time.Time
+	err = json.Unmarshal([]byte(byteData), &timeData)
 	if err != nil {
-		return nil, time.Time{}, errors.WithStack(err)
+		return time.Time{}, errors.WithStack(err)
 	}
 
-	return session, lastActivity, nil
+	return timeData, nil
 }

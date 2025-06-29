@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
@@ -101,9 +102,6 @@ func serverStart(r *chi.Mux) {
 }
 
 func authStart(w http.ResponseWriter, r *http.Request) {
-	loginCounter := 3
-	tools.SessionDataSet(w, r, loginCounter)
-
 	httpCookie, err := r.Cookie("token")
 	if err != nil {
 		http.Redirect(w, r, signUpURL, http.StatusFound)

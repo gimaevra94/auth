@@ -15,40 +15,73 @@ import (
 
 func InputCheck(store *sessions.CookieStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		validatedLoginInput, err := tools.IsValidInput(r, false)
+		var validatedLoginInput data.User
+
+		loginTimer, err := tools.SessionTimeDataGet(r, "loginTimer")
 		if err != nil {
-
-
-			if strings.Contains(err.Error(), "login") {
-				err := tmpls.ErrRenderer(w, tmpls.BaseTmpl, tmpls.LoginMsg, tmpls.LoginReqs)
-				if err != nil {
-					http.Redirect(w, r, data.Err500URL, http.StatusFound)
-					return
-				}
-				return
-			}
-
-			if strings.Contains(err.Error(), "email") {
-				err := tmpls.ErrRenderer(w, tmpls.BaseTmpl, tmpls.EmailMsg, tmpls.EmailReqs)
-				if err != nil {
-					http.Redirect(w, r, data.Err500URL, http.StatusFound)
-					return
-				}
-				return
-			}
-
-			if strings.Contains(err.Error(), "password") {
-				err := tmpls.ErrRenderer(w, tmpls.BaseTmpl, tmpls.PasswrdMsg, tmpls.PswrdReqs)
-				if err != nil {
-					http.Redirect(w, r, data.Err500URL, http.StatusFound)
-					return
-				}
-				return
-			}
-
 			log.Printf("%+v", err)
 			http.Redirect(w, r, data.Err500URL, http.StatusFound)
 			return
+		}
+
+		if loginTimer.IsZero() {
+			loginCounter, err := tools.SessionIntDataGet(r, "loginCounter")
+			if err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, data.Err500URL, http.StatusFound)
+				return
+			}
+
+			if loginCounter > 0 {
+				validatedLoginInput, err = tools.IsValidInput(r, false)
+				if err != nil {
+					if strings.Contains(err.Error(), "login") {
+						err := tmpls.ErrRenderer(w, tmpls.BaseTmpl, tmpls.LoginMsg, tmpls.LoginReqs)
+						if err != nil {
+							http.Redirect(w, r, data.Err500URL, http.StatusFound)
+							return
+						}
+						tools.SessionDataSet(w, r, "loginCounter", loginCounter-1)
+						return
+					}
+
+					if strings.Contains(err.Error(), "email") {
+						err := tmpls.ErrRenderer(w, tmpls.BaseTmpl, tmpls.EmailMsg, tmpls.EmailReqs)
+						if err != nil {
+							http.Redirect(w, r, data.Err500URL, http.StatusFound)
+							return
+						}
+						tools.SessionDataSet(w, r, "loginCounter", loginCounter-1)
+						return
+					}
+
+					if strings.Contains(err.Error(), "password") {
+						err := tmpls.ErrRenderer(w, tmpls.BaseTmpl, tmpls.PasswrdMsg, tmpls.PswrdReqs)
+						if err != nil {
+							http.Redirect(w, r, data.Err500URL, http.StatusFound)
+							return
+						}
+						tools.SessionDataSet(w, r, "loginCounter", loginCounter-1)
+						return
+					}
+
+					log.Printf("%+v", err)
+					http.Redirect(w, r, data.Err500URL, http.StatusFound)
+					return
+				}
+			}
+		} else if time.Now().After(loginTimer) {
+				loginTimer = time.Time{}
+				err := tools.SessionDataSet(w, r, "loginTimer", loginTimer)
+				if err != nil {
+
+					log.Printf("%+v", err)
+					http.Redirect(w, r, data.Err500URL, http.StatusFound)
+					return
+				}
+			}else{
+				
+			}
 		}
 
 		err = tools.SessionDataSet(w, r, validatedLoginInput)
@@ -89,10 +122,10 @@ if err != nil {
 http.Redirect(w, r, data.AlreadyExistURL, http.StatusFound)*/
 
 func CodeSend(w http.ResponseWriter, r *http.Request, store *sessions.CookieStore) {
-	session, user, err := tools.SessionUserGet(r, store)
+	user, err := tools.SessionDataGet(r, "user")
 	if err != nil {
 		log.Printf("%+v", err)
-		http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
+		http.Redirect(w, r, data.Err500URL, http.StatusFound)
 		return
 	}
 

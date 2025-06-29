@@ -20,35 +20,41 @@ func IsExpiredTokenMW() func(http.Handler) http.Handler {
 			token, err := tools.IsValidToken(w, r)
 			if err != nil {
 				log.Printf("%+v", err)
-				http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
+				http.Redirect(w, r, data.Err500URL, http.StatusFound)
 				return
 			}
 
 			claims := token.Claims.(jwt.MapClaims)
 			exp := claims["exp"].(float64)
 
-			var noExpiration = 253402300799.0
-			if exp != noExpiration {
+			if exp != data.NoExpiration {
 				expUnix := time.Unix(int64(exp), 0)
 
-				session, user, err := tools.SessionUserGet(r)
-				if err != nil {
-					log.Printf("%+v", err)
-					http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
-					return
-				}
-
 				if time.Now().After(expUnix) {
-					lastActivity := session.Values["lastActivity"].(int64)
-					if time.Since(time.Unix(lastActivity, 0)) > 3*time.Hour {
+					lastActivity, err := tools.SessionlastActivityGet(r)
+					
+					if err != nil {
+						log.Printf("%+v", err)
+						http.Redirect(w, r, data.Err500URL, http.StatusFound)
+						return
+					}
+
+					if time.Since(lastActivity) > 3*time.Hour {
 						Logout(w, r)
+						return
+					}
+
+					user, err := tools.SessionUserGet(r)
+					if err != nil {
+						log.Printf("%+v", err)
+						http.Redirect(w, r, data.Err500URL, http.StatusFound)
 						return
 					}
 
 					err = tools.TokenCreate(w, r, "3hours", user)
 					if err != nil {
 						log.Printf("%+v", err)
-						http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
+						http.Redirect(w, r, data.Err500URL, http.StatusFound)
 						return
 					}
 				}

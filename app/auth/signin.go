@@ -16,7 +16,7 @@ func LogIn(w http.ResponseWriter, r *http.Request) {
 	rememberMe := r.FormValue("rememberMe")
 	if rememberMe == "" {
 		log.Printf("%+v", errors.WithStack(errors.New("rememberMe: "+data.NotExistErr)))
-		http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
+		http.Redirect(w, r, data.Err500URL, http.StatusFound)
 		return
 	}
 

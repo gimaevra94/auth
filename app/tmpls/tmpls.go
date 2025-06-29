@@ -28,9 +28,10 @@ var (
 		"Special symbols: !@#$%^&*",
 	}
 
-	LoginMsg   = "Login invalid"
-	PasswrdMsg = "Password invalid"
-	EmailMsg   = "Email invalid"
+	LoginMsg = "Login invalid"
+	EmailMsg = "Email invalid"
+	PasswrdMsg    = "Password invalid"
+	LoginTimerMsg = "exceeded the number of login attempts, try later"
 )
 
 func ErrRenderer(w http.ResponseWriter, baseTmpl *template.Template, msg string, reqs []string) error {

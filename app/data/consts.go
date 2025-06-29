@@ -17,4 +17,6 @@ const (
 
 	NotExistErr = "not exist"
 	InvalidErr  = "invalid"
+
+	NoExpiration = 253402300799.0
 )
