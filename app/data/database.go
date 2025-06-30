@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/gimaevra94/auth/app/tmpls"
 	"github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
@@ -96,7 +97,7 @@ func UserCheck2(queryValue string, usrValue string, pswrd string) error {
 	return nil
 }*/
 
-func UserAdd(user User) error {
+func UserAdd(user tmpls.User) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password),
 		bcrypt.DefaultCost)
 	if err != nil {
@@ -111,14 +112,14 @@ func UserAdd(user User) error {
 	return nil
 }
 
-func YauthUserCheck(user User) error {
+func YauthUserCheck(user tmpls.User) error {
 	row := db.QueryRow(yauthSelectQuery, user.Email)
 	var existingEmail string
 	err := row.Scan(&existingEmail)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return errors.WithStack(errors.New("user: " + NotExistErr))
+			return errors.WithStack(errors.New("user: " + tmpls.NotExistErr))
 		}
 		return errors.WithStack(err)
 	}
@@ -126,7 +127,7 @@ func YauthUserCheck(user User) error {
 	return nil
 }
 
-func YauthUserAdd(user User) error {
+func YauthUserAdd(user tmpls.User) error {
 	_, err := db.Exec(yauthInsertQuery, user.Login, user.Email)
 	if err != nil {
 		return errors.WithStack(err)

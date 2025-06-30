@@ -1,4 +1,4 @@
-package data
+package tmpls
 
 type User struct {
 	ID       string `sql:"id" json:"id"`

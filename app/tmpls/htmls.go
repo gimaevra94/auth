@@ -1,4 +1,4 @@
-package data
+package tmpls
 
 import (
 	"io"

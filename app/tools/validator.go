@@ -5,7 +5,7 @@ import (
 	"os"
 	"regexp"
 
-	"github.com/gimaevra94/auth/app/data"
+	"github.com/gimaevra94/auth/app/tmpls"
 	"github.com/golang-jwt/jwt"
 	"github.com/pkg/errors"
 )
@@ -30,20 +30,20 @@ func IsValidToken(w http.ResponseWriter, r *http.Request) (*jwt.Token, error) {
 	}
 
 	if !token.Valid {
-		return nil, errors.WithStack(errors.New("token: " + data.InvalidErr))
+		return nil, errors.WithStack(errors.New("token: " + tmpls.InvalidErr))
 	}
 
 	return token, nil
 }
 
-func IsValidInput(r *http.Request, IsLogin bool) (data.User, error) {
+func IsValidInput(r *http.Request, IsLogin bool) (tmpls.User, error) {
 
 	id := ""
 	login := r.FormValue("login")
 	email := r.FormValue("email")
 	password := r.FormValue("password")
 
-	validatedLoginInput := data.User{
+	validatedLoginInput := tmpls.User{
 		ID:       id,
 		Login:    login,
 		Email:    email,
@@ -51,26 +51,26 @@ func IsValidInput(r *http.Request, IsLogin bool) (data.User, error) {
 	}
 
 	if login == "" {
-		return data.User{}, errors.WithStack(errors.New("login: " + data.NotExistErr))
+		return tmpls.User{}, errors.WithStack(errors.New("login: " + tmpls.NotExistErr))
 	}
 	if !loginRegex.MatchString(login) {
-		return data.User{}, errors.WithStack(errors.New("login: " + data.InvalidErr))
+		return tmpls.User{}, errors.WithStack(errors.New("login: " + tmpls.InvalidErr))
 	}
 
 	if !IsLogin {
 		if email == "" {
-			return data.User{}, errors.WithStack(errors.New("email: " + data.NotExistErr))
+			return tmpls.User{}, errors.WithStack(errors.New("email: " + tmpls.NotExistErr))
 		}
 		if !emailRegex.MatchString(email) {
-			return data.User{}, errors.WithStack(errors.New("email: " + data.InvalidErr))
+			return tmpls.User{}, errors.WithStack(errors.New("email: " + tmpls.InvalidErr))
 		}
 	}
 
 	if password == "" {
-		return data.User{}, errors.WithStack(errors.New("password: " + data.NotExistErr))
+		return tmpls.User{}, errors.WithStack(errors.New("password: " + tmpls.NotExistErr))
 	}
 	if !passwordRegex.MatchString(password) {
-		return data.User{}, errors.WithStack(errors.New("password: " + data.InvalidErr))
+		return tmpls.User{}, errors.WithStack(errors.New("password: " + tmpls.InvalidErr))
 	}
 
 	return validatedLoginInput, nil

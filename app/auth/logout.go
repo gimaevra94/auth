@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gimaevra94/auth/app/data"
+	"github.com/gimaevra94/auth/app/tmpls"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/golang-jwt/jwt"
 )
@@ -20,22 +21,22 @@ func IsExpiredTokenMW() func(http.Handler) http.Handler {
 			token, err := tools.IsValidToken(w, r)
 			if err != nil {
 				log.Printf("%+v", err)
-				http.Redirect(w, r, data.Err500URL, http.StatusFound)
+				http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
 				return
 			}
 
 			claims := token.Claims.(jwt.MapClaims)
 			exp := claims["exp"].(float64)
 
-			if exp != data.NoExpiration {
+			if exp != tmpls.NoExpiration {
 				expUnix := time.Unix(int64(exp), 0)
 
 				if time.Now().After(expUnix) {
-					lastActivity, err := tools.SessionlastActivityGet(r)
-					
+					lastActivity, err := data.SessionTimeDataGet(r, "lastActivity")
+
 					if err != nil {
 						log.Printf("%+v", err)
-						http.Redirect(w, r, data.Err500URL, http.StatusFound)
+						http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
 						return
 					}
 
@@ -44,17 +45,17 @@ func IsExpiredTokenMW() func(http.Handler) http.Handler {
 						return
 					}
 
-					user, err := tools.SessionUserGet(r)
+					user, err := data.SessionUserDataGet(r, "user")
 					if err != nil {
 						log.Printf("%+v", err)
-						http.Redirect(w, r, data.Err500URL, http.StatusFound)
+						http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
 						return
 					}
 
-					err = tools.TokenCreate(w, r, "3hours", user)
+					_, err = tools.TokenCreate(w, r, "3hours", user)
 					if err != nil {
 						log.Printf("%+v", err)
-						http.Redirect(w, r, data.Err500URL, http.StatusFound)
+						http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
 						return
 					}
 				}
@@ -65,13 +66,13 @@ func IsExpiredTokenMW() func(http.Handler) http.Handler {
 }
 
 func Logout(w http.ResponseWriter, r *http.Request) {
-	err := tools.SessionEnd(w, r)
+	err := data.SessionEnd(w, r)
 	if err != nil {
 		log.Printf("%+v", err)
-		http.Redirect(w, r, data.Err500URL, http.StatusFound)
+		http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
 		return
 	}
 
-	tools.ClearCookie(w)
-	http.Redirect(w, r, data.SignInURL, http.StatusFound)
+	data.ClearCookie(w)
+	http.Redirect(w, r, tmpls.SignInURL, http.StatusFound)
 }

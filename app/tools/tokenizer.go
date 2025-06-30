@@ -3,14 +3,23 @@ package tools
 import (
 	"net/http"
 	"os"
+	"time"
 
-	"github.com/gimaevra94/auth/app/data"
+	"github.com/gimaevra94/auth/app/tmpls"
 	"github.com/golang-jwt/jwt"
 	"github.com/pkg/errors"
 )
 
-func TokenCreate(w http.ResponseWriter, r *http.Request, exp int64,
-	user data.User) (string, error) {
+func TokenCreate(w http.ResponseWriter, r *http.Request, rememberMe string, user tmpls.User) (string, error) {
+	var exp int64
+
+	if rememberMe == "true" {
+		exp = int64(24 * time.Hour)
+	} else if rememberMe == "3hours" {
+		exp = int64(3 * time.Hour)
+	} else {
+		exp = tmpls.NoExpiration
+	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user": user,

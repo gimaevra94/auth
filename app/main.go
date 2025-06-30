@@ -4,14 +4,14 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 
+	"github.com/gorilla/sessions"
 	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
 
 	"github.com/gimaevra94/auth/app/auth"
 	"github.com/gimaevra94/auth/app/data"
-	"github.com/gimaevra94/auth/app/tools"
+	"github.com/gimaevra94/auth/app/tmpls"
 	"github.com/go-chi/chi"
 )
 
@@ -23,8 +23,8 @@ const (
 func main() {
 	initEnv()
 	initDB()
-	tools.InitStore()
-	r := initRouter()
+	s := data.InitStore()
+	r := initRouter(s)
 	serverStart(r)
 	defer data.DBClose()
 }
@@ -46,7 +46,7 @@ func initEnv() {
 
 	for _, v := range envVars {
 		if os.Getenv(v) == "" {
-			log.Printf("%+v", errors.WithStack(errors.New(v+": "+data.NotExistErr)))
+			log.Printf("%+v", errors.WithStack(errors.New(v+": "+tmpls.NotExistErr)))
 			return
 		}
 	}
@@ -60,35 +60,35 @@ func initDB() {
 	}
 }
 
-func initRouter() *chi.Mux {
+func initRouter(s *sessions.CookieStore) *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Get("/", authStart)
 
-	r.Get(signUpURL, data.SignUp)
-	r.Post("/input_check", auth.InputCheck)
-	r.Get(data.CodeSendURL, data.CodeSend)
-	r.Post(data.UserAddURL, auth.UserAdd)
+	r.Get(signUpURL, tmpls.SignUp)
+	r.Post(tmpls.InputCheckURL, auth.InputCheck(s))
+	r.Get(tmpls.CodeSendURL, tmpls.CodeSend)
+	r.Post(tmpls.UserAddURL, auth.UserAdd)
 
-	r.Get(data.BadSignUpURL, data.BadSignUp)
-	r.Get(data.BadEmailURL, data.BadEmail)
-	r.Get(data.WrongCodeURL, data.WrongCode)
-	r.Get(data.UserNotExistURL, data.UserNotExist)
+	r.Get(tmpls.BadSignUpURL, tmpls.BadSignUp)
+	r.Get(tmpls.BadEmailURL, tmpls.BadEmail)
+	r.Get(tmpls.WrongCodeURL, tmpls.WrongCode)
+	r.Get(tmpls.UserNotExistURL, tmpls.UserNotExist)
 
-	r.Get(data.SignInURL, data.SignIn)
+	r.Get(tmpls.SignInURL, tmpls.SignIn)
 	r.Post(logInURL, auth.LogIn)
-	r.Get(data.BadSignInURL, data.BadSignIn)
-	r.Get(data.AlreadyExistURL, data.UserAllreadyExist)
+	r.Get(tmpls.BadSignInURL, tmpls.BadSignIn)
+	r.Get(tmpls.AlreadyExistURL, tmpls.UserAllreadyExist)
 
 	r.Get("/yauth", auth.YandexAuthHandler)
 	r.Get("/ya_callback", auth.YandexCallbackHandler)
 
-	r.Get(data.RequestErrorURL, data.RequestError)
-	r.Get(data.Err500URL, data.Err500)
+	r.Get(tmpls.Err500URL, tmpls.RequestError)
+	r.Get(tmpls.Err500URL, tmpls.Err500)
 
-	r.With(auth.IsExpiredTokenMW).Get(data.HomeURL,
-		data.Home)
-	r.With(auth.IsExpiredTokenMW).Post(data.LogoutURL, auth.Logout)
+	r.With(auth.IsExpiredTokenMW).Get(tmpls.HomeURL,
+		tmpls.Home)
+	r.With(auth.IsExpiredTokenMW).Post(tmpls.LogoutURL, auth.Logout)
 
 	return r
 }
@@ -109,17 +109,17 @@ func authStart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if httpCookie.Value == "" {
-		errors.WithStack(errors.New("token: " + data.NotExistErr))
+		errors.WithStack(errors.New("token: " + tmpls.NotExistErr))
 		http.Redirect(w, r, signUpURL, http.StatusFound)
 		return
 	}
 
-	_, err = tools.IsValidToken(w, r)
+	_, err = data.IsValidToken(w, r)
 	if err != nil {
 		log.Printf("%+v", errors.WithStack(err))
 		http.Redirect(w, r, signUpURL, http.StatusFound)
 		return
 	}
 
-	http.Redirect(w, r, data.HomeURL, http.StatusFound)
+	http.Redirect(w, r, tmpls.HomeURL, http.StatusFound)
 }

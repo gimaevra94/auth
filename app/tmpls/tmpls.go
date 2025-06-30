@@ -1,61 +1,6 @@
 package tmpls
 
-import (
-	"html/template"
-	"net/http"
-
-	"github.com/pkg/errors"
-)
-
-var (
-	BaseTmpl = Must(template.New("base").Parse(base))
-	_        = Must(BaseTmpl.Parse(signUp))
-
-	LoginReqs = []string{
-		"3-30 characters long",
-		"Latin or Cyrillic letters",
-		"Numbers 0-9",
-	}
-	EmailReqs = []string{
-		"Must contain Latin letters, numbers and allowed special characters: . _ % + -",
-		"Must contain exactly one '@' symbol",
-		"Domain must be valid and end with .com, .org, etc.",
-	}
-	PswrdReqs = []string{
-		"8-30 characters long",
-		"Latin letters only",
-		"Numbers 0-9",
-		"Special symbols: !@#$%^&*",
-	}
-
-	LoginMsg = "Login invalid"
-	EmailMsg = "Email invalid"
-	PasswrdMsg    = "Password invalid"
-	LoginTimerMsg = "exceeded the number of login attempts, try later"
-)
-
-func ErrRenderer(w http.ResponseWriter, baseTmpl *template.Template, msg string, reqs []string) error {
-	data := struct {
-		Msg  string
-		Reqs []string
-	}{
-		Msg:  msg,
-		Reqs: reqs,
-	}
-
-	err := baseTmpl.ExecuteTemplate(w, signUp, data)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	return nil
-}
-
-func Must(t *template.Template, err error) *template.Template {
-	return template.Must(t, err)
-}
-
-const base = `
+const BaseTMPL = `
 {{ define "base" }}
 <!DOCTYPE html>
 <html lang="ru">
@@ -73,7 +18,7 @@ const base = `
 {{ end }}
 `
 
-const signUp = `
+const SignUpTMPL = `
 {{ define "title" }}Sign Up{{ end }}
 
 {{ define "content" }}

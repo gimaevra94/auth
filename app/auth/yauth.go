@@ -9,6 +9,7 @@ import (
 	"net/url"
 
 	"github.com/gimaevra94/auth/app/data"
+	"github.com/gimaevra94/auth/app/tmpls"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/gorilla/sessions"
 	"github.com/pkg/errors"
@@ -38,22 +39,22 @@ func YandexCallbackHandler(store *sessions.CookieStore) http.HandlerFunc {
 		yaCode := r.URL.Query().Get("code")
 
 		if yaCode == "" {
-			log.Printf("%+v", errors.WithStack(errors.New("code: "+data.NotExistErr)))
-			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
+			log.Printf("%+v", errors.WithStack(errors.New("code: "+tmpls.NotExistErr)))
+			http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
 			return
 		}
 
 		token, err := getAccessToken(yaCode)
 		if err != nil {
 			log.Printf("%+v", err)
-			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
+			http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
 			return
 		}
 
 		user, err := getUserInfo(token)
 		if err != nil {
 			log.Printf("%+v", err)
-			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
+			http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
 			return
 		}
 
@@ -63,26 +64,26 @@ func YandexCallbackHandler(store *sessions.CookieStore) http.HandlerFunc {
 				err = data.YauthUserAdd(user)
 				if err != nil {
 					log.Printf("%+v", err)
-					http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
+					http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
 					return
 				}
 			}
 		}
 
-		err = tools.TokenCreate(w, r, "true", user)
+		_, err = tools.TokenCreate(w, r, "true", user)
 		if err != nil {
 			log.Printf("%+v", err)
-			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
+			http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
 			return
 		}
 
-		err = tools.SessionDataSet(w, r, user)
+		err = data.SessionDataSet(w, r, "user", user)
 		if err != nil {
 			log.Printf("%+v", err)
-			http.Redirect(w, r, data.RequestErrorURL, http.StatusFound)
+			http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
 		}
 
-		http.Redirect(w, r, data.HomeURL, http.StatusFound)
+		http.Redirect(w, r, tmpls.HomeURL, http.StatusFound)
 	}
 }
 
@@ -92,7 +93,7 @@ func getAccessToken(yaCode string) (string, error) {
 		"code":          {yaCode},
 		"client_id":     {clientID},
 		"client_secret": {clientSecret},
-		"redirect_uri":  {data.HomeURL},
+		"redirect_uri":  {tmpls.HomeURL},
 	}
 
 	resp, err := http.PostForm(tokenURL, tokenParams)
@@ -114,35 +115,35 @@ func getAccessToken(yaCode string) (string, error) {
 
 	accessToken, ok := result["access_token"].(string)
 	if !ok {
-		return "", errors.WithStack(errors.New("access_token: " + data.NotExistErr))
+		return "", errors.WithStack(errors.New("access_token: " + tmpls.NotExistErr))
 	}
 
 	return accessToken, nil
 }
 
-func getUserInfo(accessToken string) (data.User, error) {
+func getUserInfo(accessToken string) (tmpls.User, error) {
 	req, err := http.NewRequest("GET", userInfoURL, nil)
 	if err != nil {
-		return data.User{}, errors.WithStack(err)
+		return tmpls.User{}, errors.WithStack(err)
 	}
 
 	req.Header.Set("Authorization", "OAuth "+accessToken)
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return data.User{}, errors.WithStack(err)
+		return tmpls.User{}, errors.WithStack(err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return data.User{}, errors.WithStack(err)
+		return tmpls.User{}, errors.WithStack(err)
 	}
 
-	var user data.User
+	var user tmpls.User
 	err = json.Unmarshal(body, &user)
 	if err != nil {
-		return data.User{}, errors.WithStack(err)
+		return tmpls.User{}, errors.WithStack(err)
 	}
 
 	return user, nil
