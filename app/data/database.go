@@ -50,7 +50,7 @@ func query(s string) string {
 	return fmt.Sprintf("select passwordHash from user where %s = ? limit 1", s)
 }
 
-func UserCheck2(queryValue string, usrValue string, pswrd string) error {
+func UserCheck(queryValue string, usrValue string, pswrd string) error {
 	row := db.QueryRow(query(queryValue), usrValue)
 	var passwordHash string
 	err := row.Scan(&passwordHash)

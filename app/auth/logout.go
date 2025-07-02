@@ -11,58 +11,52 @@ import (
 	"github.com/golang-jwt/jwt"
 )
 
-func IsExpiredTokenMW() func(http.Handler) http.Handler {
+func IsExpiredTokenMW(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token, err := tools.IsValidToken(w, r)
+		if err != nil {
+			log.Printf("%+v", err)
+			http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+			return
+		}
 
-	return func(next http.Handler) http.Handler {
+		claims := token.Claims.(jwt.MapClaims)
+		exp := claims["exp"].(float64)
 
-		return http.HandlerFunc(func(w http.ResponseWriter,
-			r *http.Request) {
+		if exp != tmpls.NoExpiration {
+			expUnix := time.Unix(int64(exp), 0)
 
-			token, err := tools.IsValidToken(w, r)
-			if err != nil {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
-				return
-			}
+			if time.Now().After(expUnix) {
+				lastActivity, err := data.SessionTimeDataGet(r, "lastActivity")
 
-			claims := token.Claims.(jwt.MapClaims)
-			exp := claims["exp"].(float64)
+				if err != nil {
+					log.Printf("%+v", err)
+					http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+					return
+				}
 
-			if exp != tmpls.NoExpiration {
-				expUnix := time.Unix(int64(exp), 0)
+				if time.Since(lastActivity) > 3*time.Hour {
+					Logout(w, r)
+					return
+				}
 
-				if time.Now().After(expUnix) {
-					lastActivity, err := data.SessionTimeDataGet(r, "lastActivity")
+				user, err := data.SessionUserDataGet(r, "user")
+				if err != nil {
+					log.Printf("%+v", err)
+					http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+					return
+				}
 
-					if err != nil {
-						log.Printf("%+v", err)
-						http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
-						return
-					}
-
-					if time.Since(lastActivity) > 3*time.Hour {
-						Logout(w, r)
-						return
-					}
-
-					user, err := data.SessionUserDataGet(r, "user")
-					if err != nil {
-						log.Printf("%+v", err)
-						http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
-						return
-					}
-
-					_, err = tools.TokenCreate(w, r, "3hours", user)
-					if err != nil {
-						log.Printf("%+v", err)
-						http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
-						return
-					}
+				_, err = tools.TokenCreate(w, r, "3hours", user)
+				if err != nil {
+					log.Printf("%+v", err)
+					http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+					return
 				}
 			}
-			next.ServeHTTP(w, r)
-		})
-	}
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func Logout(w http.ResponseWriter, r *http.Request) {

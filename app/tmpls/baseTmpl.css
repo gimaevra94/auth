@@ -1,0 +1,259 @@
+/* signup.css — общий стиль для всех шаблонов */
+:root {
+    --primary-color: #2563eb;
+    --error-color: #dc2626;
+    --success-color: #059669;
+    --text-color: #e5e7eb;
+    --bg-color: #1f2937;
+    --container-bg: #374151;
+    --border-color: #4b5563;
+    --input-bg: #4b5563;
+    --hover-bg: #4b5563;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.5;
+}
+
+.container {
+    max-width: 400px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: var(--container-bg);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    text-align: center;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+h1 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    color: var(--text-color);
+}
+
+h1.error {
+    color: var(--error-color);
+}
+
+.message {
+    margin-bottom: 1.5rem;
+    color: #9ca3af;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+    text-align: left;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+input[type="text"],
+input[type="password"],
+input[type="email"] {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+    background-color: var(--input-bg);
+    color: var(--text-color);
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.2);
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    margin: 1rem 0;
+}
+
+.checkbox-group input[type="checkbox"] {
+    margin-right: 0.5rem;
+}
+
+.checkbox-group label {
+    margin-bottom: 0;
+}
+
+.btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    text-decoration: none;
+}
+
+.btn:hover {
+    background-color: #1d4ed8;
+}
+
+.btn-danger {
+    background-color: var(--error-color);
+}
+
+.btn-danger:hover {
+    background-color: #b91c1c;
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    margin-left: 1rem;
+}
+
+.btn-secondary:hover {
+    background-color: var(--hover-bg);
+}
+
+.success-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 1rem;
+    color: var(--success-color);
+}
+
+.error-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 1rem;
+    color: var(--error-color);
+}
+
+.divider {
+    margin: 1.5rem 0;
+    text-align: center;
+    position: relative;
+}
+
+.divider::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background-color: var(--border-color);
+}
+
+.divider span {
+    background-color: var(--container-bg);
+    padding: 0 1rem;
+    color: #9ca3af;
+    position: relative;
+}
+
+.oauth-btn {
+    display: block;
+    width: 100%;
+    padding: 0.75rem;
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-color);
+    font-size: 1rem;
+    text-align: center;
+    text-decoration: none;
+    transition: background-color 0.2s;
+}
+
+.oauth-btn:hover {
+    background-color: var(--hover-bg);
+}
+
+.requirements {
+    text-align: left;
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: var(--input-bg);
+    border-radius: 4px;
+}
+
+.requirements h2 {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-color);
+}
+
+.requirements ul {
+    list-style: none;
+    padding-left: 1rem;
+}
+
+.requirements li {
+    color: #9ca3af;
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+}
+
+.welcome {
+    margin-bottom: 2rem;
+    color: #9ca3af;
+}
+
+.resend {
+    margin-top: 1rem;
+    text-align: center;
+    font-size: 0.875rem;
+    color: #9ca3af;
+}
+
+.resend a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.resend a:hover {
+    text-decoration: underline;
+}
+
+.login-link {
+    margin-top: 1rem;
+    text-align: center;
+    color: #9ca3af;
+}
+
+.login-link a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.login-link a:hover {
+    text-decoration: underline;
+} 

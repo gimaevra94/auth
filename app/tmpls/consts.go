@@ -39,8 +39,9 @@ var (
 		"Special symbols: !@#$%^&*",
 	}
 
-	LoginMsg      = "Login invalid"
-	EmailMsg      = "Email invalid"
-	PasswrdMsg    = "Password invalid"
-	LoginTimerMsg = "exceeded the number of login attempts, try later"
+	LoginMsg            = "Login invalid"
+	EmailMsg            = "Email invalid"
+	PasswrdMsg          = "Password invalid"
+	UserAlreadyExistMsg = "User already exist"
+	MsCodeMsg           = "Wrong code"
 )

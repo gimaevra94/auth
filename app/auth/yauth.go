@@ -11,7 +11,6 @@ import (
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/tmpls"
 	"github.com/gimaevra94/auth/app/tools"
-	"github.com/gorilla/sessions"
 	"github.com/pkg/errors"
 )
 
@@ -34,57 +33,55 @@ func YandexAuthHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, authURLWithParamsUrl, http.StatusFound)
 }
 
-func YandexCallbackHandler(store *sessions.CookieStore) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		yaCode := r.URL.Query().Get("code")
+func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
+	yaCode := r.URL.Query().Get("code")
 
-		if yaCode == "" {
-			log.Printf("%+v", errors.WithStack(errors.New("code: "+tmpls.NotExistErr)))
-			http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
-			return
-		}
+	if yaCode == "" {
+		log.Printf("%+v", errors.WithStack(errors.New("code: "+tmpls.NotExistErr)))
+		http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+		return
+	}
 
-		token, err := getAccessToken(yaCode)
-		if err != nil {
-			log.Printf("%+v", err)
-			http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
-			return
-		}
+	token, err := getAccessToken(yaCode)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+		return
+	}
 
-		user, err := getUserInfo(token)
-		if err != nil {
-			log.Printf("%+v", err)
-			http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
-			return
-		}
+	user, err := getUserInfo(token)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+		return
+	}
 
-		err = data.YauthUserCheck(user)
-		if err != nil {
-			if err == sql.ErrNoRows {
-				err = data.YauthUserAdd(user)
-				if err != nil {
-					log.Printf("%+v", err)
-					http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
-					return
-				}
+	err = data.YauthUserCheck(user)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			err = data.YauthUserAdd(user)
+			if err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+				return
 			}
 		}
-
-		_, err = tools.TokenCreate(w, r, "true", user)
-		if err != nil {
-			log.Printf("%+v", err)
-			http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
-			return
-		}
-
-		err = data.SessionDataSet(w, r, "user", user)
-		if err != nil {
-			log.Printf("%+v", err)
-			http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
-		}
-
-		http.Redirect(w, r, tmpls.HomeURL, http.StatusFound)
 	}
+
+	_, err = tools.TokenCreate(w, r, "true", user)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+		return
+	}
+
+	err = data.SessionDataSet(w, r, "user", user)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+	}
+
+	http.Redirect(w, r, tmpls.HomeURL, http.StatusFound)
 }
 
 func getAccessToken(yaCode string) (string, error) {
