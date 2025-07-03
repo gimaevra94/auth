@@ -37,7 +37,7 @@ func InputCheck(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 
-				err = tools.ErrRenderer(w, tools.BaseTmpl, tmpls.LoginMsg, tmpls.LoginReqs)
+				err = tools.TmplRenderer(w, tools.BaseTmpl, tmpls.LoginMsg, tmpls.LoginReqs)
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
@@ -55,7 +55,7 @@ func InputCheck(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 
-				err := tools.ErrRenderer(w, tools.BaseTmpl, tmpls.EmailMsg, tmpls.EmailReqs)
+				err := tools.TmplRenderer(w, tools.BaseTmpl, tmpls.EmailMsg, tmpls.EmailReqs)
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
@@ -73,7 +73,7 @@ func InputCheck(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 
-				err := tools.ErrRenderer(w, tools.BaseTmpl, tmpls.PasswrdMsg, tmpls.PswrdReqs)
+				err := tools.TmplRenderer(w, tools.BaseTmpl, tmpls.PasswrdMsg, tmpls.PswrdReqs)
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
@@ -163,7 +163,7 @@ func UserCheck(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-			err = tools.ErrRenderer(w, tools.BaseTmpl, tmpls.PasswrdMsg, tmpls.PswrdReqs)
+			err = tools.TmplRenderer(w, tools.BaseTmpl, tmpls.PasswrdMsg, tmpls.PswrdReqs)
 			if err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
@@ -178,7 +178,7 @@ func UserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = tools.ErrRenderer(w, tools.BaseTmpl, tmpls.UserAlreadyExistMsg, []string{})
+	err = tools.TmplRenderer(w, tools.BaseTmpl, tmpls.UserAlreadyExistMsg, []string{})
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
@@ -240,7 +240,7 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if userCode != msCode {
-		err = tools.ErrRenderer(w, tools.BaseTmpl, tmpls.MsCodeMsg, []string{})
+		err = tools.TmplRenderer(w, tools.BaseTmpl, tmpls.MsCodeMsg, []string{})
 		if err != nil {
 			log.Printf("%+v", err)
 			http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)

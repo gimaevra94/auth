@@ -23,7 +23,7 @@ func LogIn(w http.ResponseWriter, r *http.Request) {
 
 	validatedLoginInput, err := tools.IsValidInput(r, true)
 	if err != nil {
-		err = tools.ErrRenderer(w, tools.BaseTmpl, tmpls.MsCodeMsg, []string{})
+		err = tools.TmplRenderer(w, tools.BaseTmpl, tmpls.MsCodeMsg, []string{})
 		if err != nil {
 			log.Printf("%+v", err)
 			http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)

@@ -68,5 +68,12 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data.ClearCookie(w)
-	http.Redirect(w, r, tmpls.SignInURL, http.StatusFound)
+	err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", nil)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+		return
+	}
+	return
+
 }
