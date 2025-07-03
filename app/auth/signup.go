@@ -66,7 +66,7 @@ func InputCheck(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if strings.Contains(err.Error(), "password") {
-				data.SessionDataSet(w, r, "loginCounter", loginCounter-1)
+				err = data.SessionDataSet(w, r, "loginCounter", loginCounter-1)
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
@@ -104,7 +104,12 @@ func InputCheck(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			// капча
+			err := tools.Captcha(r)
+			if err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+				return
+			}
 
 		} else {
 			if time.Now().After(loginTimer) {
@@ -119,7 +124,12 @@ func InputCheck(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			//капча
+			err := tools.Captcha(r)
+			if err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+				return
+			}
 		}
 	}
 

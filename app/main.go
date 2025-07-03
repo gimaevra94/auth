@@ -42,6 +42,7 @@ func initEnv() {
 		"DB_PASSWORD",
 		"MAIL_SENDER_EMAIL",
 		"MAIL_PASSWORD",
+		"GOOGLE_CAPTCHA_SECRET",
 	}
 
 	for _, v := range envVars {

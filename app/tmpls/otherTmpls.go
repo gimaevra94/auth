@@ -36,6 +36,8 @@ const SignUpTMPL = `
         <label for="password">Password</label>
         <input type="password" id="password" name="password" required autocomplete="new-password">
     </div>
+    <!-- Google reCAPTCHA -->
+    <div class="g-recaptcha" data-sitekey="6LeTKHUrAAAAAAoKY_j2RF_ZZtCYgjyr8yv1c7dE"></div>
     <button type="submit" class="btn">Sign Up</button>
 </form>
 <div class="divider">
@@ -48,6 +50,8 @@ const SignUpTMPL = `
     Already have an account? <a href="/log_in">Sign In</a>
 </div>
 {{ end }}
+<!-- Подключение скрипта Google reCAPTCHA -->
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
 `
 
 const InternalServerErrorTMPL = `
@@ -295,4 +299,40 @@ const WrongCodeTMPL = `
     <a href="/code_send" class="btn">Try Again</a>
 </div>
 {{ end }}
+`
+
+const SignInTMPL = `
+{{ define "title" }}Sign In{{ end }}
+
+{{ define "content" }}
+<h1>Sign In</h1>
+<form method="POST" action="/log_in">
+    <div class="form-group">
+        <label for="login">Username</label>
+        <input type="text" id="login" name="login" required autocomplete="username">
+    </div>
+    <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required autocomplete="current-password">
+    </div>
+    <div class="form-group" style="margin-top:1em;">
+        <input type="hidden" name="rememberMe" value="false">
+        <label style="display:flex;align-items:center;gap:0.5em;">
+            <input type="checkbox" name="rememberMe" value="true">
+            Remember me
+        </label>
+    </div>
+    <!-- Google reCAPTCHA -->
+    <div class="g-recaptcha" data-sitekey="6LeTKHUrAAAAAAoKY_j2RF_ZZtCYgjyr8yv1c7dE"></div>
+    <button type="submit" class="btn">Sign In</button>
+</form>
+<div class="divider">
+    <span>or</span>
+</div>
+<form method="POST" action="/yauth">
+    <button type="submit" class="oauth-btn">Sign in with Yandex</button>
+</form>
+{{ end }}
+<!-- Подключение скрипта Google reCAPTCHA -->
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
 `
