@@ -10,7 +10,7 @@ import (
 
 	"github.com/gimaevra94/auth/app/auth"
 	"github.com/gimaevra94/auth/app/data"
-	"github.com/gimaevra94/auth/app/tmpls"
+	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/go-chi/chi"
 )
@@ -47,7 +47,7 @@ func initEnv() {
 
 	for _, v := range envVars {
 		if os.Getenv(v) == "" {
-			log.Printf("%+v", errors.WithStack(errors.New(v+": "+tmpls.NotExistErr)))
+			log.Printf("%+v", errors.WithStack(errors.New(v+": "+consts.NotExistErr)))
 			return
 		}
 	}
@@ -66,30 +66,29 @@ func initRouter() *chi.Mux {
 
 	r.Get("/", authStart)
 
-	r.Get(signUpURL, tmpls.SignUp)
-	r.Post(tmpls.InputCheckURL, auth.InputCheck)
-	r.Get(tmpls.CodeSendURL, tmpls.CodeSend)
-	r.Post(tmpls.UserAddURL, auth.UserAdd)
+	r.Get(signUpURL, consts.SignUp)
+	r.Post(consts.InputCheckURL, auth.InputCheck)
+	r.Get(consts.CodeSendURL, consts.CodeSend)
+	r.Post(consts.UserAddURL, auth.UserAdd)
 
-	r.Get(tmpls.BadSignUpURL, tmpls.BadSignUp)
-	r.Get(tmpls.BadEmailURL, tmpls.BadEmail)
-	r.Get(tmpls.WrongCodeURL, tmpls.WrongCode)
-	r.Get(tmpls.UserNotExistURL, tmpls.UserNotExist)
+	r.Get(consts.BadSignUpURL, consts.BadSignUp)
+	r.Get(consts.BadEmailURL, consts.BadEmail)
+	r.Get(consts.WrongCodeURL, consts.WrongCode)
+	r.Get(consts.UserNotExistURL, consts.UserNotExist)
 
-	r.Get(tmpls.SignInURL, tmpls.SignIn)
+	r.Get(consts.SignInURL, consts.SignIn)
 	r.Post(logInURL, auth.LogIn)
-	r.Get(tmpls.BadSignInURL, tmpls.BadSignIn)
-	r.Get(tmpls.AlreadyExistURL, tmpls.UserAllreadyExist)
+	r.Get(consts.BadSignInURL, consts.BadSignIn)
+	r.Get(consts.AlreadyExistURL, consts.UserAllreadyExist)
 
 	r.Get("/yauth", auth.YandexAuthHandler)
 	r.Get("/ya_callback", auth.YandexCallbackHandler)
 
-	r.Get(tmpls.Err500URL, tmpls.RequestError)
-	r.Get(tmpls.Err500URL, tmpls.Err500)
+	r.Get(consts.Err500URL, consts.Err500)
 
-	r.With(auth.IsExpiredTokenMW).Get(tmpls.HomeURL,
-		tmpls.Home)
-	r.With(auth.IsExpiredTokenMW).Post(tmpls.LogoutURL, auth.Logout)
+	r.With(auth.IsExpiredTokenMW).Get(consts.HomeURL,
+		consts.Home)
+	r.With(auth.IsExpiredTokenMW).Post(consts.LogoutURL, auth.Logout)
 
 	return r
 }
@@ -110,7 +109,7 @@ func authStart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if httpCookie.Value == "" {
-		errors.WithStack(errors.New("token: " + tmpls.NotExistErr))
+		errors.WithStack(errors.New("token: " + consts.NotExistErr))
 		http.Redirect(w, r, signUpURL, http.StatusFound)
 		return
 	}
@@ -122,5 +121,5 @@ func authStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, tmpls.HomeURL, http.StatusFound)
+	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }

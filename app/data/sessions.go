@@ -7,7 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/gimaevra94/auth/app/tmpls"
+	"github.com/gimaevra94/auth/app/consts"
+	"github.com/gimaevra94/auth/app/tools"
 	"github.com/gorilla/sessions"
 	"github.com/pkg/errors"
 )
@@ -33,7 +34,7 @@ func InitSessionVarsMW() func(http.Handler) http.Handler {
 			session, err := store.Get(r, "auth")
 			if err != nil {
 				fmt.Printf("%+v", errors.WithStack(err))
-				http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
 
@@ -41,7 +42,7 @@ func InitSessionVarsMW() func(http.Handler) http.Handler {
 				err := SessionDataSet(w, r, "LoginCounter", 3)
 				if err != nil {
 					fmt.Printf("%+v", errors.WithStack(err))
-					http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				}
 			}
 		})
@@ -62,14 +63,14 @@ func SessionEnd(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func SessionDataSet(w http.ResponseWriter, r *http.Request, key string, tmpls any) error {
+func SessionDataSet(w http.ResponseWriter, r *http.Request, key string, consts any) error {
 
 	session, err := store.Get(r, "auth")
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	jsonData, err := json.Marshal(tmpls)
+	jsonData, err := json.Marshal(consts)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -82,21 +83,21 @@ func SessionDataSet(w http.ResponseWriter, r *http.Request, key string, tmpls an
 	return nil
 }
 
-func SessionUserDataGet(r *http.Request, key string) (tmpls.User, error) {
+func SessionUserDataGet(r *http.Request, key string) (tools.User, error) {
 	session, err := store.Get(r, "auth")
 	if err != nil {
-		return tmpls.User{}, errors.WithStack(err)
+		return tools.User{}, errors.WithStack(err)
 	}
 
 	byteData, ok := session.Values[key].([]byte)
 	if !ok {
-		return tmpls.User{}, errors.WithStack(errors.New(fmt.Sprintf("%s: "+tmpls.NotExistErr, key)))
+		return tools.User{}, errors.WithStack(errors.New(fmt.Sprintf("%s: "+consts.NotExistErr, key)))
 	}
 
-	var userData tmpls.User
+	var userData tools.User
 	err = json.Unmarshal([]byte(byteData), &userData)
 	if err != nil {
-		return tmpls.User{}, errors.WithStack(err)
+		return tools.User{}, errors.WithStack(err)
 	}
 
 	return userData, nil
@@ -110,7 +111,7 @@ func SessionIntDataGet(r *http.Request, key string) (int64, error) {
 
 	byteData, ok := session.Values[key].([]byte)
 	if !ok {
-		return 0, errors.WithStack(errors.New(fmt.Sprintf("%s: "+tmpls.NotExistErr, key)))
+		return 0, errors.WithStack(errors.New(fmt.Sprintf("%s: "+consts.NotExistErr, key)))
 	}
 
 	var intData int64
@@ -130,7 +131,7 @@ func SessionStringDataGet(r *http.Request, key string) (string, error) {
 
 	byteData, ok := session.Values[key].([]byte)
 	if !ok {
-		return "", errors.WithStack(errors.New(fmt.Sprintf("%s: "+tmpls.NotExistErr, key)))
+		return "", errors.WithStack(errors.New(fmt.Sprintf("%s: "+consts.NotExistErr, key)))
 	}
 
 	var stringData string
@@ -150,7 +151,7 @@ func SessionTimeDataGet(r *http.Request, key string) (time.Time, error) {
 
 	byteData, ok := session.Values[key].([]byte)
 	if !ok {
-		return time.Time{}, errors.WithStack(errors.New(fmt.Sprintf("%s: "+tmpls.NotExistErr, key)))
+		return time.Time{}, errors.WithStack(errors.New(fmt.Sprintf("%s: "+consts.NotExistErr, key)))
 	}
 
 	var timeData time.Time

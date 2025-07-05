@@ -10,6 +10,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+type User struct {
+	ID       string `sql:"id" json:"id"`
+	Login    string `sql:"login" json:"login"`
+	Email    string `sql:"email" json:"email"`
+	Password string `sql:"password" json:"password"`
+}
+
 var (
 	loginRegex    = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ0-9]{3,30}$`)
 	emailRegex    = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$`)

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
-	"github.com/gimaevra94/auth/app/tmpls"
 	"github.com/gimaevra94/auth/app/tools"
 	"golang.org/x/crypto/bcrypt"
 
@@ -16,12 +16,12 @@ import (
 )
 
 func InputCheck(w http.ResponseWriter, r *http.Request) {
-	var validatedLoginInput tmpls.User
+	var validatedLoginInput tools.User
 
 	loginCounter, err := data.SessionIntDataGet(r, "loginCounter")
 	if err != nil {
 		log.Printf("%+v", err)
-		http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
@@ -33,14 +33,14 @@ func InputCheck(w http.ResponseWriter, r *http.Request) {
 				err := data.SessionDataSet(w, r, "loginCounter", loginCounter-1)
 				if err != nil {
 					log.Printf("%+v", err)
-					http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
 
-				err = tools.TmplRenderer(w, tools.BaseTmpl, tmpls.LoginMsg, tmpls.LoginReqs)
+				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", tools.ErrMsg["login"])
 				if err != nil {
 					log.Printf("%+v", err)
-					http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
 
@@ -51,14 +51,14 @@ func InputCheck(w http.ResponseWriter, r *http.Request) {
 				data.SessionDataSet(w, r, "loginCounter", loginCounter-1)
 				if err != nil {
 					log.Printf("%+v", err)
-					http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
 
-				err := tools.TmplRenderer(w, tools.BaseTmpl, tmpls.EmailMsg, tmpls.EmailReqs)
+				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", tools.ErrMsg["email"])
 				if err != nil {
 					log.Printf("%+v", err)
-					http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
 
@@ -69,14 +69,14 @@ func InputCheck(w http.ResponseWriter, r *http.Request) {
 				err = data.SessionDataSet(w, r, "loginCounter", loginCounter-1)
 				if err != nil {
 					log.Printf("%+v", err)
-					http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
 
-				err := tools.TmplRenderer(w, tools.BaseTmpl, tmpls.PasswrdMsg, tmpls.PswrdReqs)
+				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", tools.ErrMsg["password"])
 				if err != nil {
 					log.Printf("%+v", err)
-					http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
 
@@ -84,7 +84,7 @@ func InputCheck(w http.ResponseWriter, r *http.Request) {
 			}
 
 			log.Printf("%+v", err)
-			http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 			return
 		}
 
@@ -92,7 +92,7 @@ func InputCheck(w http.ResponseWriter, r *http.Request) {
 		loginTimer, err := data.SessionTimeDataGet(r, "loginTimer")
 		if err != nil {
 			log.Printf("%+v", err)
-			http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 			return
 		}
 
@@ -100,14 +100,14 @@ func InputCheck(w http.ResponseWriter, r *http.Request) {
 			err = data.SessionDataSet(w, r, "loginTimer", 15*time.Minute)
 			if err != nil {
 				log.Printf("%+v", err)
-				http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
 
 			err := tools.Captcha(r)
 			if err != nil {
 				log.Printf("%+v", err)
-				http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
 
@@ -116,18 +116,18 @@ func InputCheck(w http.ResponseWriter, r *http.Request) {
 				err = data.SessionDataSet(w, r, "loginCounter", loginCounter+3)
 				if err != nil {
 					log.Printf("%+v", err)
-					http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
 
-				http.Redirect(w, r, tmpls.InputCheckURL, http.StatusFound)
+				http.Redirect(w, r, consts.InputCheckURL, http.StatusFound)
 				return
 			}
 
 			err := tools.Captcha(r)
 			if err != nil {
 				log.Printf("%+v", err)
-				http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
 		}
@@ -136,16 +136,19 @@ func InputCheck(w http.ResponseWriter, r *http.Request) {
 	err = data.SessionDataSet(w, r, "user", validatedLoginInput)
 	if err != nil {
 		log.Printf("%+v", err)
-		http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
+
+	UserCheck(w, r)
+	return
 }
 
 func UserCheck(w http.ResponseWriter, r *http.Request) {
 	user, err := data.SessionUserDataGet(r, "user")
 	if err != nil {
 		log.Printf("%+v", err)
-		http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 	}
 
 	err = data.UserCheck("login", user.Login, user.Password)
@@ -154,7 +157,7 @@ func UserCheck(w http.ResponseWriter, r *http.Request) {
 			err := data.SessionDataSet(w, r, "user", user)
 			if err != nil {
 				log.Printf("%+v", err)
-				http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
 
@@ -163,10 +166,10 @@ func UserCheck(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-			err = tools.TmplRenderer(w, tools.BaseTmpl, tmpls.PasswrdMsg, tmpls.PswrdReqs)
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", tools.ErrMsg["password"])
 			if err != nil {
 				log.Printf("%+v", err)
-				http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
 
@@ -174,14 +177,14 @@ func UserCheck(w http.ResponseWriter, r *http.Request) {
 		}
 
 		log.Printf("%+v", err)
-		http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
-	err = tools.TmplRenderer(w, tools.BaseTmpl, tmpls.UserAlreadyExistMsg, []string{})
+	err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", tools.ErrMsg["alreadyExist"])
 	if err != nil {
 		log.Printf("%+v", err)
-		http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 }
@@ -190,60 +193,60 @@ func CodeSend(w http.ResponseWriter, r *http.Request) {
 	user, err := data.SessionUserDataGet(r, "user")
 	if err != nil {
 		log.Printf("%+v", err)
-		http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
 	msCode, err := tools.MailSendler(user.Email)
 	if err != nil {
 		log.Printf("%+v", err)
-		http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
 	err = data.SessionDataSet(w, r, "msCode", msCode)
 	if err != nil {
 		log.Printf("%+v", err)
-		http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 	}
 
-	http.Redirect(w, r, tmpls.CodeSendURL, http.StatusFound)
+	http.Redirect(w, r, consts.CodeSendURL, http.StatusFound)
 }
 
 func UserAdd(w http.ResponseWriter, r *http.Request) {
 	user, err := data.SessionUserDataGet(r, "user")
 	if err != nil {
 		log.Printf("%+v", err)
-		http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
 	rememberMe := r.FormValue("rememberMe")
 	if rememberMe == "" {
-		log.Printf("%+v", errors.WithStack(errors.New("rememberMe: "+tmpls.NotExistErr)))
-		http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+		log.Printf("%+v", errors.WithStack(errors.New("rememberMe: "+consts.NotExistErr)))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
 	userCode := r.FormValue("userCode")
 	if userCode == "" {
-		log.Printf("%+v", errors.WithStack(errors.New("userCode: "+tmpls.NotExistErr)))
-		http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+		log.Printf("%+v", errors.WithStack(errors.New("userCode: "+consts.NotExistErr)))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
 	msCode, err := data.SessionStringDataGet(r, "msCode")
 	if err != nil {
-		log.Printf("%+v", errors.WithStack(errors.New("msCode: "+tmpls.NotExistErr)))
-		http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+		log.Printf("%+v", errors.WithStack(errors.New("msCode: "+consts.NotExistErr)))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
 	if userCode != msCode {
-		err = tools.TmplRenderer(w, tools.BaseTmpl, tmpls.MsCodeMsg, []string{})
+		err = tools.TmplsRenderer(w, tools.BaseTmpl, "CodeSend", tools.ErrMsg["msCode"])
 		if err != nil {
 			log.Printf("%+v", err)
-			http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 			return
 		}
 		return
@@ -252,14 +255,14 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 	err = data.UserAdd(user)
 	if err != nil {
 		log.Printf("%+v", err)
-		http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
 	_, err = tools.TokenCreate(w, r, rememberMe, user)
 	if err != nil {
 		log.Printf("%+v", err)
-		http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
@@ -268,10 +271,10 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 		err := data.SessionDataSet(w, r, "lastActivity", lastActivity)
 		if err != nil {
 			log.Printf("%+v", err)
-			http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 			return
 		}
 	}
 
-	http.Redirect(w, r, tmpls.HomeURL, http.StatusFound)
+	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }

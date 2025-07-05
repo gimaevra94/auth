@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gimaevra94/auth/app/data"
-	"github.com/gimaevra94/auth/app/tmpls"
+	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/golang-jwt/jwt"
 )
@@ -16,14 +16,14 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 		token, err := tools.IsValidToken(w, r)
 		if err != nil {
 			log.Printf("%+v", err)
-			http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 			return
 		}
 
 		claims := token.Claims.(jwt.MapClaims)
 		exp := claims["exp"].(float64)
 
-		if exp != tmpls.NoExpiration {
+		if exp != consts.NoExpiration {
 			expUnix := time.Unix(int64(exp), 0)
 
 			if time.Now().After(expUnix) {
@@ -31,7 +31,7 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 
 				if err != nil {
 					log.Printf("%+v", err)
-					http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
 
@@ -43,14 +43,14 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 				user, err := data.SessionUserDataGet(r, "user")
 				if err != nil {
 					log.Printf("%+v", err)
-					http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
 
 				_, err = tools.TokenCreate(w, r, "3hours", user)
 				if err != nil {
 					log.Printf("%+v", err)
-					http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
 			}
@@ -63,17 +63,12 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	err := data.SessionEnd(w, r)
 	if err != nil {
 		log.Printf("%+v", err)
-		http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
 	data.ClearCookie(w)
-	err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", nil)
-	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, tmpls.Err500URL, http.StatusFound)
-		return
-	}
+	http.Redirect(w, r, consts.SignInURL, http.StatusFound)
 	return
 
 }
