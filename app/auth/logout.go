@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/consts"
+	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/golang-jwt/jwt"
 )
@@ -69,6 +69,4 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 
 	data.ClearCookie(w)
 	http.Redirect(w, r, consts.SignInURL, http.StatusFound)
-	return
-
 }

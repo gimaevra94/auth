@@ -15,7 +15,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func InputCheck(w http.ResponseWriter, r *http.Request) {
+func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 	var validatedLoginInput tools.User
 
 	loginCounter, err := data.SessionIntDataGet(r, "loginCounter")
@@ -26,7 +26,7 @@ func InputCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if loginCounter > 0 {
-		validatedLoginInput, err = tools.IsValidInput(r, false)
+		validatedLoginInput, err = tools.IsValidInput(r, false,false)
 		if err != nil {
 
 			if strings.Contains(err.Error(), "login") {
@@ -48,7 +48,7 @@ func InputCheck(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if strings.Contains(err.Error(), "email") {
-				data.SessionDataSet(w, r, "loginCounter", loginCounter-1)
+				err := data.SessionDataSet(w, r, "loginCounter", loginCounter-1)
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -120,7 +120,7 @@ func InputCheck(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 
-				http.Redirect(w, r, consts.InputCheckURL, http.StatusFound)
+				http.Redirect(w, r, consts.SignInInputCheckURL, http.StatusFound)
 				return
 			}
 
@@ -140,11 +140,10 @@ func InputCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	UserCheck(w, r)
-	return
+	SignUpUserCheck(w, r)
 }
 
-func UserCheck(w http.ResponseWriter, r *http.Request) {
+func SignUpUserCheck(w http.ResponseWriter, r *http.Request) {
 	user, err := data.SessionUserDataGet(r, "user")
 	if err != nil {
 		log.Printf("%+v", err)
@@ -154,13 +153,6 @@ func UserCheck(w http.ResponseWriter, r *http.Request) {
 	err = data.UserCheck("login", user.Login, user.Password)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			err := data.SessionDataSet(w, r, "user", user)
-			if err != nil {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-				return
-			}
-
 			CodeSend(w, r)
 			return
 		}
@@ -221,23 +213,16 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rememberMe := r.FormValue("rememberMe")
-	if rememberMe == "" {
-		log.Printf("%+v", errors.WithStack(errors.New("rememberMe: "+consts.NotExistErr)))
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
-	}
-
 	userCode := r.FormValue("userCode")
 	if userCode == "" {
-		log.Printf("%+v", errors.WithStack(errors.New("userCode: "+consts.NotExistErr)))
+		log.Printf("%+v", errors.WithStack(errors.New("userCode not exist")))
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
 	msCode, err := data.SessionStringDataGet(r, "msCode")
 	if err != nil {
-		log.Printf("%+v", errors.WithStack(errors.New("msCode: "+consts.NotExistErr)))
+		log.Printf("%+v", errors.WithStack(errors.New("msCode not exist")))
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
@@ -255,6 +240,13 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 	err = data.UserAdd(user)
 	if err != nil {
 		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	rememberMe := r.FormValue("rememberMe")
+	if rememberMe == "" {
+		log.Printf("%+v", errors.WithStack(errors.New("rememberMe not exist")))
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
@@ -277,4 +269,8 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
+}
+
+func PasswordReset(w http.ResponseWriter, r *http.Request)  {
+	
 }

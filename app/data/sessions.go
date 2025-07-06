@@ -91,7 +91,7 @@ func SessionUserDataGet(r *http.Request, key string) (tools.User, error) {
 
 	byteData, ok := session.Values[key].([]byte)
 	if !ok {
-		return tools.User{}, errors.WithStack(errors.New(fmt.Sprintf("%s: "+consts.NotExistErr, key)))
+		return tools.User{}, errors.WithStack(errors.New(fmt.Sprintf("%s not exist", key)))
 	}
 
 	var userData tools.User
@@ -111,7 +111,7 @@ func SessionIntDataGet(r *http.Request, key string) (int64, error) {
 
 	byteData, ok := session.Values[key].([]byte)
 	if !ok {
-		return 0, errors.WithStack(errors.New(fmt.Sprintf("%s: "+consts.NotExistErr, key)))
+		return 0, errors.WithStack(errors.New(fmt.Sprintf("%s not exist", key)))
 	}
 
 	var intData int64
@@ -131,7 +131,7 @@ func SessionStringDataGet(r *http.Request, key string) (string, error) {
 
 	byteData, ok := session.Values[key].([]byte)
 	if !ok {
-		return "", errors.WithStack(errors.New(fmt.Sprintf("%s: "+consts.NotExistErr, key)))
+		return "", errors.WithStack(errors.New(fmt.Sprintf("%s not exist", key)))
 	}
 
 	var stringData string
@@ -151,7 +151,7 @@ func SessionTimeDataGet(r *http.Request, key string) (time.Time, error) {
 
 	byteData, ok := session.Values[key].([]byte)
 	if !ok {
-		return time.Time{}, errors.WithStack(errors.New(fmt.Sprintf("%s: "+consts.NotExistErr, key)))
+		return time.Time{}, errors.WithStack(errors.New(fmt.Sprintf("%s not exist", key)))
 	}
 
 	var timeData time.Time

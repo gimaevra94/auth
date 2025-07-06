@@ -5,7 +5,6 @@ import (
 	"os"
 	"regexp"
 
-	"github.com/gimaevra94/auth/app/tmpls"
 	"github.com/golang-jwt/jwt"
 	"github.com/pkg/errors"
 )
@@ -21,6 +20,8 @@ var (
 	loginRegex    = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ0-9]{3,30}$`)
 	emailRegex    = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$`)
 	passwordRegex = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ\d!@#$%^&*\-\)]{4,30}$`)
+
+	InvalidErr = "invalid"
 )
 
 func IsValidToken(w http.ResponseWriter, r *http.Request) (*jwt.Token, error) {
@@ -37,20 +38,20 @@ func IsValidToken(w http.ResponseWriter, r *http.Request) (*jwt.Token, error) {
 	}
 
 	if !token.Valid {
-		return nil, errors.WithStack(errors.New("token: " + tmpls.InvalidErr))
+		return nil, errors.WithStack(errors.New("token: " + InvalidErr))
 	}
 
 	return token, nil
 }
 
-func IsValidInput(r *http.Request, IsLogin bool) (tmpls.User, error) {
+func IsValidInput(r *http.Request, IsSignIn bool, IsPasswordReset bool) (User, error) {
 
 	id := ""
 	login := r.FormValue("login")
 	email := r.FormValue("email")
 	password := r.FormValue("password")
 
-	validatedLoginInput := tmpls.User{
+	validatedLoginInput := User{
 		ID:       id,
 		Login:    login,
 		Email:    email,
@@ -58,26 +59,28 @@ func IsValidInput(r *http.Request, IsLogin bool) (tmpls.User, error) {
 	}
 
 	if login == "" {
-		return tmpls.User{}, errors.WithStack(errors.New("login: " + tmpls.NotExistErr))
+		return User{}, errors.WithStack(errors.New("login not exist"))
 	}
 	if !loginRegex.MatchString(login) {
-		return tmpls.User{}, errors.WithStack(errors.New("login: " + tmpls.InvalidErr))
+		return User{}, errors.WithStack(errors.New("login invalid"))
 	}
 
-	if !IsLogin {
+	if !IsSignIn {
 		if email == "" {
-			return tmpls.User{}, errors.WithStack(errors.New("email: " + tmpls.NotExistErr))
+			return User{}, errors.WithStack(errors.New("email not exist"))
 		}
 		if !emailRegex.MatchString(email) {
-			return tmpls.User{}, errors.WithStack(errors.New("email: " + tmpls.InvalidErr))
+			return User{}, errors.WithStack(errors.New("email invalid"))
 		}
 	}
 
-	if password == "" {
-		return tmpls.User{}, errors.WithStack(errors.New("password: " + tmpls.NotExistErr))
-	}
-	if !passwordRegex.MatchString(password) {
-		return tmpls.User{}, errors.WithStack(errors.New("password: " + tmpls.InvalidErr))
+	if !IsPasswordReset {
+		if password == "" {
+			return User{}, errors.WithStack(errors.New("password not exist"))
+		}
+		if !passwordRegex.MatchString(password) {
+			return User{}, errors.WithStack(errors.New("password invalid"))
+		}
 	}
 
 	return validatedLoginInput, nil

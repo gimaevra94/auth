@@ -7,14 +7,13 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/gimaevra94/auth/app/consts"
 	"github.com/pkg/errors"
 )
 
 func Captcha(r *http.Request) error {
 	captchaToken := r.FormValue("g-recaptcha-response")
 	if captchaToken == "" {
-		return errors.WithStack(errors.New("captchaToken: " + consts.NotExistErr))
+		return errors.WithStack(errors.New("captchaToken: not exist"))
 	}
 
 	captchaURL := "https://www.google.com/recaptcha/api/siteverify"
@@ -40,7 +39,7 @@ func Captcha(r *http.Request) error {
 
 	success, ok := result["success"].(bool)
 	if !ok {
-		return errors.WithStack(errors.New("success: " + consts.NotExistErr))
+		return errors.WithStack(errors.New("success: not exist"))
 
 	}
 

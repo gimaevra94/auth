@@ -37,7 +37,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	yaCode := r.URL.Query().Get("code")
 
 	if yaCode == "" {
-		log.Printf("%+v", errors.WithStack(errors.New("code: "+consts.NotExistErr)))
+		log.Printf("%+v", errors.WithStack(errors.New("code not exist")))
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
@@ -112,7 +112,7 @@ func getAccessToken(yaCode string) (string, error) {
 
 	accessToken, ok := result["access_token"].(string)
 	if !ok {
-		return "", errors.WithStack(errors.New("access_token: " + consts.NotExistErr))
+		return "", errors.WithStack(errors.New("access_token: not exist"))
 	}
 
 	return accessToken, nil

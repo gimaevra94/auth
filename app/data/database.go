@@ -71,32 +71,6 @@ func UserCheck(queryValue string, usrValue string, pswrd string) error {
 	return nil
 }
 
-/*func UserCheck(user User) error {
-	if err := DB.Ping(); err != nil {
-		return errors.WithStack(err)
-	}
-
-	row := DB.QueryRow(selectQuery, user.Email)
-	var passwordHash string
-	err := row.Scan(&passwordHash)
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return errors.WithStack(err)
-		}
-
-		return errors.WithStack(err)
-	}
-
-	err = bcrypt.CompareHashAndPassword([]byte(passwordHash),
-		[]byte(user.Password))
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	return nil
-}*/
-
 func UserAdd(user tools.User) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password),
 		bcrypt.DefaultCost)
