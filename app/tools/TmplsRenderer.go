@@ -46,6 +46,7 @@ var (
 	_        = Must(BaseTmpl.Parse(HomeTMPL))
 	_        = Must(BaseTmpl.Parse(CodeSendTMPL))
 	_        = Must(BaseTmpl.Parse(PasswordResetTMPL))
+	_        = Must(BaseTmpl.Parse(mailCodeTMPL))
 )
 
 type errMsg struct {
@@ -291,6 +292,76 @@ const (
 		<p>We're sorry, something went wrong on our end. Please try again later.</p>
 		<a href="/home" class="btn">Go to Home Page</a>
 	</div>
+</body>
+</html>
+{{ end }}
+`
+
+	mailCodeTMPL = `
+{{ define "mailCode" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Email Verification Code</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --text-color: #e5e7eb;
+            --bg-color: #1f2937;
+            --container-bg: #374151;
+            --border-color: #4b5563;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        .container {
+            max-width: 400px;
+            padding: 2rem;
+            background: var(--container-bg);
+            border-radius: 8px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+        .code-box {
+            font-size: 2rem;
+            letter-spacing: 0.3em;
+            background: var(--primary-color);
+            color: #fff;
+            padding: 0.5em 1em;
+            border-radius: 6px;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+            border: 0.5px solid #1d4ed8;
+            display: inline-block;
+            margin: 1.5rem 0;
+        }
+        p {
+            margin-bottom: 1.5rem;
+            color: var(--text-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Email Verification</h1>
+        <p>Your verification code:</p>
+        <div class="code-box">{{.Code}}</div>
+        <p>Enter this code to continue.</p>
+    </div>
 </body>
 </html>
 {{ end }}

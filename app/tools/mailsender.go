@@ -2,7 +2,6 @@ package tools
 
 import (
 	"bytes"
-	"html/template"
 	"math/rand"
 	"net/smtp"
 	"os"
@@ -24,14 +23,8 @@ func MailSendler(email string) (string, error) {
 	auth := smtp.PlainAuth("", username, password, host)
 	addr := "smtp.yandex.ru:587"
 
-	tmplPath := "C:/Users/gimaevra94/Documents/git/auth/app/templates/mailCode.html"
-	tmpl, err := template.ParseFiles(tmplPath)
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-
 	var body bytes.Buffer
-	err = tmpl.Execute(&body, struct{ Code string }{Code: msCode})
+	err := BaseTmpl.ExecuteTemplate(&body, "mailCode", struct{ Code string }{Code: msCode})
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
