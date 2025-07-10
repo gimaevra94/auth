@@ -11,17 +11,24 @@ import (
 	"github.com/pkg/errors"
 )
 
-func MailSendler(email string) (string, error) {
+func codeGenerator() string {
 	random := rand.New(rand.NewSource(time.Now().UnixNano()))
 	msCodeItn := random.Intn(9000) + 1000
 	msCode := strconv.Itoa(msCodeItn)
+	return msCode
+}
 
+func smtpAuth() (smtp.Auth, string) {
 	username := os.Getenv("MAIL_SENDER_EMAIL")
 	password := os.Getenv("MAIL_PASSWORD")
-
 	host := "smtp.yandex.ru"
 	auth := smtp.PlainAuth("", username, password, host)
-	addr := "smtp.yandex.ru:587"
+	return auth, username
+}
+
+func CodeSender(email string) (string, error) {
+	msCode := codeGenerator()
+	auth, username := smtpAuth()
 
 	var body bytes.Buffer
 	err := BaseTmpl.ExecuteTemplate(&body, "mailCode", struct{ Code string }{Code: msCode})
@@ -43,10 +50,16 @@ func MailSendler(email string) (string, error) {
 	from := username
 	to := []string{email}
 
+	addr := "smtp.yandex.ru:587"
 	err = smtp.SendMail(addr, auth, from, to, msg)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
 
 	return msCode, nil
+}
+
+func LinkSender(email string) (string, error) {
+
+	return "", nil
 }
