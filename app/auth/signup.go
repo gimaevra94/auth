@@ -26,7 +26,7 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if loginCounter > 0 {
-		validatedLoginInput, err = tools.IsValidInput(r, false,false)
+		validatedLoginInput, err = tools.IsValidInput(r, false, false)
 		if err != nil {
 
 			if strings.Contains(err.Error(), "login") {
@@ -189,7 +189,7 @@ func CodeSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	msCode, err := tools.MailSendler(user.Email)
+	msCode, err := tools.AuthCodeSender(user.Email)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -271,6 +271,6 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }
 
-func PasswordReset(w http.ResponseWriter, r *http.Request)  {
-	
+func PasswordReset(w http.ResponseWriter, r *http.Request) {
+
 }

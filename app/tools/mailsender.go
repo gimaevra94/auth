@@ -11,6 +11,12 @@ import (
 	"github.com/pkg/errors"
 )
 
+var (
+	username         = os.Getenv("MAIL_SENDER_EMAIL")
+	authCodeSubject  = "Auth code"
+	resetLinkSubject = "Password reset link"
+)
+
 func codeGenerate() string {
 	random := rand.New(rand.NewSource(time.Now().UnixNano()))
 	msCodeItn := random.Intn(9000) + 1000
@@ -25,9 +31,9 @@ func smtpAuth(username string) smtp.Auth {
 	return auth
 }
 
-func executeTmpl(msCode, username, email string) ([]byte, error) {
+func executeTmpl(username, email, subject string, data any) ([]byte, error) {
 	var body bytes.Buffer
-	err := BaseTmpl.ExecuteTemplate(&body, "mailCode", struct{ Code string }{Code: msCode})
+	err := BaseTmpl.ExecuteTemplate(&body, "mailCode", data)
 	if err != nil {
 		return []byte{}, errors.WithStack(err)
 	}
@@ -35,7 +41,7 @@ func executeTmpl(msCode, username, email string) ([]byte, error) {
 	msg := []byte(
 		"From: " + username + "\r\n" +
 			"To: " + email + "\r\n" +
-			"Subject: " + "Auth code" + "\r\n" +
+			"Subject: " + subject + "\r\n" +
 			"MIME-Version: 1.0\r\n" +
 			"Content-Type: text/html; charset=\"UTF-8\"\r\n" +
 			"\r\n" +
@@ -58,13 +64,13 @@ func mailSend(username, email string, auth smtp.Auth, msg []byte) error {
 	return nil
 }
 
-func CodeSender(email string) (string, error) {
+func AuthCodeSender(email string) (string, error) {
 	msCode := codeGenerate()
 
-	username := os.Getenv("MAIL_SENDER_EMAIL")
 	auth := smtpAuth(username)
 
-	msg, err := executeTmpl(msCode, username, email)
+	data := struct{ Code string }{Code: msCode}
+	msg, err := executeTmpl(username, email, authCodeSubject, data)
 	if err != nil {
 		return "", err
 	}
@@ -77,7 +83,18 @@ func CodeSender(email string) (string, error) {
 	return msCode, nil
 }
 
-func LinkSender(email string) (string, error) {
+func ResetLinkSender(email string) error {
+	auth := smtpAuth(username)
 
-	return "", nil
+	msg, err := executeTmpl(username, email, resetLinkSubject, nil)
+	if err != nil {
+		return err
+	}
+
+	err = mailSend(username, email, auth, msg)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
