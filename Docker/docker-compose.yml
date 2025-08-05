@@ -1,8 +1,7 @@
-name: db
+name: auth
 services:
   db:
     image: gimaevra94/db:latest
-    container_name: db
     environment:
        MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_password
        MYSQL_DATABASE: db
@@ -11,28 +10,44 @@ services:
       - C:/Users/gimaevra94/Documents/git/auth/certs/mysql_cert:/etc/mysql/certs:ro
     ports: 
       - 3306:3306
-    networks:
-      - net
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 3
+    restart: unless-stopped
     secrets:
       - db_password
-    restart: unless-stopped
     command: >
       --ssl-ca=/etc/mysql/certs/ca.pem
-      --ssl-cert=/etc/mysql/certs/server-cert.pem
-      --ssl-key=/etc/mysql/certs/server-key.pem
+      --ssl-cert=/etc/mysql/certs/db-cert.pem
+      --ssl-key=/etc/mysql/certs/db-key.pem
       --require_secure_transport=ON
+
+  app:
+    image: gimaevra94/app:latest
+    environment:
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      DB_USER: root
+    volumes:
+      - /c/Users/gimaevra94/Documents/git/auth/public:/app/public
+    ports: 8000:8000
+    healthckeck: 
+      ["CMD-SHELL", "wget -q http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    secrets:
+      - db_password
+    depends_on:
+      db:
+        condition: service_healthy
+
 
 volumes:
   db:
-
-networks:
-  net:
-    driver: bridge
 
 secrets:
   db_password: 
