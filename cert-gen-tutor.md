@@ -24,7 +24,7 @@
     docker run --rm -v "$(pwd):/certs" alpine sh -c " \
       apk add --no-cache openssl && \
       openssl genrsa 2048 > /certs/ca-key.pem && \
-      openssl req -new -x509 -nodes -days 3650 -key /certs/ca-key.pem -out /certs/ca.pem -subj '/CN=My MySQL Root CA/O=MyOrg/C=US' && \
+      openssl req -new -x509 -nodes -days 3650 -key /certs/ca-key.pem -out /certs/ca.pem -subj '/CN=My MySQL CA/O=MyOrg/C=US' && \
       openssl genrsa 2048 > /certs/server-key.pem && \
       openssl req -new -key /certs/server-key.pem -out /certs/server-req.pem -subj '/CN=localhost/O=MyOrg/C=US' && \
       openssl x509 -req -in /certs/server-req.pem -days 3650 -CA /certs/ca.pem -CAkey /certs/ca-key.pem -set_serial 01 -out /certs/server-cert.pem \
@@ -130,73 +130,7 @@
 
 Вот и весь алгоритм. Вы успешно прошли путь от генерации сертификатов до их использования в Docker Compose и проверки защищенного соединения!
 
-```shellscript
-    mkdir -p C:\Users\gimaevra94\Documents\git\auth\certs\mysql_cert
-    cd C:\Users\gimaevra94\Documents\git\auth\certs\mysql_cert
-```
-
-```shellscript
-    docker stop <имя_или_ID_вашего_mysql_контейнера>
-```
-
-```shellscript
-    docker run --rm -v "$(pwd):/certs" alpine sh -c " \
-      apk add --no-cache openssl && \
-      openssl genrsa 2048 > /certs/ca-key.pem && \
-      openssl req -new -x509 -nodes -days 3650 -key /certs/ca-key.pem -out /certs/ca.pem -subj '/CN=My MySQL Root CA/O=MyOrg/C=US' && \
-      openssl genrsa 2048 > /certs/server-key.pem && \
-      openssl req -new -key /certs/server-key.pem -out /certs/server-req.pem -subj '/CN=localhost/O=MyOrg/C=US' && \
-      openssl x509 -req -in /certs/server-req.pem -days 3650 -CA /certs/ca.pem -CAkey /certs/ca-key.pem -set_serial 01 -out /certs/server-cert.pem \
-    "
-```
-
-```yaml
-    # Docker/docker-compose.yml
-    services:
-      db:
-        image: gimaevra94/db:latest
-        # ... другие ваши настройки ...
-        volumes:
-          - db:/var/lib/mysql
-          - C:/Users/gimaevra94/Documents/git/auth/certs/mysql_cert:/etc/mysql/certs:ro # ДОБАВЬТЕ ЭТУ СТРОКУ
-        # ... другие ваши настройки ...
-        command: > # ДОБАВЬТЕ ЭТОТ БЛОК
-          --ssl-ca=/etc/mysql/certs/ca.pem
-          --ssl-cert=/etc/mysql/certs/server-cert.pem
-          --ssl-key=/etc/mysql/certs/server-key.pem
-          --require_secure_transport=ON
-```
-
-```powershell
-    cd C:\Users\gimaevra94\Documents\git\auth
-    docker compose -f Docker/docker-compose.yml --profile dev down
-    docker compose -f Docker/docker-compose.yml --profile dev up -d
-```
-
-```shellscript
-            docker exec -it <имя_вашего_mysql_контейнера> mysql -uroot -p
-            # Введите пароль (из вашего .env)
-```
-
-```sql
-            SHOW STATUS LIKE 'Ssl_cipher';
-```
-
-```shellscript
-            docker exec -it <имя_вашего_mysql_контейнера> mysql -uroot -p -h localhost
-            # Или с вашей хост-машины (если клиент mysql установлен и порт проброшен):
-            # mysql -h 127.0.0.1 -P 3306 -uroot -p
-```
-
 ---
-
-**User**
-
-теперь подробно объясни это
-
----
-
-**Cursor**
 
 Отлично, давайте подробно разберем эту мощную команду. Она объединяет все шаги по генерации SSL/TLS сертификатов для MySQL в одну, автоматизированную операцию.
 
@@ -204,12 +138,19 @@
 docker run --rm -v "$(pwd):/certs" alpine sh -c " \
   apk add --no-cache openssl && \
   openssl genrsa 2048 > /certs/ca-key.pem && \
-  openssl req -new -x509 -nodes -days 3650 -key /certs/ca-key.pem -out /certs/ca.pem -subj '/CN=My MySQL Root CA/O=MyOrg/C=US' && \
-  openssl genrsa 2048 > /certs/server-key.pem && \
-  openssl req -new -key /certs/server-key.pem -out /certs/server-req.pem -subj '/CN=localhost/O=MyOrg/C=US' && \
-  openssl x509 -req -in /certs/server-req.pem -days 3650 -CA /certs/ca.pem -CAkey /certs/ca-key.pem -set_serial 01 -out /certs/server-cert.pem \
+  openssl req -new -x509 -nodes -days 3650 -key /certs/ca-key.pem -out /certs/ca.pem -subj '/CN=My db CA/O=MyOrg/C=US' && \
+  openssl genrsa 2048 > /certs/db-key.pem && \
+  openssl req -new -key /certs/db-key.pem -out /certs/db-req.pem -subj '/CN=localhost/O=MyOrg/C=US' && \
+  openssl x509 -req -in /certs/db-req.pem -days 3650 -CA /certs/ca.pem -CAkey /certs/ca-key.pem -set_serial 01 -out /certs/db-cert.pem \
 "
 ```
+docker run --rm -v "$(pwd):/certs" alpine sh -c " \
+  apk add --no-cache openssl && \
+  openssl req -new -x509 -nodes -days 3650 -key /certs/ca/ca-key.pem -out /certs/ca/ca.pem -subj '/CN=My app CA/O=MyOrg/C=US' && \
+  openssl genrsa 2048 > /certs/app-key.pem && \
+  openssl req -new -key /certs/app-key.pem -out /certs/app-req.pem -subj '/CN=localhost/O=MyOrg/C=US' && \
+  openssl x509 -req -in /certs/app-req.pem -days 3650 -CA /certs/ca.pem -CAkey /certs/ca-key.pem -set_serial 01 -out /certs/app-cert.pem \
+"
 
 Эта команда выполняется на вашей хост-машине (Windows), но все операции по генерации сертификатов происходят внутри временного Docker-контейнера. Это позволяет избежать необходимости устанавливать `openssl` напрямую на Windows.
 
@@ -312,15 +253,3 @@ docker run --rm -v "$(pwd):/certs" alpine sh -c " \
 *   `server-cert.pem`: Сертификат сервера MySQL, подписанный вашим CA.
 
 Эти файлы затем используются в `docker-compose.yml` для настройки MySQL.
-
-```shellscript
-docker run --rm -v "$(pwd):/certs" alpine sh -c " \
-  apk add --no-cache openssl && \
-  openssl genrsa 2048 > /certs/ca-key.pem && \
-  openssl req -new -x509 -nodes -days 3650 -key /certs/ca-key.pem -out /certs/ca.pem -subj '/CN=My MySQL Root CA/O=MyOrg/C=US' && \
-  openssl genrsa 2048 > /certs/server-key.pem && \
-  openssl req -new -key /certs/server-key.pem -out /certs/server-req.pem -subj '/CN=localhost/O=MyOrg/C=US' && \
-  openssl x509 -req -in /certs/server-req.pem -days 3650 -CA /certs/ca.pem -CAkey /certs/ca-key.pem -set_serial 01 -out /certs/server-cert.pem \
-"
-```
-

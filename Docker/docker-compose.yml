@@ -32,8 +32,8 @@ services:
     volumes:
       - /c/Users/gimaevra94/Documents/git/auth/public:/app/public
     ports: 8000:8000
-    healthckeck: 
-      ["CMD-SHELL", "wget -q http://localhost:8000/health || exit 1"]
+    healthcheck: 
+      test: ["CMD-SHELL", "wget -q http://localhost:8000/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
