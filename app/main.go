@@ -31,7 +31,7 @@ func main() {
 }
 
 func initEnv() {
-	err := godotenv.Load("../.env")
+	err := godotenv.Load("../public/.env")
 	if err != nil {
 		log.Printf("%+v", errors.WithStack(err))
 		return
@@ -66,6 +66,8 @@ func initRouter() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Get("/", authStart)
+
+	r.Handle("/public/*", http.StripPrefix("/public/", http.FileServer(http.Dir("../public"))))
 
 	r.Get(consts.SignUpURL, htmls.SignUp)
 	r.Post(consts.SignUpInputCheckURL, auth.SignUpInputCheck)

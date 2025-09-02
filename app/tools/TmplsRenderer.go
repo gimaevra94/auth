@@ -83,7 +83,7 @@ const (
 <head>
 	<meta charset="UTF-8">
 	<title>{{ block "title" . }}Default Title{{ end }}</title>
-	<link rel="stylesheet" href="C:/Users/gimaevra94/Documents/git/auth/styles.css">
+	<link rel="stylesheet" href="/public/styles.css">
 </head>
 <body>
 	<div class="container">
@@ -101,7 +101,7 @@ const (
 <head>
 	<meta charset="UTF-8">
 	<title>Sign Up</title>
-	<link rel="stylesheet" href="C:/Users/gimaevra94/Documents/git/auth/styles.css">
+	<link rel="stylesheet" href="/public/styles.css">
 </head>
 <body>
 	<div class="container">
@@ -121,7 +121,7 @@ const (
 				<input type="password" id="password" name="password" required autocomplete="new-password">
 			</div>
 			<!-- Google reCAPTCHA -->
-			<div class="g-recaptcha" data-sitekey="6LeTKHUrAAAAAAoKY_j2RF_ZZtCYgjyr8yv1c7dE"></div>
+			<input type="hidden" id="recaptchaToken" name="g-recaptcha-response">
 			<button type="submit" class="btn">Sign Up</button>
 		</form>
 		<div class="divider">
@@ -133,11 +133,19 @@ const (
 		<div class="login-link">
 			Already have an account? <a href="/sign_in">Sign In</a>
 		</div>
-		<div class="login-link">
-			Forgot your password? <a href="/forgot_password_email">Reset Password</a>
-		</div>
 	</div>
-	<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+	<script src="https://www.google.com/recaptcha/api.js?render=6LcKXborAAAAAI3qmADWne38O4aAKjJIfPwMNBdO"></script>
+	<script>
+		grecaptcha.ready(function() {
+			document.querySelector('form').addEventListener('submit', function(event) {
+				event.preventDefault();
+				grecaptcha.execute('6LcKXborAAAAAI3qmADWne38O4aAKjJIfPwMNBdO', {action: 'signup'}).then(function(token) {
+					document.getElementById('recaptchaToken').value = token;
+					event.target.submit();
+				});
+			});
+		});
+	</script>
 </body>
 </html>
 {{ end }}
@@ -150,7 +158,7 @@ const (
 <head>
 	<meta charset="UTF-8">
 	<title>Verification Code</title>
-	<link rel="stylesheet" href="C:/Users/gimaevra94/Documents/git/auth/styles.css">
+	<link rel="stylesheet" href="/public/styles.css">
 </head>
 <body>
 	<div class="container">
@@ -180,7 +188,7 @@ const (
 <head>
 	<meta charset="UTF-8">
 	<title>Sign In</title>
-	<link rel="stylesheet" href="C:/Users/gimaevra94/Documents/git/auth/styles.css">
+	<link rel="stylesheet" href="/public/styles.css">
 </head>
 <body>
 	<div class="container">
@@ -203,7 +211,7 @@ const (
 				</label>
 			</div>
 			<!-- Google reCAPTCHA -->
-			<div class="g-recaptcha" data-sitekey="6LeTKHUrAAAAAAoKY_j2RF_ZZtCYgjyr8yv1c7dE"></div>
+			<input type="hidden" id="recaptchaTokenSignIn" name="g-recaptcha-response">
 			<button type="submit" class="btn">Sign In</button>
 		</form>
 		<div class="divider">
@@ -212,11 +220,24 @@ const (
 		<form method="POST" action="/yauth">
 			<button type="submit" class="oauth-btn">Sign in with Yandex</button>
 		</form>
+		{{if .ShowForgotPassword}}
 		<div class="login-link">
 			Forgot your password? <a href="/forgot_password_email">Reset Password</a>
 		</div>
+		{{end}}
 	</div>
-	<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+	<script src="https://www.google.com/recaptcha/api.js?render=6LcKXborAAAAAI3qmADWne38O4aAKjJIfPwMNBdO"></script>
+	<script>
+		grecaptcha.ready(function() {
+			document.querySelector('form[action="/sign_in_input_check"]').addEventListener('submit', function(event) {
+				event.preventDefault();
+				grecaptcha.execute('6LcKXborAAAAAI3qmADWne38O4aAKjJIfPwMNBdO', {action: 'signin'}).then(function(token) {
+					document.getElementById('recaptchaTokenSignIn').value = token;
+					event.target.submit();
+				});
+			});
+		});
+	</script>
 </body>
 </html>
 {{ end }}
@@ -229,7 +250,7 @@ const (
 <head>
 	<meta charset="UTF-8">
 	<title>Home</title>
-	<link rel="stylesheet" href="C:/Users/gimaevra94/Documents/git/auth/styles.css">
+	<link rel="stylesheet" href="/public/styles.css">
 </head>
 <body>
 	<div class="container">
@@ -365,7 +386,7 @@ const (
 <head>
 	<meta charset="UTF-8">
 	<title>Internal Server Error</title>
-	<link rel="stylesheet" href="C:/Users/gimaevra94/Documents/git/auth/styles.css">
+	<link rel="stylesheet" href="/public/styles.css">
 </head>
 <body>
 	<div class="container">
@@ -456,7 +477,7 @@ const ForgotPasswordEmailTMPL = `
 <head>
     <meta charset="UTF-8">
     <title>Forgot Password</title>
-    <link rel="stylesheet" href="C:/Users/gimaevra94/Documents/git/auth/styles.css">
+    <link rel="stylesheet" href="/public/styles.css">
 </head>
 <body>
     <div class="container">

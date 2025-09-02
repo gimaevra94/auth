@@ -39,7 +39,7 @@ func InitSessionVarsMW() func(http.Handler) http.Handler {
 			}
 
 			if session.IsNew {
-				err := SessionDataSet(w, r, "LoginCounter", 3)
+				err := SessionDataSet(w, r, "loginCounter", 3)
 				if err != nil {
 					fmt.Printf("%+v", errors.WithStack(err))
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)

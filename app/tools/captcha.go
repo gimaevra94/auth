@@ -18,7 +18,8 @@ func Captcha(r *http.Request) error {
 
 	captchaURL := "https://www.google.com/recaptcha/api/siteverify"
 	captchaParams := url.Values{
-		"secret": {os.Getenv("6LeTKHUrAAAAAOajSfcXlQSn-YYH4aCz2zTiwfa0")},
+		"secret": {os.Getenv("GOOGLE_CAPTCHA_SECRET")},
+		"response": {captchaToken},
 	}
 
 	resp, err := http.PostForm(captchaURL, captchaParams)
@@ -38,13 +39,19 @@ func Captcha(r *http.Request) error {
 	}
 
 	success, ok := result["success"].(bool)
-	if !ok {
-		return errors.WithStack(errors.New("success: not exist"))
-
+	if !ok || !success {
+		return errors.New("reCAPTCHA verification failed")
 	}
 
-	if !success {
-		return errors.WithStack(errors.New("success: false"))
+	score, ok := result["score"].(float64)
+	if !ok || score < 0.5 { // Вы можете настроить пороговое значение (например, 0.5)
+		return errors.New("reCAPTCHA score too low")
+	}
+
+	// Проверка действия (action) для дополнительной безопасности
+	action, ok := result["action"].(string)
+	if !ok || (action != "signup" && action != "signin") {
+		return errors.New("reCAPTCHA action mismatch")
 	}
 
 	return nil

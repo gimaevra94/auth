@@ -18,32 +18,32 @@ services:
     restart: unless-stopped
     secrets:
       - db_password
-    command: >
-      --ssl-ca=/etc/mysql/certs/ca.pem
-      --ssl-cert=/etc/mysql/certs/db-cert.pem
-      --ssl-key=/etc/mysql/certs/db-key.pem
-      --require_secure_transport=ON
+    #command: >
+      # --ssl-ca=/etc/mysql/certs/ca.pem
+      # --ssl-cert=/etc/mysql/certs/db-cert.pem
+      # --ssl-key=/etc/mysql/certs/db-key.pem
+      # --require_secure_transport=ON
 
-  app:
-    image: gimaevra94/app:latest
-    environment:
-      DB_PASSWORD_FILE: /run/secrets/db_password
-      DB_USER: root
-    volumes:
-      - /c/Users/gimaevra94/Documents/git/auth/public:/app/public
-    ports: 8000:8000
-    healthcheck: 
-      test: ["CMD-SHELL", "wget -q http://localhost:8000/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
-    restart: unless-stopped
-    secrets:
-      - db_password
-    depends_on:
-      db:
-        condition: service_healthy
+    #app:
+    # image: gimaevra94/app:latest
+    #environment:
+    # DB_PASSWORD_FILE: /run/secrets/db_password
+    #DB_USER: root
+    #volumes:
+    #  - /c/Users/gimaevra94/Documents/git/auth/public:/app/public
+    #ports: 8000:8000
+    #healthcheck: 
+    #  test: ["CMD-SHELL", "wget -q http://localhost:8000/health || exit 1"]
+    #  interval: 30s
+    #  timeout: 10s
+    #  retries: 3
+    #  start_period: 5s
+    #restart: unless-stopped
+    #secrets:
+    #  - db_password
+    #depends_on:
+    #  db:
+    #    condition: service_healthy
 
 
 volumes:

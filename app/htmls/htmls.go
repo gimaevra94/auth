@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	templatesPath = "C:/Users/gimaevra94/Documents/git/auth/"
+	templatesPath = "../../public"
 )
 
 func SignUp(w http.ResponseWriter, r *http.Request) {

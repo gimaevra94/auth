@@ -14,6 +14,11 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+type SignInPageData struct {
+	Msg              string
+	ShowForgotPassword bool
+}
+
 func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 	var validatedLoginInput tools.User
 
@@ -36,7 +41,7 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 
-				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", tools.ErrMsg["login"])
+				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["login"].Msg})
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -54,7 +59,7 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 
-				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", tools.ErrMsg["password"])
+				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["password"].Msg, ShowForgotPassword: true})
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -134,7 +139,7 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 	err = data.UserCheck("login", user.Login, user.Password)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", tools.ErrMsg["notExist"])
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["notExist"].Msg})
 			if err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -145,7 +150,7 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", tools.ErrMsg["password"])
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["password"].Msg, ShowForgotPassword: true})
 			if err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
