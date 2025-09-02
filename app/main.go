@@ -69,19 +69,18 @@ func initRouter() *chi.Mux {
 
 	r.Handle("/public/*", http.StripPrefix("/public/", http.FileServer(http.Dir("../public"))))
 
-	r.Get(consts.SignUpURL, htmls.SignUp)
+	r.With(data.InitSessionVarsMW).Get(consts.SignUpURL, htmls.SignUp)
 	r.Post(consts.SignUpInputCheckURL, auth.SignUpInputCheck)
 	r.Get(consts.CodeSendURL, auth.CodeSend)
 	r.Post(consts.UserAddURL, auth.UserAdd)
 
-	r.Get(consts.SignInURL, htmls.SignIn)
+	r.With(data.InitSessionVarsMW).Get(consts.SignInURL, htmls.SignIn)
 	r.Post(consts.SignInInputCheckURL, auth.SignInInputCheck)
 
 	r.Get("/yauth", auth.YandexAuthHandler)
 	r.Get("/ya_callback", auth.YandexCallbackHandler)
 
-	r.With(auth.IsExpiredTokenMW).Get(consts.HomeURL,
-		htmls.Home)
+	r.With(auth.IsExpiredTokenMW).Get(consts.HomeURL, htmls.Home)
 	r.With(auth.IsExpiredTokenMW).Post(consts.LogoutURL, auth.Logout)
 
 	r.Get(consts.Err500URL, htmls.Err500)

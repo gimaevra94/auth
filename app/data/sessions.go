@@ -13,9 +13,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-var store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
+var store *sessions.CookieStore
 
 func InitStore() *sessions.CookieStore {
+	store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
+
 	OneMonth := 2592000
 	store.Options = &sessions.Options{
 		HttpOnly: true,
@@ -28,25 +30,24 @@ func InitStore() *sessions.CookieStore {
 	return store
 }
 
-func InitSessionVarsMW() func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			session, err := store.Get(r, "auth")
+func InitSessionVarsMW(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		session, err := store.Get(r, "auth")
+		if err != nil {
+			fmt.Printf("%+v", errors.WithStack(err))
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+
+		if session.IsNew {
+			err := SessionDataSet(w, r, "loginCounter", 3)
 			if err != nil {
 				fmt.Printf("%+v", errors.WithStack(err))
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-				return
 			}
-
-			if session.IsNew {
-				err := SessionDataSet(w, r, "loginCounter", 3)
-				if err != nil {
-					fmt.Printf("%+v", errors.WithStack(err))
-					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-				}
-			}
-		})
-	}
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func SessionEnd(w http.ResponseWriter, r *http.Request) error {
