@@ -106,7 +106,7 @@ const (
 <body>
 	<div class="container">
 		<h1>Sign Up</h1>
-		{{if .Msg}}<div class="error">{{.Msg}}</div>{{end}}
+		{{if .Msg}}<div class="error-message">{{.Msg}}</div>{{end}}
 		<form method="POST" action="/sign_up_input_check">
 			<div class="form-group">
 				<label for="username">Username</label>
@@ -173,7 +173,7 @@ const (
 			<button type="submit" class="btn">Verify</button>
 		</form>
 		<div class="resend">
-			Didn't receive the code? <a href="/code_send">Send again</a>
+			Didn't receive the code? <a href="/user_add">Send again</a>
 		</div>
 	</div>
 </body>
@@ -418,30 +418,33 @@ const (
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            background-color: #1f2937; /* var(--bg-color); */
+            color: #e5e7eb; /* var(--text-color); */
             line-height: 1.5;
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh; /* Changed from height to min-height */
+            margin: 0; /* Added */
+            padding: 20px; /* Added */
         }
         .container {
             max-width: 400px;
+            margin: 2rem auto; /* Added for centering */
             padding: 2rem;
-            background: var(--container-bg);
+            background: #374151; /* var(--container-bg); */
             border-radius: 8px;
             text-align: center;
         }
         h1 {
             font-size: 1.5rem;
             margin-bottom: 1rem;
-            color: var(--primary-color);
+            color: #2563eb; /* var(--primary-color); */
         }
         .code-box {
             font-size: 2rem;
             letter-spacing: 0.3em;
-            background: var(--primary-color);
+            background: #2563eb; /* var(--primary-color); */
             color: #fff;
             padding: 0.5em 1em;
             border-radius: 6px;
@@ -453,7 +456,7 @@ const (
         }
         p {
             margin-bottom: 1.5rem;
-            color: var(--text-color);
+            color: #e5e7eb; /* var(--text-color); */
         }
     </style>
 </head>

@@ -255,4 +255,11 @@ input[type="email"]:focus {
 
 .login-link a:hover {
     text-decoration: underline;
+}
+
+.error-message {
+    color: var(--error-color);
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
 } 

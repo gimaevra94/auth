@@ -16,10 +16,6 @@ import (
 	"github.com/go-chi/chi"
 )
 
-const (
-	signUpURL = "/sign_up"
-	logInURL  = "/log_in"
-)
 
 func main() {
 	initEnv()
@@ -71,7 +67,7 @@ func initRouter() *chi.Mux {
 
 	r.With(data.InitSessionVarsMW).Get(consts.SignUpURL, htmls.SignUp)
 	r.Post(consts.SignUpInputCheckURL, auth.SignUpInputCheck)
-	r.Get(consts.CodeSendURL, auth.CodeSend)
+	r.Get(consts.CodeSendURL, htmls.CodeSend)
 	r.Post(consts.UserAddURL, auth.UserAdd)
 
 	r.With(data.InitSessionVarsMW).Get(consts.SignInURL, htmls.SignIn)
@@ -99,22 +95,16 @@ func serverStart(r *chi.Mux) {
 }
 
 func authStart(w http.ResponseWriter, r *http.Request) {
-	httpCookie, err := r.Cookie("token")
-	if err != nil {
-		http.Redirect(w, r, signUpURL, http.StatusFound)
-		return
-	}
-
-	if httpCookie.Value == "" {
-		errors.WithStack(errors.New("token not exist"))
-		http.Redirect(w, r, signUpURL, http.StatusFound)
-		return
-	}
-
-	_, err = tools.IsValidToken(w, r)
+	tokenValue, err := data.CookieIsExist(r)
 	if err != nil {
 		log.Printf("%+v", errors.WithStack(err))
-		http.Redirect(w, r, signUpURL, http.StatusFound)
+		http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+	}
+
+	_, err = tools.IsValidToken(w, r, tokenValue)
+	if err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 		return
 	}
 

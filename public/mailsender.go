@@ -5,7 +5,6 @@ import (
 	"math/rand"
 	"net/smtp"
 	"os"
-
 	"strconv"
 	"time"
 
@@ -13,7 +12,7 @@ import (
 )
 
 var (
-	senderEmail      string
+	username         = os.Getenv("MAIL_SENDER_EMAIL")
 	authCodeSubject  = "Auth code"
 	resetLinkSubject = "Password reset link"
 )
@@ -25,14 +24,14 @@ func codeGenerate() string {
 	return msCode
 }
 
-func smtpAuth(senderEmail string) smtp.Auth {
-	senderPassword := os.Getenv("MAIL_PASSWORD")
+func smtpAuth(username string) smtp.Auth {
+	password := os.Getenv("MAIL_PASSWORD")
 	host := "smtp.yandex.ru"
-	auth := smtp.PlainAuth("", senderEmail, senderPassword, host)
+	auth := smtp.PlainAuth("", username, password, host)
 	return auth
 }
 
-func executeTmpl(senderEmail, email, subject string, data any) ([]byte, error) {
+func executeTmpl(username, email, subject string, data any) ([]byte, error) {
 	var body bytes.Buffer
 	err := BaseTmpl.ExecuteTemplate(&body, "mailCode", data)
 	if err != nil {
@@ -40,7 +39,7 @@ func executeTmpl(senderEmail, email, subject string, data any) ([]byte, error) {
 	}
 
 	msg := []byte(
-		"From: " + senderEmail + "\r\n" +
+		"From: " + username + "\r\n" +
 			"To: " + email + "\r\n" +
 			"Subject: " + subject + "\r\n" +
 			"MIME-Version: 1.0\r\n" +
@@ -52,8 +51,8 @@ func executeTmpl(senderEmail, email, subject string, data any) ([]byte, error) {
 	return msg, nil
 }
 
-func mailSend(senderEmail, email string, auth smtp.Auth, msg []byte) error {
-	from := senderEmail
+func mailSend(username, email string, auth smtp.Auth, msg []byte) error {
+	from := username
 	to := []string{email}
 	addr := "smtp.yandex.ru:587"
 
@@ -66,17 +65,17 @@ func mailSend(senderEmail, email string, auth smtp.Auth, msg []byte) error {
 }
 
 func AuthCodeSender(email string) (string, error) {
-	senderEmail = os.Getenv("MAIL_SENDER_EMAIL")
 	msCode := codeGenerate()
-	auth := smtpAuth(senderEmail)
+
+	auth := smtpAuth(username)
 
 	data := struct{ Code string }{Code: msCode}
-	msg, err := executeTmpl(senderEmail, email, authCodeSubject, data)
+	msg, err := executeTmpl(username, email, authCodeSubject, data)
 	if err != nil {
 		return "", err
 	}
 
-	err = mailSend(senderEmail, email, auth, msg)
+	err = mailSend(username, email, auth, msg)
 	if err != nil {
 		return "", err
 	}
@@ -85,14 +84,14 @@ func AuthCodeSender(email string) (string, error) {
 }
 
 func ResetLinkSender(email string) error {
-	senderEmail = os.Getenv("MAIL_SENDER_EMAIL")
-	auth := smtpAuth(senderEmail)
-	msg, err := executeTmpl(senderEmail, email, resetLinkSubject, nil)
+	auth := smtpAuth(username)
+
+	msg, err := executeTmpl(username, email, resetLinkSubject, nil)
 	if err != nil {
 		return err
 	}
 
-	err = mailSend(senderEmail, email, auth, msg)
+	err = mailSend(username, email, auth, msg)
 	if err != nil {
 		return err
 	}

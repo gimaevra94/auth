@@ -20,25 +20,19 @@ var (
 	loginRegex    = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ0-9]{3,30}$`)
 	emailRegex    = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$`)
 	passwordRegex = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ\d!@#$%^&*\-\)]{4,30}$`)
-
-	InvalidErr = "invalid"
 )
 
-func IsValidToken(w http.ResponseWriter, r *http.Request) (*jwt.Token, error) {
-	httpCookie, _ := r.Cookie("token")
-	tokenValue := httpCookie.Value
+func IsValidToken(w http.ResponseWriter, r *http.Request, tokenValue string) (*jwt.Token, error) {
 	token, err := jwt.Parse(tokenValue, func(t *jwt.Token) (interface{}, error) {
 		tokenSecret := os.Getenv("JWT_SECRET")
 		return []byte(tokenSecret), nil
 	})
-
 	if err != nil {
 		return nil, errors.WithStack(err)
-
 	}
 
 	if !token.Valid {
-		return nil, errors.WithStack(errors.New("token: " + InvalidErr))
+		return nil, errors.WithStack(errors.New("token invalid"))
 	}
 
 	return token, nil

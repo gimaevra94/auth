@@ -9,11 +9,18 @@ import (
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/golang-jwt/jwt"
+	"github.com/pkg/errors"
 )
 
 func IsExpiredTokenMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token, err := tools.IsValidToken(w, r)
+		tokenValue, err := data.CookieIsExist(r)
+		if err != nil {
+			log.Printf("%+v", errors.WithStack(err))
+			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+		}
+
+		token, err := tools.IsValidToken(w, r, tokenValue)
 		if err != nil {
 			log.Printf("%+v", err)
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
