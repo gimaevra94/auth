@@ -13,11 +13,12 @@ import (
 func TokenCreate(w http.ResponseWriter, r *http.Request, rememberMe string, user User) (string, error) {
 	var exp int64
 
-	if rememberMe == "true" {
+	switch rememberMe {
+	case "true":
 		exp = int64(24 * time.Hour)
-	} else if rememberMe == "3hours" {
+	case "3hours":
 		exp = int64(3 * time.Hour)
-	} else {
+	default:
 		exp = consts.NoExpiration
 	}
 

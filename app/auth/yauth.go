@@ -68,12 +68,13 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	_, err = tools.TokenCreate(w, r, "true", user)
+	signedToken, err := tools.TokenCreate(w, r, "true", user)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
+	data.SetCookieWithToken(w, signedToken)
 
 	err = data.SessionDataSet(w, r, "user", user)
 	if err != nil {

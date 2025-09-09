@@ -16,14 +16,20 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tokenValue, err := data.CookieIsExist(r)
 		if err != nil {
-			log.Printf("%+v", errors.WithStack(err))
-			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+			if r.URL.Path == consts.HomeURL {
+				log.Printf("%+v", errors.WithStack(err))
+				http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+				return
+			}
+
+			SignUpInputCheck(w, r)
+			return
 		}
 
 		token, err := tools.IsValidToken(w, r, tokenValue)
 		if err != nil {
 			log.Printf("%+v", err)
-			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			http.Redirect(w, r, consts.SignInURL, http.StatusFound)
 			return
 		}
 
@@ -35,7 +41,6 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 
 			if time.Now().After(expUnix) {
 				lastActivity, err := data.SessionTimeDataGet(r, "lastActivity")
-
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -54,12 +59,13 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 					return
 				}
 
-				_, err = tools.TokenCreate(w, r, "3hours", user)
+				signedToken, err := tools.TokenCreate(w, r, "3hours", user)
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
+				data.SetTokenInCookie(w, signedToken)
 			}
 		}
 		next.ServeHTTP(w, r)
@@ -75,5 +81,5 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data.ClearCookie(w)
-	http.Redirect(w, r, consts.SignInURL, http.StatusFound)
+	http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 }

@@ -15,7 +15,7 @@ import (
 )
 
 type SignInPageData struct {
-	Msg              string
+	Msg                string
 	ShowForgotPassword bool
 }
 
@@ -30,7 +30,7 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if loginCounter > 0 {
-		validatedLoginInput, err = tools.IsValidInput(r, true,false)
+		validatedLoginInput, err = tools.IsValidInput(r, true, false)
 		if err != nil {
 
 			if strings.Contains(err.Error(), "login") {
@@ -99,7 +99,8 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 
 		} else {
 			if time.Now().After(loginTimer) {
-				err = data.SessionDataSet(w, r, "loginCounter", loginCounter+3)
+				loginCounter = 3
+				err = data.SessionDataSet(w, r, "loginCounter", loginCounter)
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -172,12 +173,13 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = tools.TokenCreate(w, r, rememberMe, user)
+	signedToken, err := tools.TokenCreate(w, r, rememberMe, user)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
+	data.SetTokenInCookie(w, signedToken)
 
 	if rememberMe == "false" {
 		lastActivity := time.Now().Add(3 * time.Hour)
@@ -189,5 +191,13 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	var loginCounter int = 3
+	err = data.SessionDataSet(w, r, "loginCounter", loginCounter)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
+
 }

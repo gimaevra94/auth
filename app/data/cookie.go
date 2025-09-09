@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func SetCookieWithToken(w http.ResponseWriter, v string) {
+func SetTokenInCookie(w http.ResponseWriter, v string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "token",
 		Path:     "/",
@@ -17,15 +17,15 @@ func SetCookieWithToken(w http.ResponseWriter, v string) {
 	})
 }
 
-func SetCookieWithoutToken(w http.ResponseWriter) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     "token",
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
-	})
-}
+//func SetCookieWithoutToken(w http.ResponseWriter) {
+//	http.SetCookie(w, &http.Cookie{
+//		Name:     "token",
+//		Path:     "/",
+//		HttpOnly: true,
+//		Secure:   true,
+//		SameSite: http.SameSiteStrictMode,
+//	})
+//}
 
 func ClearCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
@@ -41,13 +41,12 @@ func ClearCookie(w http.ResponseWriter) {
 func CookieIsExist(r *http.Request) (string, error) {
 	cookie, err := r.Cookie("token")
 	if err != nil {
-		return "", err
+		return "", errors.WithStack(err)
 	}
 
 	if cookie.Value == "" {
 		return "", errors.New("token not exist")
 	}
 
-	tokenValue:=cookie.Value
-	return tokenValue, nil
+	return cookie.Value, nil
 }

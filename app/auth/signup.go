@@ -16,131 +16,143 @@ import (
 )
 
 func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
-	var validatedLoginInput tools.User
-
-	loginCounter, err := data.SessionIntDataGet(r, "loginCounter")
+	tokenValue, err := data.CookieIsExist(r)
 	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
-	}
+		var validatedLoginInput tools.User
 
-	if loginCounter > 0 {
-		validatedLoginInput, err = tools.IsValidInput(r, false, false)
-		if err != nil {
-
-			if strings.Contains(err.Error(), "login") {
-				err := data.SessionDataSet(w, r, "loginCounter", loginCounter-1)
-				if err != nil {
-					log.Printf("%+v", err)
-					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-					return
-				}
-
-				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", tools.ErrMsg["login"])
-				if err != nil {
-					log.Printf("%+v", err)
-					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-					return
-				}
-
-				return
-			}
-
-			if strings.Contains(err.Error(), "email") {
-				err := data.SessionDataSet(w, r, "loginCounter", loginCounter-1)
-				if err != nil {
-					log.Printf("%+v", err)
-					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-					return
-				}
-
-				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", tools.ErrMsg["email"])
-				if err != nil {
-					log.Printf("%+v", err)
-					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-					return
-				}
-
-				return
-			}
-
-			if strings.Contains(err.Error(), "password") {
-				err = data.SessionDataSet(w, r, "loginCounter", loginCounter-1)
-				if err != nil {
-					log.Printf("%+v", err)
-					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-					return
-				}
-
-				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", tools.ErrMsg["password"])
-				if err != nil {
-					log.Printf("%+v", err)
-					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-					return
-				}
-
-				return
-			}
-
-			log.Printf("%+v", err)
-			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-			return
-		}
-
-	} else {
-		loginTimer, err := data.SessionTimeDataGet(r, "loginTimer")
+		loginCounter, err := data.SessionIntDataGet(r, "loginCounter")
 		if err != nil {
 			log.Printf("%+v", err)
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 			return
 		}
 
-		if loginTimer.IsZero() {
-			err = data.SessionDataSet(w, r, "loginTimer", 15*time.Minute)
+		if loginCounter > 0 {
+			validatedLoginInput, err = tools.IsValidInput(r, false, false)
 			if err != nil {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-				return
-			}
 
-			err := tools.Captcha(r)
-			if err != nil {
+				if strings.Contains(err.Error(), "login") {
+					err := data.SessionDataSet(w, r, "loginCounter", loginCounter-1)
+					if err != nil {
+						log.Printf("%+v", err)
+						http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+						return
+					}
+
+					err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", tools.ErrMsg["login"])
+					if err != nil {
+						log.Printf("%+v", err)
+						http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+						return
+					}
+
+					return
+				}
+
+				if strings.Contains(err.Error(), "email") {
+					err := data.SessionDataSet(w, r, "loginCounter", loginCounter-1)
+					if err != nil {
+						log.Printf("%+v", err)
+						http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+						return
+					}
+
+					err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", tools.ErrMsg["email"])
+					if err != nil {
+						log.Printf("%+v", err)
+						http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+						return
+					}
+
+					return
+				}
+
+				if strings.Contains(err.Error(), "password") {
+					err = data.SessionDataSet(w, r, "loginCounter", loginCounter-1)
+					if err != nil {
+						log.Printf("%+v", err)
+						http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+						return
+					}
+
+					err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", tools.ErrMsg["password"])
+					if err != nil {
+						log.Printf("%+v", err)
+						http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+						return
+					}
+
+					return
+				}
+
 				log.Printf("%+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
 
 		} else {
-			if time.Now().After(loginTimer) {
-				err = data.SessionDataSet(w, r, "loginCounter", loginCounter+3)
+			loginTimer, err := data.SessionTimeDataGet(r, "loginTimer")
+			if err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+
+			if loginTimer.IsZero() {
+				err = data.SessionDataSet(w, r, "loginTimer", 15*time.Minute)
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
 
-				http.Redirect(w, r, consts.SignInInputCheckURL, http.StatusFound)
-				return
-			}
+				err := tools.Captcha(r)
+				if err != nil {
+					log.Printf("%+v", err)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+					return
+				}
 
-			err := tools.Captcha(r)
-			if err != nil {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-				return
+			} else {
+				if time.Now().After(loginTimer) {
+					err = data.SessionDataSet(w, r, "loginCounter", loginCounter+3)
+					if err != nil {
+						log.Printf("%+v", err)
+						http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+						return
+					}
+
+					http.Redirect(w, r, consts.SignInInputCheckURL, http.StatusFound)
+					return
+				}
+
+				err := tools.Captcha(r)
+				if err != nil {
+					log.Printf("%+v", err)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+					return
+				}
 			}
 		}
-	}
 
-	err = data.SessionDataSet(w, r, "user", validatedLoginInput)
-	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
-	}
+		err = data.SessionDataSet(w, r, "user", validatedLoginInput)
+		if err != nil {
+			log.Printf("%+v", err)
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
 
-	SignUpUserCheck(w, r)
+		SignUpUserCheck(w, r)
+	} else {
+		_, err = tools.IsValidToken(w, r, tokenValue)
+		if err != nil {
+			log.Printf("%+v", errors.WithStack(err))
+			http.Redirect(w, r, consts.SignInURL, http.StatusFound)
+			return
+		}
+
+		http.Redirect(w, r, consts.HomeURL, http.StatusFound)
+	}
 }
 
 func SignUpUserCheck(w http.ResponseWriter, r *http.Request) {
@@ -251,12 +263,13 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = tools.TokenCreate(w, r, rememberMe, user)
+	signedToken, err := tools.TokenCreate(w, r, rememberMe, user)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
+	data.SetCookieWithToken(w, signedToken)
 
 	if rememberMe == "false" {
 		lastActivity := time.Now().Add(3 * time.Hour)

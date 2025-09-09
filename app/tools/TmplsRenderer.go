@@ -256,7 +256,7 @@ const (
 	<div class="container">
 		<div class="header">
 			<h1>Welcome</h1>
-			<form method="POST" action="/logout">
+			<form method="GET" action="/logout">
 				<button type="submit" class="btn btn-danger">Sign Out</button>
 			</form>
 		</div>

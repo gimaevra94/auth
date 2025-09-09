@@ -12,10 +12,8 @@ import (
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/htmls"
-	"github.com/gimaevra94/auth/app/tools"
 	"github.com/go-chi/chi"
 )
-
 
 func main() {
 	initEnv()
@@ -61,9 +59,21 @@ func initDB() {
 func initRouter() *chi.Mux {
 	r := chi.NewRouter()
 
-	r.Get("/", authStart)
-
 	r.Handle("/public/*", http.StripPrefix("/public/", http.FileServer(http.Dir("../public"))))
+
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+	})
+
+	r.Get("/dev", func(w http.ResponseWriter, r *http.Request) {
+		data.ClearCookie(w)
+		err := data.SessionEnd(w, r)
+		if err != nil {
+			log.Printf("%+v", err)
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+	})
 
 	r.With(data.InitSessionVarsMW).Get(consts.SignUpURL, htmls.SignUp)
 	r.Post(consts.SignUpInputCheckURL, auth.SignUpInputCheck)
@@ -77,7 +87,7 @@ func initRouter() *chi.Mux {
 	r.Get("/ya_callback", auth.YandexCallbackHandler)
 
 	r.With(auth.IsExpiredTokenMW).Get(consts.HomeURL, htmls.Home)
-	r.With(auth.IsExpiredTokenMW).Post(consts.LogoutURL, auth.Logout)
+	r.With(auth.IsExpiredTokenMW).Get(consts.LogoutURL, auth.Logout)
 
 	r.Get(consts.Err500URL, htmls.Err500)
 
@@ -92,21 +102,4 @@ func serverStart(r *chi.Mux) {
 		log.Printf("%+v", errors.WithStack(err))
 		return
 	}
-}
-
-func authStart(w http.ResponseWriter, r *http.Request) {
-	tokenValue, err := data.CookieIsExist(r)
-	if err != nil {
-		log.Printf("%+v", errors.WithStack(err))
-		http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
-	}
-
-	_, err = tools.IsValidToken(w, r, tokenValue)
-	if err != nil {
-		log.Printf("%+v", errors.WithStack(err))
-		http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
-		return
-	}
-
-	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }
