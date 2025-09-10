@@ -32,7 +32,6 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 	if loginCounter > 0 {
 		validatedLoginInput, err = tools.IsValidInput(r, true, false)
 		if err != nil {
-
 			if strings.Contains(err.Error(), "login") {
 				err := data.SessionDataSet(w, r, "loginCounter", loginCounter-1)
 				if err != nil {
@@ -106,16 +105,6 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
-
-				http.Redirect(w, r, consts.SignInInputCheckURL, http.StatusFound)
-				return
-			}
-
-			err := tools.Captcha(r)
-			if err != nil {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-				return
 			}
 		}
 	}
@@ -168,18 +157,18 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 
 	rememberMe := r.FormValue("rememberMe")
 	if rememberMe == "" {
-		log.Printf("%+v", errors.WithStack(errors.New("rememberMe not exist")))
+		log.Printf("%+v", errors.New("rememberMe not exist"))
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
-	signedToken, err := tools.TokenCreate(w, r, rememberMe, user)
+	token, err := tools.TokenCreate(w, r, rememberMe, user)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-	data.SetTokenInCookie(w, signedToken)
+	data.SetTokenInCookie(w, token)
 
 	if rememberMe == "false" {
 		lastActivity := time.Now().Add(3 * time.Hour)
@@ -198,6 +187,6 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 
+	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }

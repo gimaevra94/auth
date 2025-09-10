@@ -16,33 +16,27 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tokenValue, err := data.CookieIsExist(r)
 		if err != nil {
-			if r.URL.Path == consts.HomeURL {
-				log.Printf("%+v", errors.WithStack(err))
-				http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
-				return
-			}
-
-			SignUpInputCheck(w, r)
+			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 			return
 		}
 
 		token, err := tools.IsValidToken(w, r, tokenValue)
 		if err != nil {
-			log.Printf("%+v", err)
+			log.Printf("%+v", errors.WithStack(err))
 			http.Redirect(w, r, consts.SignInURL, http.StatusFound)
 			return
 		}
 
 		claims := token.Claims.(jwt.MapClaims)
-		exp := claims["exp"].(float64)
+		expFloat := claims["exp"].(float64)
 
-		if exp != consts.NoExpiration {
-			expUnix := time.Unix(int64(exp), 0)
+		if expFloat != consts.NoExpiration {
+			expTime := time.Unix(int64(expFloat), 0)
 
-			if time.Now().After(expUnix) {
+			if time.Now().After(expTime) {
 				lastActivity, err := data.SessionTimeDataGet(r, "lastActivity")
 				if err != nil {
-					log.Printf("%+v", err)
+					log.Printf("%+v", errors.WithStack(err))
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
@@ -54,14 +48,14 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 
 				user, err := data.SessionUserDataGet(r, "user")
 				if err != nil {
-					log.Printf("%+v", err)
+					log.Printf("%+v", errors.WithStack(err))
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
 
 				signedToken, err := tools.TokenCreate(w, r, "3hours", user)
 				if err != nil {
-					log.Printf("%+v", err)
+					log.Printf("%+v", errors.WithStack(err))
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
@@ -75,11 +69,10 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 func Logout(w http.ResponseWriter, r *http.Request) {
 	err := data.SessionEnd(w, r)
 	if err != nil {
-		log.Printf("%+v", err)
+		log.Printf("%+v", errors.WithStack(err))
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
 	data.ClearCookie(w)
 	http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 }
