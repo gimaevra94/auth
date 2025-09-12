@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"crypto/rand"
 	"net/http"
 	"os"
 	"time"
@@ -10,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func TokenCreate(w http.ResponseWriter, r *http.Request, rememberMe string, user User) (string, error) {
+func AuthTokenCreate(w http.ResponseWriter, r *http.Request, rememberMe string, user User) (string, error) {
 	var exp int64
 
 	switch rememberMe {

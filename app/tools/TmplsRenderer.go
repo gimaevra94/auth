@@ -107,7 +107,7 @@ const (
 	<div class="container">
 		<h1>Sign Up</h1>
 		{{if .Msg}}<div class="error-message">{{.Msg}}</div>{{end}}
-		<form method="POST" action="/sign_up_input_check">
+		<form method="POST" action="/sign-up-input-check">
 			<div class="form-group">
 				<label for="username">Username</label>
 				<input type="text" id="username" name="login" required autocomplete="username">
@@ -131,7 +131,7 @@ const (
 			<button type="submit" class="oauth-btn">Sign up with Yandex</button>
 		</form>
 		<div class="login-link">
-			Already have an account? <a href="/sign_in">Sign In</a>
+			Already have an account? <a href="/sign-in">Sign In</a>
 		</div>
 	</div>
 	<script src="https://www.google.com/recaptcha/api.js?render=6LcKXborAAAAAI3qmADWne38O4aAKjJIfPwMNBdO"></script>
@@ -163,8 +163,9 @@ const (
 <body>
 	<div class="container">
 		<h1>Verification</h1>
+		{{if .Msg}}<div class="error-message">{{.Msg}}</div>{{end}}
 		<p class="message">We've sent a verification code to your email. Please enter it below.</p>
-		<form method="POST" action="/user_add">
+		<form method="POST" action="/user-add">
 			<input type="hidden" name="rememberMe" value="false">
 			<div class="form-group">
 				<label for="userCode">Verification Code</label>
@@ -172,9 +173,14 @@ const (
 			</div>
 			<button type="submit" class="btn">Verify</button>
 		</form>
+		{{if .Msg}}
 		<div class="resend">
-			Didn't receive the code? <a href="/user_add">Send again</a>
+			Didn't receive the code?
+			<form method="GET" action="/code-send">
+				<button type="submit" class="btn">Send again</button>
+			</form>
 		</div>
+		{{end}}
 	</div>
 </body>
 </html>
@@ -194,7 +200,7 @@ const (
 	<div class="container">
 		<h1>Sign In</h1>
 		{{if .Msg}}<div class="error">{{.Msg}}</div>{{end}}
-		<form method="POST" action="/sign_in_input_check">
+		<form method="POST" action="/sign-in-input-check">
 			<div class="form-group">
 				<label for="login">Username</label>
 				<input type="text" id="login" name="login" required autocomplete="username">
@@ -222,14 +228,14 @@ const (
 		</form>
 		{{if .ShowForgotPassword}}
 		<div class="login-link">
-			Forgot your password? <a href="/forgot_password_email">Reset Password</a>
+			Forgot your password? <a href="/forgot-password-email">Reset Password</a>
 		</div>
 		{{end}}
 	</div>
 	<script src="https://www.google.com/recaptcha/api.js?render=6LcKXborAAAAAI3qmADWne38O4aAKjJIfPwMNBdO"></script>
 	<script>
 		grecaptcha.ready(function() {
-			document.querySelector('form[action="/sign_in_input_check"]').addEventListener('submit', function(event) {
+			document.querySelector('form[action="/sign-in-input-check"]').addEventListener('submit', function(event) {
 				event.preventDefault();
 				grecaptcha.execute('6LcKXborAAAAAI3qmADWne38O4aAKjJIfPwMNBdO', {action: 'signin'}).then(function(token) {
 					document.getElementById('recaptchaTokenSignIn').value = token;
@@ -281,7 +287,7 @@ const (
 <body>
     <div class="container">
         <h1>Password Reset</h1>
-        <form method="POST" action="/password_reset">
+        <form method="POST" action="/password-reset">
             <div class="form-group">
                 <label for="oldPassword">Old Password</label>
                 <input type="password" id="oldPassword" name="oldPassword" required autocomplete="current-password">
@@ -495,7 +501,7 @@ const ForgotPasswordEmailTMPL = `
             <button type="submit" class="btn">Submit</button>
         </form>
         <div class="login-link">
-            Remembered your password? <a href="/log_in">Sign In</a>
+            Remembered your password? <a href="/log-in">Sign In</a>
         </div>
     </div>
 </body>

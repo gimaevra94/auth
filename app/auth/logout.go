@@ -53,13 +53,13 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 					return
 				}
 
-				signedToken, err := tools.TokenCreate(w, r, "3hours", user)
+				signedAuthToken, err := tools.AuthTokenCreate(w, r, "3hours", user)
 				if err != nil {
 					log.Printf("%+v", errors.WithStack(err))
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
-				data.SetTokenInCookie(w, signedToken)
+				data.SetAuthTokenInCookie(w, signedAuthToken)
 			}
 		}
 		next.ServeHTTP(w, r)

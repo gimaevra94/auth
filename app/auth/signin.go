@@ -135,7 +135,6 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
-
 			return
 		}
 
@@ -146,7 +145,6 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
-
 			return
 		}
 
@@ -162,13 +160,13 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := tools.TokenCreate(w, r, rememberMe, user)
+	token, err := tools.AuthTokenCreate(w, r, rememberMe, user)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-	data.SetTokenInCookie(w, token)
+	data.SetAuthTokenInCookie(w, token)
 
 	if rememberMe == "false" {
 		lastActivity := time.Now().Add(3 * time.Hour)

@@ -1,18 +1,18 @@
 package consts
 
 const (
-	SignUpURL           = "/sign_up"
-	SignUpInputCheckURL = "/sign_up_input_check"
-	CodeSendURL         = "/code_send"
-	UserAddURL          = "/user_add"
+	SignUpURL           = "/sign-up"
+	SignUpInputCheckURL = "/sign-up-input-check"
+	CodeSendURL         = "/code-send"
+	UserAddURL          = "/user-add"
 
-	SignInURL           = "/sign_in"
-	SignInInputCheckURL = "/sign_in_input_check"
+	SignInURL           = "/sign-in"
+	SignInInputCheckURL = "/sign-in-input-check"
 
 	HomeURL          = "/home"
 	LogoutURL        = "/logout"
 	Err500URL        = "/500"
-	PasswordResetURL = "/password_reset"
+	PasswordResetURL = "/password-reset"
 
 	NoExpiration = 253402300799.0
 )
