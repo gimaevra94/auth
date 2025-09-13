@@ -13,5 +13,7 @@ const (
 	LogoutURL        = "/logout"
 	Err500URL        = "/500"
 
-	NoExpiration = 253402300799.0
+	AccessTokenExp = 15 * 60
+	RefreshTokenExp = 7 * 24 * 60 * 60
+	
 )
