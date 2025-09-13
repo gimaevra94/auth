@@ -13,7 +13,7 @@ import (
 func Captcha(r *http.Request) error {
 	captchaToken := r.FormValue("g-recaptcha-response")
 	if captchaToken == "" {
-		return errors.WithStack(errors.New("captchaToken: not exist"))
+		return errors.WithStack(errors.New("captchaToken not exist"))
 	}
 
 	captchaURL := "https://www.google.com/recaptcha/api/siteverify"
@@ -44,11 +44,10 @@ func Captcha(r *http.Request) error {
 	}
 
 	score, ok := result["score"].(float64)
-	if !ok || score < 0.5 { // Вы можете настроить пороговое значение (например, 0.5)
+	if !ok || score < 0.5 {
 		return errors.New("reCAPTCHA score too low")
 	}
 
-	// Проверка действия (action) для дополнительной безопасности
 	action, ok := result["action"].(string)
 	if !ok || (action != "signup" && action != "signin") {
 		return errors.New("reCAPTCHA action mismatch")

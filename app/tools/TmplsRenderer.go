@@ -46,10 +46,7 @@ var (
 	_        = Must(BaseTmpl.Parse(SignInTMPL))
 	_        = Must(BaseTmpl.Parse(HomeTMPL))
 	_        = Must(BaseTmpl.Parse(CodeSendTMPL))
-	_        = Must(BaseTmpl.Parse(PasswordResetTMPL))
-	_        = Must(BaseTmpl.Parse(PasswordResetLinkTMPL))
 	_        = Must(BaseTmpl.Parse(mailCodeTMPL))
-	_        = Must(BaseTmpl.Parse(ForgotPasswordEmailTMPL))
 )
 
 type errMsg struct {
@@ -274,137 +271,6 @@ const (
 </html>
 {{ end }}
 `
-
-	PasswordResetTMPL = `
-{{ define "PasswordReset" }}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Password Reset</title>
-    <link rel="stylesheet" href="baseTmpl.css">
-</head>
-<body>
-    <div class="container">
-        <h1>Password Reset</h1>
-        <form method="POST" action="/password-reset">
-            <div class="form-group">
-                <label for="oldPassword">Old Password</label>
-                <input type="password" id="oldPassword" name="oldPassword" required autocomplete="current-password">
-            </div>
-            <div class="form-group">
-                <label for="oldPasswordConfirm">Confirm Old Password</label>
-                <input type="password" id="oldPasswordConfirm" name="oldPasswordConfirm" required autocomplete="current-password">
-            </div>
-            <div class="form-group">
-                <label for="newPassword">New Password</label>
-                <input type="password" id="newPassword" name="newPassword" required autocomplete="new-password">
-            </div>
-            <button type="submit" class="btn">Submit</button>
-        </form>
-    </div>
-</body>
-</html>
-{{ end }}
-`
-
-	PasswordResetLinkTMPL = `
-{{ define "PasswordResetLink" }}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Password Reset Request</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: #1f2937; /* --bg-color */
-            color: #e5e7eb; /* --text-color */
-            line-height: 1.5;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh; /* Use min-height for emails */
-            margin: 0;
-            padding: 20px;
-        }
-        .container {
-            max-width: 400px;
-            margin: 2rem auto; /* Added margin for better centering in email clients */
-            padding: 2rem;
-            background: #374151; /* --container-bg */
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-            text-align: center;
-        }
-        h1 {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-            color: #e5e7eb; /* --text-color */
-        }
-        p {
-            margin-bottom: 1.5rem;
-            color: #9ca3af;
-        }
-        .btn {
-            display: inline-block;
-            padding: 0.75rem 1.5rem;
-            background-color: #2563eb; /* --primary-color */
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 1rem;
-            font-weight: 500;
-            cursor: pointer;
-            text-decoration: none; /* Important for links */
-            transition: background-color 0.2s;
-        }
-        .btn:hover {
-            background-color: #1d4ed8; /* Darker primary for hover */
-        }
-        .footer {
-            margin-top: 2rem;
-            font-size: 0.8rem;
-            color: #6b7280;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Password Reset Request</h1>
-        <p>You recently requested to reset your password. Click the button below to reset it:</p>
-        <a href="{{.ResetLink}}" class="btn">Reset Password</a>
-        <p style="margin-top: 1.5rem;">If you did not request a password reset, please ignore this email.</p>
-        <div class="footer">
-            This email was sent from an automated system. Please do not reply.
-        </div>
-    </div>
-</body>
-</html>
-{{ end }}
-`
-
-	Err500TMPL = `
-{{ define "Err500" }}
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-	<meta charset="UTF-8">
-	<title>Internal Server Error</title>
-	<link rel="stylesheet" href="/public/styles.css">
-</head>
-<body>
-	<div class="container">
-		<h1>Internal Server Error</h1>
-		<p>We're sorry, something went wrong on our end. Please try again later.</p>
-		<a href="/home" class="btn">Go to Home Page</a>
-	</div>
-</body>
-</html>
-{{ end }}
-`
-
 	mailCodeTMPL = `
 {{ define "mailCode" }}
 <!DOCTYPE html>
@@ -478,33 +344,3 @@ const (
 {{ end }}
 `
 )
-
-const ForgotPasswordEmailTMPL = `
-{{ define "ForgotPasswordEmail" }}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Forgot Password</title>
-    <link rel="stylesheet" href="/public/styles.css">
-</head>
-<body>
-    <div class="container">
-        <h1>Forgot Password</h1>
-        {{if .Msg}}<div class="success message">{{.Msg}}</div>{{end}}
-        <p class="message">Please enter your email address to receive a password reset link.</p>
-        <form method="POST" action="/send_password_reset_link">
-            <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" required autocomplete="email">
-            </div>
-            <button type="submit" class="btn">Submit</button>
-        </form>
-        <div class="login-link">
-            Remembered your password? <a href="/log-in">Sign In</a>
-        </div>
-    </div>
-</body>
-</html>
-{{ end }}
-`

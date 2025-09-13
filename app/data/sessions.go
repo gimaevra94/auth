@@ -65,7 +65,6 @@ func SessionEnd(w http.ResponseWriter, r *http.Request) error {
 }
 
 func SessionDataSet(w http.ResponseWriter, r *http.Request, key string, consts any) error {
-
 	session, err := store.Get(r, "auth")
 	if err != nil {
 		return errors.WithStack(err)
