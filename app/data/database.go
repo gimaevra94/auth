@@ -14,7 +14,6 @@ import (
 var db *sql.DB
 
 const (
-	//selectQuery      = "select passwordHash from user where email = ? limit 1"
 	insertQuery      = "insert into user (login,email,passwordHash) values(?,?,?)"
 	yauthSelectQuery = "select email from user where email = ? limit 1"
 	yauthInsertQuery = "insert into user (login,email) values(?,?)"
