@@ -260,7 +260,3 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }
-
-func PasswordReset(w http.ResponseWriter, r *http.Request) {
-	CodeSend(w, r)
-}

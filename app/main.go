@@ -90,9 +90,6 @@ func initRouter() *chi.Mux {
 	r.With(auth.IsExpiredTokenMW).Get(consts.LogoutURL, auth.Logout)
 
 	r.Get(consts.Err500URL, htmls.Err500)
-
-	r.Get(consts.PasswordResetURL, htmls.PasswordReset)
-	r.Post(consts.PasswordResetURL, auth.PasswordReset)
 	return r
 }
 

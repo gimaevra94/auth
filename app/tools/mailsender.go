@@ -15,7 +15,6 @@ import (
 var (
 	senderEmail      string
 	authCodeSubject  = "Auth code"
-	resetLinkSubject = "Password reset link"
 )
 
 func codeGenerate() string {
@@ -82,20 +81,4 @@ func AuthCodeSender(email string) (string, error) {
 	}
 
 	return msCode, nil
-}
-
-func ResetLinkSender(email string) error {
-	senderEmail = os.Getenv("MAIL_SENDER_EMAIL")
-	auth := smtpAuth(senderEmail)
-	msg, err := executeTmpl(senderEmail, email, resetLinkSubject, nil)
-	if err != nil {
-		return err
-	}
-
-	err = mailSend(senderEmail, email, auth, msg)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
