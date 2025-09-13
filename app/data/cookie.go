@@ -17,16 +17,6 @@ func SetAuthTokenInCookie(w http.ResponseWriter, v string) {
 	})
 }
 
-//func SetCookieWithoutToken(w http.ResponseWriter) {
-//	http.SetCookie(w, &http.Cookie{
-//		Name:     "token",
-//		Path:     "/",
-//		HttpOnly: true,
-//		Secure:   true,
-//		SameSite: http.SameSiteStrictMode,
-//	})
-//}
-
 func ClearCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "token",
