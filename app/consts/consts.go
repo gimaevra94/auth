@@ -12,7 +12,6 @@ const (
 	HomeURL          = "/home"
 	LogoutURL        = "/logout"
 	Err500URL        = "/500"
-	PasswordResetURL = "/password-reset"
 
 	NoExpiration = 253402300799.0
 )
