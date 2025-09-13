@@ -35,13 +35,3 @@ func AuthTokenCreate(w http.ResponseWriter, r *http.Request, rememberMe string, 
 
 	return SignedToken, nil
 }
-
-func ResetTokenCreate() (string, error) {
-	resetToken := make([]byte, 32)
-	_, err := rand.Read(resetToken)
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-	encodeResetToken:=
-	return string(resetToken), nil
-}
