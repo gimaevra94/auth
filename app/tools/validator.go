@@ -10,7 +10,7 @@ import (
 )
 
 type User struct {
-	ID       string `sql:"id" json:"id"`
+	UserID       string `sql:"id" json:"user-id"`
 	Login    string `sql:"login" json:"login"`
 	Email    string `sql:"email" json:"email"`
 	Password string `sql:"password" json:"password"`
@@ -46,7 +46,7 @@ func IsValidInput(r *http.Request, IsSignIn bool, IsPasswordReset bool) (User, e
 	password := r.FormValue("password")
 
 	validatedLoginInput := User{
-		ID:       id,
+		UserID:       id,
 		Login:    login,
 		Email:    email,
 		Password: password,
