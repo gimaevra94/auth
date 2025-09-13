@@ -34,22 +34,22 @@ func YandexAuthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
-	yaCode := r.URL.Query().Get("code")
+	yauthCode := r.URL.Query().Get("code")
 
-	if yaCode == "" {
-		log.Printf("%+v", errors.WithStack(errors.New("code not exist")))
+	if yauthCode == "" {
+		log.Printf("%+v", errors.WithStack(errors.New("yauthCode not exist")))
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
-	token, err := getAccessToken(yaCode)
+	yandexAccessToken, err := getAccessToken(yauthCode)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
-	user, err := getUserInfo(token)
+	user, err := getUserInfo(yandexAccessToken)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -68,13 +68,13 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	signedAuthToken, err := tools.AuthTokenCreate(w, r, "true", user)
+	signedYauthToken, err := tools.AuthTokenCreate(w, r, "true", user)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-	data.SetAuthTokenInCookie(w, signedAuthToken)
+	data.SetAuthTokenInCookie(w, signedYauthToken)
 
 	err = data.SessionDataSet(w, r, "user", user)
 	if err != nil {
@@ -85,10 +85,10 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }
 
-func getAccessToken(yaCode string) (string, error) {
+func getAccessToken(yauthCode string) (string, error) {
 	tokenParams := url.Values{
 		"grant_type":    {"authorization_code"},
-		"code":          {yaCode},
+		"code":          {yauthCode},
 		"client_id":     {clientID},
 		"client_secret": {clientSecret},
 		"redirect_uri":  {consts.HomeURL},
