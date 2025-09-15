@@ -26,7 +26,7 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if loginCounter > 0 {
-		validatedLoginInput, err = tools.IsValidInput(r, false, false)
+		validatedLoginInput, err = tools.InputValidator(r, false, false)
 		if err != nil {
 			if strings.Contains(err.Error(), "login") {
 				err := data.SessionDataSet(w, r, "loginCounter", loginCounter-1)
