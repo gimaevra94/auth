@@ -60,7 +60,6 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
-
 				return
 			}
 
@@ -78,7 +77,6 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
-
 				return
 			}
 
@@ -226,36 +224,20 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	rememberMe := r.FormValue("rememberMe") != ""
+
+	signedAuthToken, userID, err := tools.GenerateRefreshToken(rememberMe)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
 	err = data.UserAdd(user)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
-	}
-
-	rememberMe := r.FormValue("rememberMe")
-	if rememberMe == "" {
-		log.Printf("%+v", errors.WithStack(errors.New("rememberMe not exist")))
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
-	}
-
-	signedAuthToken, err := tools.AuthTokenCreate(w, r, rememberMe, user)
-	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
-	}
-	data.SetAuthTokenInCookie(w, signedAuthToken)
-
-	if rememberMe == "false" {
-		lastActivity := time.Now().Add(3 * time.Hour)
-		err := data.SessionDataSet(w, r, "lastActivity", lastActivity)
-		if err != nil {
-			log.Printf("%+v", err)
-			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-			return
-		}
 	}
 
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)

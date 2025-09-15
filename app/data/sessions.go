@@ -3,6 +3,7 @@ package data
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -34,7 +35,7 @@ func InitSessionVarsMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		session, err := store.Get(r, "auth")
 		if err != nil {
-			fmt.Printf("%+v", errors.WithStack(err))
+			log.Printf("%+v", errors.WithStack(err))
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 			return
 		}
@@ -42,7 +43,7 @@ func InitSessionVarsMW(next http.Handler) http.Handler {
 		if session.IsNew {
 			err := SessionDataSet(w, r, "loginCounter", 3)
 			if err != nil {
-				fmt.Printf("%+v", errors.WithStack(err))
+				log.Printf("%+v", errors.WithStack(err))
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 			}
 		}
@@ -162,5 +163,3 @@ func SessionTimeDataGet(r *http.Request, key string) (time.Time, error) {
 
 	return timeData, nil
 }
-
-

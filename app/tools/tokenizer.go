@@ -40,7 +40,8 @@ func GenerateAccessToken(userID string) (string, error) {
 	return signedAccessToken, nil
 }
 
-func GenerateRefreshToken(userID string, rememberMe bool) (string, error) {
+func GenerateRefreshToken(rememberMe bool) (string, string, error) {
+	userID := uuid.New().String()
 	refreshTokenExp := consts.RefreshTokenExp
 	if !rememberMe {
 		refreshTokenExp = 24 * 60 * 60
@@ -61,7 +62,7 @@ func GenerateRefreshToken(userID string, rememberMe bool) (string, error) {
 	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
 	signedRefreshToken, err := refreshToken.SignedString(jwtSecret)
 	if err != nil {
-		return "", errors.WithStack(err)
+		return "", "", errors.WithStack(err)
 	}
-	return signedRefreshToken, nil
+	return signedRefreshToken, userID, nil
 }
