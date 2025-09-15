@@ -10,7 +10,7 @@ import (
 )
 
 type User struct {
-	UserID       string `sql:"id" json:"user-id"`
+	UserID   string `sql:"id" json:"user-id"`
 	Login    string `sql:"login" json:"login"`
 	Email    string `sql:"email" json:"email"`
 	Password string `sql:"password" json:"password"`
@@ -22,23 +22,62 @@ var (
 	passwordRegex = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ\d!@#$%^&*\-\)]{4,30}$`)
 )
 
-func IsValidToken(w http.ResponseWriter, r *http.Request, tokenValue string) (*jwt.Token, error) {
-	token, err := jwt.Parse(tokenValue, func(t *jwt.Token) (interface{}, error) {
-		tokenSecret := os.Getenv("JWT_SECRET")
-		return []byte(tokenSecret), nil
+func AccessTokenValidator(token string) (*AccessTokenClaims, error) {
+
+	signedToken, err := jwt.ParseWithClaims(token, &AccessTokenClaims{}, func(t *jwt.Token) (interface{}, error) {
+		if t.Method != jwt.SigningMethodES256 {
+			err := errors.New("unexpected signing method")
+			return nil, errors.WithStack(err)
+		}
+		jwtSecret := []byte(os.Getenv("JWT_SECRET"))
+		return jwtSecret, nil
 	})
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	if !token.Valid {
-		return nil, errors.WithStack(errors.New("token invalid"))
+	claims, ok := signedToken.Claims.(*AccessTokenClaims)
+	if !ok {
+		err := errors.New("Claims deserialize error")
+		return nil, errors.WithStack(err)
 	}
 
-	return token, nil
+	if !signedToken.Valid {
+		err := errors.New("Access token invalid")
+		return nil, errors.WithStack(err)
+	}
+
+	return claims, nil
 }
 
-func IsValidInput(r *http.Request, IsSignIn bool, IsPasswordReset bool) (User, error) {
+func RefreshTokenValidator(token string) (*RefreshTokenClaims, error) {
+	signedToken, err := jwt.ParseWithClaims(token, &RefreshTokenClaims{}, func(t *jwt.Token) (interface{}, error) {
+		if t.Method != jwt.SigningMethodES256 {
+			err := errors.New("unexpected signing method")
+			return nil, errors.WithStack(err)
+		}
+		jwtSecret := []byte(os.Getenv("JWT_SECRET"))
+		return jwtSecret, nil
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	claims, ok := signedToken.Claims.(*RefreshTokenClaims)
+	if !ok {
+		err := errors.New("Claims deserialize error")
+		return nil, errors.WithStack(err)
+	}
+
+	if !signedToken.Valid {
+		err := errors.New("Refresh token invalid")
+		return nil, errors.WithStack(err)
+	}
+
+	return claims, nil
+}
+
+func InputValidator(r *http.Request, IsSignIn bool, IsPasswordReset bool) (User, error) {
 
 	id := ""
 	login := r.FormValue("login")
@@ -46,7 +85,7 @@ func IsValidInput(r *http.Request, IsSignIn bool, IsPasswordReset bool) (User, e
 	password := r.FormValue("password")
 
 	validatedLoginInput := User{
-		UserID:       id,
+		UserID:   id,
 		Login:    login,
 		Email:    email,
 		Password: password,
