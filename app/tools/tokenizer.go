@@ -11,10 +11,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-func GenerateAccessToken(userID string) (string, error) {
+func GenerateAccessToken(user structs.User) (string, error) {
 	expiresAt := time.Duration(consts.AccessTokenExp) * time.Second
 	accessTokenClaims := &structs.AccessTokenClaims{
-		UserID: userID,
+		UserID: user.UserID,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(expiresAt).Unix(),
 			IssuedAt:  time.Now().Unix(),

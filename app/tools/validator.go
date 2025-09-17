@@ -16,9 +16,8 @@ var (
 	passwordRegex = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ\d!@#$%^&*\-\)]{4,30}$`)
 )
 
-func AccessTokenValidator(token string) (*AccessTokenClaims, error) {
-
-	signedToken, err := jwt.ParseWithClaims(token, &AccessTokenClaims{}, func(t *jwt.Token) (interface{}, error) {
+func RefreshTokenValidator(token string) (*structs.RefreshTokenClaims, error) {
+	signedToken, err := jwt.ParseWithClaims(token, &structs.RefreshTokenClaims{}, func(t *jwt.Token) (interface{}, error) {
 		if t.Method != jwt.SigningMethodES256 {
 			err := errors.New("unexpected signing method")
 			return nil, errors.WithStack(err)
@@ -30,34 +29,7 @@ func AccessTokenValidator(token string) (*AccessTokenClaims, error) {
 		return nil, errors.WithStack(err)
 	}
 
-	claims, ok := signedToken.Claims.(*AccessTokenClaims)
-	if !ok {
-		err := errors.New("Claims deserialize error")
-		return nil, errors.WithStack(err)
-	}
-
-	if !signedToken.Valid {
-		err := errors.New("Access token invalid")
-		return nil, errors.WithStack(err)
-	}
-
-	return claims, nil
-}
-
-func RefreshTokenValidator(token string) (*RefreshTokenClaims, error) {
-	signedToken, err := jwt.ParseWithClaims(token, &RefreshTokenClaims{}, func(t *jwt.Token) (interface{}, error) {
-		if t.Method != jwt.SigningMethodES256 {
-			err := errors.New("unexpected signing method")
-			return nil, errors.WithStack(err)
-		}
-		jwtSecret := []byte(os.Getenv("JWT_SECRET"))
-		return jwtSecret, nil
-	})
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	claims, ok := signedToken.Claims.(*RefreshTokenClaims)
+	claims, ok := signedToken.Claims.(*structs.RefreshTokenClaims)
 	if !ok {
 		err := errors.New("Claims deserialize error")
 		return nil, errors.WithStack(err)
@@ -65,6 +37,34 @@ func RefreshTokenValidator(token string) (*RefreshTokenClaims, error) {
 
 	if !signedToken.Valid {
 		err := errors.New("Refresh token invalid")
+		return nil, errors.WithStack(err)
+	}
+
+	return claims, nil
+}
+
+func AccessTokenValidator(token string) (*structs.AccessTokenClaims, error) {
+
+	signedToken, err := jwt.ParseWithClaims(token, &structs.AccessTokenClaims{}, func(t *jwt.Token) (interface{}, error) {
+		if t.Method != jwt.SigningMethodES256 {
+			err := errors.New("unexpected signing method")
+			return nil, errors.WithStack(err)
+		}
+		jwtSecret := []byte(os.Getenv("JWT_SECRET"))
+		return jwtSecret, nil
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	claims, ok := signedToken.Claims.(*structs.AccessTokenClaims)
+	if !ok {
+		err := errors.New("Claims deserialize error")
+		return nil, errors.WithStack(err)
+	}
+
+	if !signedToken.Valid {
+		err := errors.New("Access token invalid")
 		return nil, errors.WithStack(err)
 	}
 

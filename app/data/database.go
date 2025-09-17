@@ -86,8 +86,12 @@ func UserAdd(user structs.User) error {
 	return nil
 }
 
-func TokenAdd(user structs.User)  {
-	_,err:=db.Exec(tokenInsertQuery,user.UserID,user.Token,)
+func RefreshTokenAdd(user structs.User) error {
+	_, err := db.Exec(tokenInsertQuery, user.UserID, user.Token, user.DeviceInfo)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
 }
 
 func YauthUserCheck(user structs.User) error {

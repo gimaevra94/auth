@@ -8,7 +8,6 @@ import (
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/tools"
-	"github.com/golang-jwt/jwt"
 	"github.com/pkg/errors"
 )
 
@@ -20,47 +19,31 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 			return
 		}
 
-		token, err := tools.IsValidToken(w, r, tokenValue)
+		claims, err := tools.AccessTokenValidator(tokenValue)
 		if err != nil {
 			log.Printf("%+v", errors.WithStack(err))
 			http.Redirect(w, r, consts.SignInURL, http.StatusFound)
 			return
 		}
 
-		claims := token.Claims.(jwt.MapClaims)
-		expFloat := claims["exp"].(float64)
+		expiresAtUnix := claims.ExpiresAt
+		expiresAtTime := time.Unix(expiresAtUnix, 0)
 
-		if expFloat != consts.NoExpiration {
-			expTime := time.Unix(int64(expFloat), 0)
+		if time.Now().After(expiresAtTime) {
 
-			if time.Now().After(expTime) {
-				lastActivity, err := data.SessionTimeDataGet(r, "lastActivity")
-				if err != nil {
-					log.Printf("%+v", errors.WithStack(err))
-					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-					return
-				}
-
-				if time.Since(lastActivity) > 3*time.Hour {
-					Logout(w, r)
-					return
-				}
-
-				user, err := data.SessionUserDataGet(r, "user")
-				if err != nil {
-					log.Printf("%+v", errors.WithStack(err))
-					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-					return
-				}
-
-				signedAuthToken, err := tools.AuthTokenCreate(w, r, "3hours", user)
-				if err != nil {
-					log.Printf("%+v", errors.WithStack(err))
-					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-					return
-				}
-				data.SetAuthTokenInCookie(w, signedAuthToken)
+			user, err := data.SessionUserDataGet(r, "user")
+			if err != nil {
+				log.Printf("%+v", errors.WithStack(err))
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 			}
+
+			signedAuthToken, err := tools.GenerateAccessToken(user)
+			if err != nil {
+				log.Printf("%+v", errors.WithStack(err))
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+			data.SetAccessTokenInCookie(w, signedAuthToken)
 		}
 		next.ServeHTTP(w, r)
 	})

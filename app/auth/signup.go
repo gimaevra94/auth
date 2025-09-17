@@ -226,15 +226,17 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rememberMe := r.FormValue("rememberMe") != ""
-	signedRefreshToken, userID, err := tools.GenerateRefreshToken(rememberMe)
+	signedRefreshToken, userID, expiresAt, err := tools.GenerateRefreshToken(rememberMe)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
-	user.SignedRefreshToken = signedRefreshToken
 	user.UserID = userID
+	user.Token = signedRefreshToken
+	user.ExpiresAt = expiresAt
+	user.DeviceInfo = r.UserAgent()
 
 	err = data.UserAdd(user)
 	if err != nil {
@@ -242,6 +244,21 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
+
+	err = data.RefreshTokenAdd(user)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	signedAccessToken, err := tools.GenerateAccessToken(user)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+	}
+
+	data.SetAccessTokenInCookie(w, signedAccessToken)
 
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }
