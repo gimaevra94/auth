@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gimaevra94/auth/app/tools"
+	"github.com/gimaevra94/auth/app/structs"
 	"github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
@@ -14,7 +14,8 @@ import (
 var db *sql.DB
 
 const (
-	insertQuery      = "insert into user (login,email,passwordHash) values(?,?,?)"
+	userInsertQuery  = "insert into user (userID,login,email,passwordHash) values(?,?,?)"
+	tokenInsertQuery = "insert into token where userID = ? limit 1"
 	yauthSelectQuery = "select email from user where email = ? limit 1"
 	yauthInsertQuery = "insert into user (login,email) values(?,?)"
 )
@@ -70,14 +71,14 @@ func UserCheck(queryValue string, usrValue string, pswrd string) error {
 	return nil
 }
 
-func UserAdd(user tools.User) error {
+func UserAdd(user structs.User) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password),
 		bcrypt.DefaultCost)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	_, err = db.Exec(insertQuery, user.Login, user.Email, hashedPassword)
+	_, err = db.Exec(userInsertQuery, user.UserID, user.Login, user.Email, hashedPassword)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -85,7 +86,11 @@ func UserAdd(user tools.User) error {
 	return nil
 }
 
-func YauthUserCheck(user tools.User) error {
+func TokenAdd(user structs.User)  {
+	_,err:=db.Exec(tokenInsertQuery,user.UserID,user.Token,)
+}
+
+func YauthUserCheck(user structs.User) error {
 	row := db.QueryRow(yauthSelectQuery, user.Email)
 	var existingEmail string
 	err := row.Scan(&existingEmail)
@@ -100,7 +105,7 @@ func YauthUserCheck(user tools.User) error {
 	return nil
 }
 
-func YauthUserAdd(user tools.User) error {
+func YauthUserAdd(user structs.User) error {
 	_, err := db.Exec(yauthInsertQuery, user.Login, user.Email)
 	if err != nil {
 		return errors.WithStack(err)
