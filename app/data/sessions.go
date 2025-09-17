@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/gimaevra94/auth/app/consts"
-	"github.com/gimaevra94/auth/app/tools"
+	"github.com/gimaevra94/auth/app/structs"
 	"github.com/gorilla/sessions"
 	"github.com/pkg/errors"
 )
@@ -84,21 +84,21 @@ func SessionDataSet(w http.ResponseWriter, r *http.Request, key string, consts a
 	return nil
 }
 
-func SessionUserDataGet(r *http.Request, key string) (tools.User, error) {
+func SessionUserDataGet(r *http.Request, key string) (structs.User, error) {
 	session, err := store.Get(r, "auth")
 	if err != nil {
-		return tools.User{}, errors.WithStack(err)
+		return structs.User{}, errors.WithStack(err)
 	}
 
 	byteData, ok := session.Values[key].([]byte)
 	if !ok {
-		return tools.User{}, errors.WithStack(errors.New(fmt.Sprintf("%s not exist", key)))
+		return structs.User{}, errors.WithStack(errors.New(fmt.Sprintf("%s not exist", key)))
 	}
 
-	var userData tools.User
+	var userData structs.User
 	err = json.Unmarshal([]byte(byteData), &userData)
 	if err != nil {
-		return tools.User{}, errors.WithStack(err)
+		return structs.User{}, errors.WithStack(err)
 	}
 
 	return userData, nil

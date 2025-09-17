@@ -9,6 +9,7 @@ import (
 
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
+	"github.com/gimaevra94/auth/app/structs"
 	"github.com/gimaevra94/auth/app/tools"
 	"golang.org/x/crypto/bcrypt"
 
@@ -16,7 +17,7 @@ import (
 )
 
 func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
-	var validatedLoginInput tools.User
+	var validatedLoginInput structs.User
 
 	loginCounter, err := data.SessionIntDataGet(r, "loginCounter")
 	if err != nil {
@@ -225,13 +226,15 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rememberMe := r.FormValue("rememberMe") != ""
-
-	signedAuthToken, userID, err := tools.GenerateRefreshToken(rememberMe)
+	signedRefreshToken, userID, err := tools.GenerateRefreshToken(rememberMe)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
+
+	user.SignedRefreshToken = signedRefreshToken
+	user.UserID = userID
 
 	err = data.UserAdd(user)
 	if err != nil {

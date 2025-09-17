@@ -5,16 +5,10 @@ import (
 	"os"
 	"regexp"
 
+	"github.com/gimaevra94/auth/app/structs"
 	"github.com/golang-jwt/jwt"
 	"github.com/pkg/errors"
 )
-
-type User struct {
-	UserID   string `sql:"id" json:"user-id"`
-	Login    string `sql:"login" json:"login"`
-	Email    string `sql:"email" json:"email"`
-	Password string `sql:"password" json:"password"`
-}
 
 var (
 	loginRegex    = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ0-9]{3,30}$`)
@@ -77,14 +71,14 @@ func RefreshTokenValidator(token string) (*RefreshTokenClaims, error) {
 	return claims, nil
 }
 
-func InputValidator(r *http.Request, IsSignIn bool, IsPasswordReset bool) (User, error) {
+func InputValidator(r *http.Request, IsSignIn bool, IsPasswordReset bool) (structs.User, error) {
 
 	id := ""
 	login := r.FormValue("login")
 	email := r.FormValue("email")
 	password := r.FormValue("password")
 
-	validatedLoginInput := User{
+	validatedLoginInput := structs.User{
 		UserID:   id,
 		Login:    login,
 		Email:    email,
@@ -92,27 +86,27 @@ func InputValidator(r *http.Request, IsSignIn bool, IsPasswordReset bool) (User,
 	}
 
 	if login == "" {
-		return User{}, errors.WithStack(errors.New("login not exist"))
+		return structs.User{}, errors.WithStack(errors.New("login not exist"))
 	}
 	if !loginRegex.MatchString(login) {
-		return User{}, errors.WithStack(errors.New("login invalid"))
+		return structs.User{}, errors.WithStack(errors.New("login invalid"))
 	}
 
 	if !IsSignIn {
 		if email == "" {
-			return User{}, errors.WithStack(errors.New("email not exist"))
+			return structs.User{}, errors.WithStack(errors.New("email not exist"))
 		}
 		if !emailRegex.MatchString(email) {
-			return User{}, errors.WithStack(errors.New("email invalid"))
+			return structs.User{}, errors.WithStack(errors.New("email invalid"))
 		}
 	}
 
 	if !IsPasswordReset {
 		if password == "" {
-			return User{}, errors.WithStack(errors.New("password not exist"))
+			return structs.User{}, errors.WithStack(errors.New("password not exist"))
 		}
 		if !passwordRegex.MatchString(password) {
-			return User{}, errors.WithStack(errors.New("password invalid"))
+			return structs.User{}, errors.WithStack(errors.New("password invalid"))
 		}
 	}
 
