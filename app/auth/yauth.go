@@ -10,6 +10,7 @@ import (
 
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
+	"github.com/gimaevra94/auth/app/structs"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/pkg/errors"
 )
@@ -68,13 +69,13 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	signedYauthToken, err := tools.AuthTokenCreate(w, r, "true", user)
+	signedYauthToken, err := tools.GenerateAccessToken(user)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-	data.SetAuthTokenInCookie(w, signedYauthToken)
+	data.SetAccessTokenInCookie(w, signedYauthToken)
 
 	err = data.SessionDataSet(w, r, "user", user)
 	if err != nil {
@@ -119,29 +120,29 @@ func getAccessToken(yauthCode string) (string, error) {
 	return accessToken, nil
 }
 
-func getUserInfo(accessToken string) (tools.User, error) {
+func getUserInfo(accessToken string) (structs.User, error) {
 	req, err := http.NewRequest("GET", userInfoURL, nil)
 	if err != nil {
-		return tools.User{}, errors.WithStack(err)
+		return structs.User{}, errors.WithStack(err)
 	}
 
 	req.Header.Set("Authorization", "OAuth "+accessToken)
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return tools.User{}, errors.WithStack(err)
+		return structs.User{}, errors.WithStack(err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return tools.User{}, errors.WithStack(err)
+		return structs.User{}, errors.WithStack(err)
 	}
 
-	var user tools.User
+	var user structs.User
 	err = json.Unmarshal(body, &user)
 	if err != nil {
-		return tools.User{}, errors.WithStack(err)
+		return structs.User{}, errors.WithStack(err)
 	}
 
 	return user, nil

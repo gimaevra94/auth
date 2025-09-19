@@ -9,6 +9,7 @@ import (
 
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
+	"github.com/gimaevra94/auth/app/structs"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
@@ -20,7 +21,7 @@ type SignInPageData struct {
 }
 
 func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
-	var validatedLoginInput tools.User
+	var validatedLoginInput structs.User
 
 	loginCounter, err := data.SessionIntDataGet(r, "loginCounter")
 	if err != nil {
@@ -30,7 +31,7 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if loginCounter > 0 {
-		validatedLoginInput, err = tools.IsValidInput(r, true, false)
+		validatedLoginInput, err = tools.InputValidator(r, true, false)
 		if err != nil {
 			if strings.Contains(err.Error(), "login") {
 				err := data.SessionDataSet(w, r, "loginCounter", loginCounter-1)
@@ -160,13 +161,13 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := tools.AuthTokenCreate(w, r, rememberMe, user)
+	token, err := tools.GenerateAccessToken(user)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-	data.SetAuthTokenInCookie(w, token)
+	data.SetAccessTokenInCookie(w, token)
 
 	if rememberMe == "false" {
 		lastActivity := time.Now().Add(3 * time.Hour)

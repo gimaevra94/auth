@@ -58,5 +58,6 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func Err500(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, templatesPath+"500.html")
+	w.WriteHeader(http.StatusInternalServerError)
+	http.ServeFile(w, r, templatesPath+"/500.html")
 }

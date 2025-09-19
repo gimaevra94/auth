@@ -1,0 +1,14 @@
+CREATE TABLE user (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    login VARCHAR(64) NOT NULL UNIQUE,
+    email VARCHAR(128) NOT NULL UNIQUE,
+    passwordHash VARCHAR(255) NOT NULL,
+);
+
+CREATE TABLE token (
+    token VARCHAR(255) PRIMARY KEY,
+    userID INT NOT NULL,
+    expiresAt DATETIME NOT NULL,
+    deviceInfo VARCHAR(255),
+    FOREIGN KEY (userID) REFERENCES user(id)
+);

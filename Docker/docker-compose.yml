@@ -1,6 +1,7 @@
 name: auth
 services:
   db:
+    container_name: db
     image: gimaevra94/db:latest
     environment:
        MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_password
