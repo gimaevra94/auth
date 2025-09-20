@@ -3,7 +3,7 @@ CREATE TABLE user (
     userID INT NOT NULL,
     login VARCHAR(64) NOT NULL UNIQUE,
     email VARCHAR(128) NOT NULL UNIQUE,
-    passwordHash VARCHAR(255) NOT NULL,
+    passwordHash VARCHAR(255) NOT NULL
 );
 
 CREATE TABLE token (
