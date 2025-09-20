@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	templatesPath = "../../public"
+	templatesPath = "../public"
 )
 
 func SignUp(w http.ResponseWriter, r *http.Request) {
@@ -57,6 +57,6 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func Err500(w http.ResponseWriter, r *http.Request) {	
+func Err500(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, templatesPath+"/500.html")
 }
