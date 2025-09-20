@@ -14,7 +14,7 @@ import (
 var db *sql.DB
 
 const (
-	userInsertQuery  = "insert into user (userID,login,email,passwordHash) values(?,?,?)"
+	userInsertQuery  = "insert into user (userID,login,email,passwordHash) values(?,?,?,?)"
 	tokenInsertQuery = "insert into token where userID = ? limit 1"
 	yauthSelectQuery = "select email from user where email = ? limit 1"
 	yauthInsertQuery = "insert into user (login,email) values(?,?)"
