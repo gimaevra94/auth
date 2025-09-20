@@ -21,7 +21,7 @@ func GenerateAccessToken(user structs.User) (string, error) {
 		},
 	}
 
-	accessToken := jwt.NewWithClaims(jwt.SigningMethodES256, accessTokenClaims)
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessTokenClaims)
 	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
 	signedAccessToken, err := accessToken.SignedString(jwtSecret)
 	if err != nil {
@@ -48,7 +48,7 @@ func GenerateRefreshToken(rememberMe bool) (string, string, time.Time, error) {
 		},
 	}
 
-	refreshToken := jwt.NewWithClaims(jwt.SigningMethodES256, refreshTokenClaims)
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshTokenClaims)
 	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
 	signedRefreshToken, err := refreshToken.SignedString(jwtSecret)
 	if err != nil {
