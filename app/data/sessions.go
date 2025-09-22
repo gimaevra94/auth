@@ -14,45 +14,48 @@ import (
 	"github.com/pkg/errors"
 )
 
-var store *sessions.CookieStore
+var loginStore *sessions.CookieStore
+var captchaStore *sessions.CookieStore
 
 func InitStore() *sessions.CookieStore {
-	store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
+	loginStore = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
 
-	OneMonth := 180
-	store.Options = &sessions.Options{
+	threeMinutes := 180
+	loginStore.Options = &sessions.Options{
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 		Path:     "/",
-		MaxAge:   OneMonth,
+		MaxAge:   threeMinutes,
 		Secure:   false,
 	}
 
-	return store
+	captchaStore = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
+	captchaStore.Options = &sessions.Options{
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   30 * 24 * 60 * 60, // One Month
+		Secure:   false,
+	}
+
+	return loginStore
 }
 
 func InitSessionVarsMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		session, err := store.Get(r, "auth")
+		session, err := loginStore.Get(r, "auth")
 		if err != nil {
 			log.Printf("%+v", errors.WithStack(err))
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 			return
 		}
 
-		if session.IsNew {
-			err := SessionDataSet(w, r, "loginCounter", 3)
-			if err != nil {
-				log.Printf("%+v", errors.WithStack(err))
-				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-			}
-		}
 		next.ServeHTTP(w, r)
 	})
 }
 
 func SessionEnd(w http.ResponseWriter, r *http.Request) error {
-	session, err := store.Get(r, "auth")
+	session, err := loginStore.Get(r, "auth")
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -66,7 +69,7 @@ func SessionEnd(w http.ResponseWriter, r *http.Request) error {
 }
 
 func SessionDataSet(w http.ResponseWriter, r *http.Request, key string, consts any) error {
-	session, err := store.Get(r, "auth")
+	session, err := loginStore.Get(r, "auth")
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -85,7 +88,7 @@ func SessionDataSet(w http.ResponseWriter, r *http.Request, key string, consts a
 }
 
 func SessionUserDataGet(r *http.Request, key string) (structs.User, error) {
-	session, err := store.Get(r, "auth")
+	session, err := loginStore.Get(r, "auth")
 	if err != nil {
 		return structs.User{}, errors.WithStack(err)
 	}
@@ -105,7 +108,7 @@ func SessionUserDataGet(r *http.Request, key string) (structs.User, error) {
 }
 
 func SessionIntDataGet(r *http.Request, key string) (int64, error) {
-	session, err := store.Get(r, "auth")
+	session, err := loginStore.Get(r, "auth")
 	if err != nil {
 		return 0, errors.WithStack(err)
 	}
@@ -125,7 +128,7 @@ func SessionIntDataGet(r *http.Request, key string) (int64, error) {
 }
 
 func SessionStringDataGet(r *http.Request, key string) (string, error) {
-	session, err := store.Get(r, "auth")
+	session, err := loginStore.Get(r, "auth")
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
@@ -144,8 +147,47 @@ func SessionStringDataGet(r *http.Request, key string) (string, error) {
 	return stringData, nil
 }
 
+func SessionCaptchaDataSet(w http.ResponseWriter, r *http.Request, key string, consts any) error {
+	session, err := captchaStore.Get(r, "captcha")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	jsonData, err := json.Marshal(consts)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	session.Values[key] = jsonData
+	err = session.Save(r, w)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func SessionCaptchaIntDataGet(r *http.Request, key string) (int64, error) {
+	session, err := captchaStore.Get(r, "captcha")
+	if err != nil {
+		return 0, errors.WithStack(err)
+	}
+
+	byteData, ok := session.Values[key].([]byte)
+	if !ok {
+		return 0, errors.WithStack(errors.New(fmt.Sprintf("%s not exist", key)))
+	}
+
+	var intData int64
+	err = json.Unmarshal([]byte(byteData), &intData)
+	if err != nil {
+		return 0, errors.WithStack(err)
+	}
+
+	return intData, nil
+}
+
 func SessionTimeDataGet(r *http.Request, key string) (time.Time, error) {
-	session, err := store.Get(r, "auth")
+	session, err := loginStore.Get(r, "auth")
 	if err != nil {
 		return time.Time{}, errors.WithStack(err)
 	}
