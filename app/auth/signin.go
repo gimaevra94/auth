@@ -154,13 +154,6 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rememberMe := r.FormValue("rememberMe")
-	if rememberMe == "" {
-		log.Printf("%+v", errors.New("rememberMe not exist"))
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
-	}
-
 	token, err := tools.GenerateAccessToken(user)
 	if err != nil {
 		log.Printf("%+v", err)
@@ -168,16 +161,6 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data.SetAccessTokenInCookie(w, token)
-
-	if rememberMe == "false" {
-		lastActivity := time.Now().Add(3 * time.Hour)
-		err := data.SessionDataSet(w, r, "lastActivity", lastActivity)
-		if err != nil {
-			log.Printf("%+v", err)
-			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-			return
-		}
-	}
 
 	var loginCounter int = 3
 	err = data.SessionDataSet(w, r, "loginCounter", loginCounter)
