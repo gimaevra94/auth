@@ -163,7 +163,6 @@ const (
 		{{if .Msg}}<div class="error-message">{{.Msg}}</div>{{end}}
 		<p class="message">We've sent a verification code to your email. Please enter it below.</p>
 		<form method="POST" action="/user-add">
-			<input type="hidden" name="rememberMe" value="false">
 			<div class="form-group">
 				<label for="userCode">Verification Code</label>
 				<input type="text" id="userCode" name="userCode" required maxlength="6" pattern="[0-9]*" inputmode="numeric">
@@ -205,13 +204,6 @@ const (
 			<div class="form-group">
 				<label for="password">Password</label>
 				<input type="password" id="password" name="password" required autocomplete="current-password">
-			</div>
-			<div class="form-group" style="margin-top:1em;">
-				<input type="hidden" name="rememberMe" value="false">
-				<label style="display:flex;align-items:center;gap:0.5em;">
-					<input type="checkbox" name="rememberMe" value="true">
-					Remember me
-				</label>
 			</div>
 			<!-- Google reCAPTCHA -->
 			<input type="hidden" id="recaptchaTokenSignIn" name="g-recaptcha-response">

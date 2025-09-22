@@ -75,12 +75,12 @@ func initRouter() *chi.Mux {
 		}
 	})
 
-	r.With(data.InitSessionVarsMW).Get(consts.SignUpURL, htmls.SignUp)
+	r.Get(consts.SignUpURL, htmls.SignUp)
 	r.Post(consts.SignUpInputCheckURL, auth.SignUpInputCheck)
 	r.Get(consts.CodeSendURL, htmls.CodeSend)
 	r.Post(consts.UserAddURL, auth.UserAdd)
 
-	r.With(data.InitSessionVarsMW).Get(consts.SignInURL, htmls.SignIn)
+	r.Get(consts.SignInURL, htmls.SignIn)
 	r.Post(consts.SignInInputCheckURL, auth.SignInInputCheck)
 
 	r.Get("/yauth", auth.YandexAuthHandler)

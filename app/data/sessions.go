@@ -3,12 +3,10 @@ package data
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"time"
 
-	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/structs"
 	"github.com/gorilla/sessions"
 	"github.com/pkg/errors"
@@ -39,19 +37,6 @@ func InitStore() *sessions.CookieStore {
 	}
 
 	return loginStore
-}
-
-func InitSessionVarsMW(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		session, err := loginStore.Get(r, "auth")
-		if err != nil {
-			log.Printf("%+v", errors.WithStack(err))
-			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
 }
 
 func SessionEnd(w http.ResponseWriter, r *http.Request) error {
