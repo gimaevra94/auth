@@ -11,25 +11,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-func GenerateAccessToken(user structs.User) (string, error) {
-	expiresAt := time.Duration(consts.AccessTokenExp) * time.Second
-	accessTokenClaims := &structs.AccessTokenClaims{
-		UserID: user.UserID,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(expiresAt).Unix(),
-			IssuedAt:  time.Now().Unix(),
-		},
-	}
-
-	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessTokenClaims)
-	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
-	signedAccessToken, err := accessToken.SignedString(jwtSecret)
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-	return signedAccessToken, nil
-}
-
 func GenerateRefreshToken(rememberMe bool) (string, string, time.Time, error) {
 	userID := uuid.New().String()
 	refreshTokenExp := consts.RefreshTokenExp
@@ -59,4 +40,23 @@ func GenerateRefreshToken(rememberMe bool) (string, string, time.Time, error) {
 	expiresAtTime := time.Unix(expiresAtUnix, 0)
 
 	return signedRefreshToken, userID, expiresAtTime, nil
+}
+
+func GenerateAccessToken(user structs.User) (string, error) {
+	expiresAt := time.Duration(consts.AccessTokenExp) * time.Second
+	accessTokenClaims := &structs.AccessTokenClaims{
+		UserID: user.UserID,
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: time.Now().Add(expiresAt).Unix(),
+			IssuedAt:  time.Now().Unix(),
+		},
+	}
+
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessTokenClaims)
+	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
+	signedAccessToken, err := accessToken.SignedString(jwtSecret)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	return signedAccessToken, nil
 }

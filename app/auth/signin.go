@@ -154,21 +154,13 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := tools.GenerateAccessToken(user)
-	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
-	}
-	data.SetAccessTokenInCookie(w, token)
-
-	var loginCounter int = 3
-	err = data.SessionDataSet(w, r, "loginCounter", loginCounter)
-	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
-	}
+	//var loginCounter int = 3
+	//err = data.SessionDataSet(w, r, "loginCounter", loginCounter)
+	//if err != nil {
+	//	log.Printf("%+v", err)
+	//	http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+	//	return
+	//}
 
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }
