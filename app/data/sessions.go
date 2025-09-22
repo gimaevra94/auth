@@ -19,7 +19,7 @@ var store *sessions.CookieStore
 func InitStore() *sessions.CookieStore {
 	store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
 
-	OneMonth := 2592000
+	OneMonth := 180
 	store.Options = &sessions.Options{
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
