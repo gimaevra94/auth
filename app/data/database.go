@@ -47,28 +47,29 @@ func DBConn() error {
 }
 
 func query(s string) string {
-	return fmt.Sprintf("select passwordHash from user where %s = ? limit 1", s)
+	return fmt.Sprintf("select passwordHash, userID from user where %s = ? limit 1", s)
 }
 
-func UserCheck(queryValue string, usrValue string, pswrd string) error {
+func UserCheck(queryValue string, usrValue string, password string) (string, error) {
 	row := db.QueryRow(query(queryValue), usrValue)
 	var passwordHash string
-	err := row.Scan(&passwordHash)
+	var userID string
+	err := row.Scan(&passwordHash, &userID)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return errors.WithStack(err)
+			return "", errors.WithStack(err)
 		}
-		return errors.WithStack(err)
+		return "", errors.WithStack(err)
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(passwordHash),
-		[]byte(pswrd))
+		[]byte(password))
 	if err != nil {
-		return errors.WithStack(err)
+		return "", errors.WithStack(err)
 	}
 
-	return nil
+	return userID, nil
 }
 
 func UserAdd(user structs.User) error {
@@ -92,6 +93,10 @@ func RefreshTokenAdd(user structs.User) error {
 		return errors.WithStack(err)
 	}
 	return nil
+}
+
+func RefreshTokenCheck() {
+
 }
 
 func YauthUserCheck(user structs.User) error {
