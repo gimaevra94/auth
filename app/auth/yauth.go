@@ -77,7 +77,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	data.SetAccessTokenCookie(w, signedYauthToken)
 
-	err = data.SessionDataSet(w, r, "user", user)
+	err = data.SessionDataSet(w, r, "auth", "user", user)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
