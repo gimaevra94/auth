@@ -54,7 +54,7 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 			}
 			next.ServeHTTP(w, r)
 		}
-		
+
 		err := data.SessionEnd(w, r)
 		if err != nil {
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -71,6 +71,11 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
+	data.ClearCookie(w)
+	http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+}
+
+func ClearCookies(w http.ResponseWriter, r *http.Request) {
 	data.ClearCookie(w)
 	http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 }

@@ -234,7 +234,7 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 	}
 
-	data.SetAccessTokenInCookie(w, signedAccessToken)
+	data.SetAccessTokenCookie(w, signedAccessToken)
 
 	err = data.SessionCaptchaDataSet(w, r, "captchaCounter", 3)
 	if err != nil {

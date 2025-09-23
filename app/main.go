@@ -75,6 +75,8 @@ func initRouter() *chi.Mux {
 		}
 	})
 
+	r.Get("/clear", auth.ClearCookies)
+
 	r.Get(consts.SignUpURL, htmls.SignUp)
 	r.Post(consts.SignUpInputCheckURL, auth.SignUpInputCheck)
 	r.Get(consts.CodeSendURL, htmls.CodeSend)
