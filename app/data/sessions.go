@@ -32,7 +32,7 @@ func InitStore() *sessions.CookieStore {
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 		Path:     "/",
-		MaxAge:   30 * 24 * 60 * 60, // One Month
+		MaxAge:   30 * 24 * 60 * 60,
 		Secure:   false,
 	}
 
@@ -53,8 +53,8 @@ func SessionEnd(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func SessionDataSet(w http.ResponseWriter, r *http.Request, key string, consts any) error {
-	session, err := loginStore.Get(r, "auth")
+func SessionDataSet(w http.ResponseWriter, r *http.Request, storeName string, key string, consts any) error {
+	session, err := loginStore.Get(r, storeName)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -92,8 +92,8 @@ func SessionUserDataGet(r *http.Request, key string) (structs.User, error) {
 	return userData, nil
 }
 
-func SessionIntDataGet(r *http.Request, key string) (int64, error) {
-	session, err := loginStore.Get(r, "auth")
+func SessionIntDataGet(r *http.Request, storeName, key string) (int64, error) {
+	session, err := loginStore.Get(r, storeName)
 	if err != nil {
 		return 0, errors.WithStack(err)
 	}
@@ -130,45 +130,6 @@ func SessionStringDataGet(r *http.Request, key string) (string, error) {
 	}
 
 	return stringData, nil
-}
-
-func SessionCaptchaDataSet(w http.ResponseWriter, r *http.Request, key string, consts any) error {
-	session, err := captchaStore.Get(r, "captcha")
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	jsonData, err := json.Marshal(consts)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	session.Values[key] = jsonData
-	err = session.Save(r, w)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	return nil
-}
-
-func SessionCaptchaIntDataGet(r *http.Request, key string) (int64, error) {
-	session, err := captchaStore.Get(r, "captcha")
-	if err != nil {
-		return 0, errors.WithStack(err)
-	}
-
-	byteData, ok := session.Values[key].([]byte)
-	if !ok {
-		return 0, errors.WithStack(errors.New(fmt.Sprintf("%s not exist", key)))
-	}
-
-	var intData int64
-	err = json.Unmarshal([]byte(byteData), &intData)
-	if err != nil {
-		return 0, errors.WithStack(err)
-	}
-
-	return intData, nil
 }
 
 func SessionTimeDataGet(r *http.Request, key string) (time.Time, error) {
