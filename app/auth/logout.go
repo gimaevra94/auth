@@ -54,7 +54,7 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 			}
 			next.ServeHTTP(w, r)
 		}
-
+		
 		err := data.SessionEnd(w, r)
 		if err != nil {
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
