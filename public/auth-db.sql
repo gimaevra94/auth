@@ -1,6 +1,6 @@
 CREATE TABLE user (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    userID INT NOT NULL,
+    userID VARCHAR(255) NOT NULL UNIQUE,
     login VARCHAR(64) NOT NULL UNIQUE,
     email VARCHAR(128) NOT NULL UNIQUE,
     passwordHash VARCHAR(255) NOT NULL
@@ -8,8 +8,8 @@ CREATE TABLE user (
 
 CREATE TABLE token (
     token VARCHAR(255) PRIMARY KEY,
-    userID INT NOT NULL,
+    userID VARCHAR(255) NOT NULL,
     expiresAt DATETIME NOT NULL,
     deviceInfo VARCHAR(255),
-    FOREIGN KEY (userID) REFERENCES user(id)
+    FOREIGN KEY (userID) REFERENCES user(userID)
 );
