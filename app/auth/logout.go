@@ -53,6 +53,7 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 				return
 			}
 			next.ServeHTTP(w, r)
+			return 
 		}
 		
 		err := data.SessionEnd(w, r)

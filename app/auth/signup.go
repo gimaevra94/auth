@@ -113,6 +113,7 @@ func SignUpUserCheck(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
 	}
 
 	err = data.UserCheck("login", user.Login, user.Password)
@@ -169,6 +170,7 @@ func CodeSend(w http.ResponseWriter, r *http.Request) {
 
 	if r.URL.Path != "/code-send" && r.URL.Path != "/password-reset" {
 		http.Redirect(w, r, consts.CodeSendURL, http.StatusFound)
+		return
 	}
 }
 
@@ -232,6 +234,7 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
 	}
 
 	data.SetAccessTokenCookie(w, signedAccessToken)
