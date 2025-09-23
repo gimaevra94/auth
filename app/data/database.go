@@ -14,8 +14,8 @@ import (
 var db *sql.DB
 
 const (
-	userInsertQuery  = "insert into user (userID,login,email,passwordHash) values(?,?,?,?)"
-	tokenInsertQuery = "insert into token where userID = ? limit 1"
+	userInsertQuery  = "insert into user (user-id,login,email,passwordHash) values(?,?,?,?)"
+	tokenInsertQuery = "insert into token (user-id,token,expires-at,device-info) values (?,?,?,?)"
 	yauthSelectQuery = "select email from user where email = ? limit 1"
 	yauthInsertQuery = "insert into user (login,email) values(?,?)"
 )
@@ -87,7 +87,7 @@ func UserAdd(user structs.User) error {
 }
 
 func RefreshTokenAdd(user structs.User) error {
-	_, err := db.Exec(tokenInsertQuery, user.UserID, user.Token, user.DeviceInfo)
+	_, err := db.Exec(tokenInsertQuery, user.UserID, user.Token, user.ExpiresAt, user.DeviceInfo)
 	if err != nil {
 		return errors.WithStack(err)
 	}
