@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
@@ -23,18 +22,22 @@ type SignInPageData struct {
 func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 	var validatedLoginInput structs.User
 
-	loginCounter, err := data.SessionIntDataGet(r, "loginCounter")
+	captchaCounter, err := data.SessionCaptchaIntDataGet(r, "captchaCounter")
 	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
+		if strings.Contains(err.Error(), "not exist") {
+			captchaCounter = 3
+		} else {
+			log.Printf("%+v", err)
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
 	}
 
-	if loginCounter > 0 {
+	if captchaCounter > 0 {
 		validatedLoginInput, err = tools.InputValidator(r, true, false)
 		if err != nil {
 			if strings.Contains(err.Error(), "login") {
-				err := data.SessionDataSet(w, r, "loginCounter", loginCounter-1)
+				err := data.SessionCaptchaDataSet(w, r, "captchaCounter", captchaCounter-1)
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -52,7 +55,7 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if strings.Contains(err.Error(), "password") {
-				err = data.SessionDataSet(w, r, "loginCounter", loginCounter-1)
+				err = data.SessionCaptchaDataSet(w, r, "captchaCounter", captchaCounter-1)
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -75,38 +78,11 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 		}
 
 	} else {
-		loginTimer, err := data.SessionTimeDataGet(r, "loginTimer")
+		err := tools.Captcha(r)
 		if err != nil {
 			log.Printf("%+v", err)
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 			return
-		}
-
-		if loginTimer.IsZero() {
-			err = data.SessionDataSet(w, r, "loginTimer", 15*time.Minute)
-			if err != nil {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-				return
-			}
-
-			err := tools.Captcha(r)
-			if err != nil {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-				return
-			}
-
-		} else {
-			if time.Now().After(loginTimer) {
-				loginCounter = 3
-				err = data.SessionDataSet(w, r, "loginCounter", loginCounter)
-				if err != nil {
-					log.Printf("%+v", err)
-					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-					return
-				}
-			}
 		}
 	}
 
@@ -154,13 +130,12 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//var loginCounter int = 3
-	//err = data.SessionDataSet(w, r, "loginCounter", loginCounter)
-	//if err != nil {
-	//	log.Printf("%+v", err)
-	//	http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-	//	return
-	//}
+	err = data.SessionCaptchaDataSet(w, r, "captchaCounter", 3)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
 
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }
