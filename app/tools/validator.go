@@ -18,7 +18,7 @@ var (
 
 func RefreshTokenValidator(token string) (*structs.RefreshTokenClaims, error) {
 	signedToken, err := jwt.ParseWithClaims(token, &structs.RefreshTokenClaims{}, func(t *jwt.Token) (interface{}, error) {
-		if t.Method != jwt.SigningMethodHS256 {
+		if t.Method != jwt.SigningMethodES256 {
 			err := errors.New("unexpected signing method")
 			return nil, errors.WithStack(err)
 		}
@@ -46,7 +46,7 @@ func RefreshTokenValidator(token string) (*structs.RefreshTokenClaims, error) {
 func AccessTokenValidator(token string) (*structs.AccessTokenClaims, error) {
 
 	signedToken, err := jwt.ParseWithClaims(token, &structs.AccessTokenClaims{}, func(t *jwt.Token) (interface{}, error) {
-		if t.Method != jwt.SigningMethodHS256 {
+		if t.Method != jwt.SigningMethodES256 {
 			err := errors.New("unexpected signing method")
 			return nil, errors.WithStack(err)
 		}
