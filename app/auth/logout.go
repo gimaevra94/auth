@@ -72,8 +72,6 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-	data.ClearCookie(w)
-	http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 }
 
 func ClearCookies(w http.ResponseWriter, r *http.Request) {
