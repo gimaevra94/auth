@@ -22,7 +22,7 @@ type SignInPageData struct {
 func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 	var validatedLoginInput structs.User
 
-	captchaCounter, err := data.SessionCaptchaIntDataGet(r, "captchaCounter")
+	captchaCounter, err := data.SessionIntDataGet(r, "captcha", "captchaCounter")
 	if err != nil {
 		if strings.Contains(err.Error(), "not exist") {
 			captchaCounter = 3
@@ -37,7 +37,7 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 		validatedLoginInput, err = tools.InputValidator(r, true, false)
 		if err != nil {
 			if strings.Contains(err.Error(), "login") {
-				err := data.SessionCaptchaDataSet(w, r, "captchaCounter", captchaCounter-1)
+				err := data.SessionDataSet(w, r, "captcha", "captchaCounter", captchaCounter-1)
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -55,7 +55,7 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if strings.Contains(err.Error(), "password") {
-				err = data.SessionCaptchaDataSet(w, r, "captchaCounter", captchaCounter-1)
+				err = data.SessionDataSet(w, r, "captcha", "captchaCounter", captchaCounter-1)
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -86,7 +86,7 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = data.SessionDataSet(w, r, "user", validatedLoginInput)
+	err = data.SessionDataSet(w, r, "auth", "user", validatedLoginInput)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -103,7 +103,7 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 	}
 
-	err = data.UserCheck("login", user.Login, user.Password)
+	userID, err := data.UserCheck("login", user.Login, user.Password)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["notExist"].Msg})
@@ -130,7 +130,14 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = data.SessionCaptchaDataSet(w, r, "captchaCounter", 3)
+	err = data.SessionDataSet(w, r, "auth", "userID", userID)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	err = data.SessionDataSet(w, r, "captcha", "captchaCounter", 3)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)

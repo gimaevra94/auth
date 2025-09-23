@@ -18,7 +18,7 @@ import (
 func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 	var validatedLoginInput structs.User
 
-	captchaCounter, err := data.SessionCaptchaIntDataGet(r, "captchaCounter")
+	captchaCounter, err := data.SessionIntDataGet(r, "captcha", "captchaCounter")
 	if err != nil {
 		if strings.Contains(err.Error(), "not exist") {
 			captchaCounter = 3
@@ -33,7 +33,7 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 		validatedLoginInput, err = tools.InputValidator(r, false, false)
 		if err != nil {
 			if strings.Contains(err.Error(), "login") {
-				err := data.SessionCaptchaDataSet(w, r, "captchaCounter", captchaCounter-1)
+				err := data.SessionDataSet(w, r, "captcha", "captchaCounter", captchaCounter-1)
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -51,7 +51,7 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if strings.Contains(err.Error(), "email") {
-				err := data.SessionCaptchaDataSet(w, r, "captchaCounter", captchaCounter-1)
+				err := data.SessionDataSet(w, r, "captcha", "captchaCounter", captchaCounter-1)
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -68,7 +68,7 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if strings.Contains(err.Error(), "password") {
-				err = data.SessionCaptchaDataSet(w, r, "captchaCounter", captchaCounter-1)
+				err := data.SessionDataSet(w, r, "captcha", "captchaCounter", captchaCounter-1)
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -98,7 +98,7 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = data.SessionDataSet(w, r, "user", validatedLoginInput)
+	err = data.SessionDataSet(w, r, "auth", "user", validatedLoginInput)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -116,7 +116,7 @@ func SignUpUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = data.UserCheck("login", user.Login, user.Password)
+	_, err = data.UserCheck("login", user.Login, user.Password)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			CodeSend(w, r)
@@ -161,7 +161,7 @@ func CodeSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = data.SessionDataSet(w, r, "msCode", msCode)
+	err = data.SessionDataSet(w, r, "auth", "msCode", msCode)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -239,7 +239,7 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 
 	data.SetAccessTokenCookie(w, signedAccessToken)
 
-	err = data.SessionCaptchaDataSet(w, r, "captchaCounter", 3)
+	err = data.SessionDataSet(w, r, "captcha", "captchaCounter", 3)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
