@@ -191,11 +191,25 @@ const (
 	<meta charset="UTF-8">
 	<title>Sign In</title>
 	<link rel="stylesheet" href="/public/styles.css">
+	<style>
+		.error-highlight {
+			color: #ff0000; /* Ярко-красный цвет */
+			font-weight: bold;
+		}
+	</style>
 </head>
 <body>
 	<div class="container">
 		<h1>Sign In</h1>
-		{{if .Msg}}<div class="error">{{.Msg}}</div>{{end}}
+		{{if .Msg}}
+			{{if eq .Msg "User does not exist"}}
+			<div class="error error-highlight">
+				User does not exist
+			</div>
+			{{else}}
+			<div class="error">{{.Msg}}</div>
+			{{end}}
+		{{end}}
 		<form method="POST" action="/sign-in-input-check">
 			<div class="form-group">
 				<label for="login">Username</label>
@@ -218,6 +232,11 @@ const (
 		{{if .ShowForgotPassword}}
 		<div class="login-link">
 			Forgot your password? <a href="/forgot-password-email">Reset Password</a>
+		</div>
+		{{end}}
+		{{if eq .Msg "User does not exist"}}
+		<div class="login-link">
+			Don't have an account? <a href="/sign-up">Sign Up</a>
 		</div>
 		{{end}}
 	</div>
