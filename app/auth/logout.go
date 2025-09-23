@@ -44,11 +44,22 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
-				data.SetAccessTokenInCookie(w, signedAuthToken)
+				data.SetAccessTokenCookie(w, signedAuthToken)
+			}
+
+			err = data.SessionEnd(w, r)
+			if err != nil {
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
 			}
 			next.ServeHTTP(w, r)
 		}
 		
+		err := data.SessionEnd(w, r)
+		if err != nil {
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
 		next.ServeHTTP(w, r)
 	})
 }
