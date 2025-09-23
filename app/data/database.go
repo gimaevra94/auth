@@ -95,7 +95,7 @@ func RefreshTokenAdd(user structs.User) error {
 	return nil
 }
 
-func RefreshTokenCheck() {
+func RefreshTokenCheck(userID string) {
 
 }
 

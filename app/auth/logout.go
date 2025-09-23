@@ -22,7 +22,12 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 				}
 			}
 
-
+			userID, err := data.SessionStringDataGet(r, "userID")
+			if err != nil {
+				log.Printf("%+v", errors.WithStack(err))
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
 
 			claims, err := tools.AccessTokenValidator(tokenValue)
 			if err != nil {
@@ -39,6 +44,7 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 				if err != nil {
 					log.Printf("%+v", errors.WithStack(err))
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+					return
 				}
 
 				signedAuthToken, err := tools.GenerateAccessToken(user)
