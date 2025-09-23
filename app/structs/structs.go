@@ -7,13 +7,13 @@ import (
 )
 
 type User struct {
-	UserID     string    `sql:"id" json:"user-id"`
+	UserID     string    `sql:"user-id" json:"user-id"`
 	Login      string    `sql:"login" json:"login"`
 	Email      string    `sql:"email" json:"email"`
 	Password   string    `sql:"password" json:"password"`
 	Token      string    `sql:"token" json:"token"`
 	ExpiresAt  time.Time `sql:"expires-at" json:"expires-at"`
-	DeviceInfo string    `sql:"deviceInfo" json:"deviceInfo"`
+	DeviceInfo string    `sql:"device-info" json:"device-info"`
 }
 
 type AccessTokenClaims struct {
