@@ -16,13 +16,16 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 		if r.URL.String() != "sign-up/" {
 			tokenValue, err := data.CookieIsExist(r)
 			if err != nil {
-				http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
-				return
+				if r.URL.String() != "sign-in/" {
+					http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+					return
+				}
 			}
+
+
 
 			claims, err := tools.AccessTokenValidator(tokenValue)
 			if err != nil {
-				log.Printf("%+v", errors.WithStack(err))
 				http.Redirect(w, r, consts.SignInURL, http.StatusFound)
 				return
 			}
@@ -53,9 +56,9 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 				return
 			}
 			next.ServeHTTP(w, r)
-			return 
+			return
 		}
-		
+
 		err := data.SessionEnd(w, r)
 		if err != nil {
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -72,6 +75,8 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
+
+	http.Redirect(w, r, consts.SignInURL, http.StatusFound)
 }
 
 func ClearCookies(w http.ResponseWriter, r *http.Request) {
