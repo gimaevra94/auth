@@ -29,6 +29,19 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 				return
 			}
 
+			RefreshExpireAt, err := data.RefreshTokenCheck(userID)
+			if err != nil {
+				http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+				return
+			}
+
+			if time.Now().After(RefreshExpireAt) {
+				if err != nil {
+					http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+					return
+				}
+			}
+
 			claims, err := tools.AccessTokenValidator(tokenValue)
 			if err != nil {
 				http.Redirect(w, r, consts.SignInURL, http.StatusFound)

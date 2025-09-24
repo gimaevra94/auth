@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/gimaevra94/auth/app/structs"
 	"github.com/go-sql-driver/mysql"
@@ -16,6 +17,7 @@ var db *sql.DB
 const (
 	userInsertQuery  = "insert into user (userId,login,email,passwordHash) values(?,?,?,?)"
 	tokenInsertQuery = "insert into token (userId,token,expiresAt,deviceInfo) values (?,?,?,?)"
+	tokenSelectQuery = "select expireAt from token where userID =? limit 1"
 	yauthSelectQuery = "select email from user where email = ? limit 1"
 	yauthInsertQuery = "insert into user (login,email) values(?,?)"
 )
@@ -95,8 +97,14 @@ func RefreshTokenAdd(user structs.User) error {
 	return nil
 }
 
-func RefreshTokenCheck(userID string) {
-
+func RefreshTokenCheck(userID string) (time.Time, error) {
+	row := db.QueryRow(tokenSelectQuery, userID)
+	var expireAt time.Time
+	err := row.Scan(&expireAt)
+	if err != nil {
+		return time.Time{}, errors.WithStack(err)
+	}
+	return expireAt, nil
 }
 
 func YauthUserCheck(user structs.User) error {
