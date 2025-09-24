@@ -73,13 +73,11 @@ func AccessTokenValidator(token string) (*structs.AccessTokenClaims, error) {
 
 func InputValidator(r *http.Request, IsSignIn bool, IsPasswordReset bool) (structs.User, error) {
 
-	id := ""
 	login := r.FormValue("login")
 	email := r.FormValue("email")
 	password := r.FormValue("password")
 
 	validatedLoginInput := structs.User{
-		UserID:   id,
 		Login:    login,
 		Email:    email,
 		Password: password,
