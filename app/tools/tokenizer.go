@@ -11,17 +11,16 @@ import (
 	"github.com/pkg/errors"
 )
 
-func GenerateRefreshToken(rememberMe bool) (string, string, time.Time, error) {
-	userID := uuid.New().String()
+func GenerateRefreshToken(user structs.User) (structs.User, error) {
 	refreshTokenExp := consts.RefreshTokenExp
-	if !rememberMe {
+	if !user.RememberMe {
 		refreshTokenExp = 24 * 60 * 60
 	}
 
 	jti := uuid.New().String()
 	expiresAt := time.Duration(refreshTokenExp) * time.Second
 	refreshTokenClaims := &structs.RefreshTokenClaims{
-		UserID: userID,
+		UserID: user.UserID,
 		JTI:    jti,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(expiresAt).Unix(),
@@ -33,16 +32,18 @@ func GenerateRefreshToken(rememberMe bool) (string, string, time.Time, error) {
 	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
 	signedRefreshToken, err := refreshToken.SignedString(jwtSecret)
 	if err != nil {
-		return "", "", time.Time{}, errors.WithStack(err)
+		return structs.User{}, errors.WithStack(err)
 	}
+	user.RefreshToken = signedRefreshToken
 
 	expiresAtUnix := refreshTokenClaims.ExpiresAt
 	expiresAtTime := time.Unix(expiresAtUnix, 0)
+	user.RefreshExpiresAt = expiresAtTime
 
-	return signedRefreshToken, userID, expiresAtTime, nil
+	return user, nil
 }
 
-func GenerateAccessToken(user structs.User) (string, error) {
+func GenerateAccessToken(user structs.User) (structs.User, error) {
 	expiresAt := time.Duration(consts.AccessTokenExp) * time.Second
 	accessTokenClaims := &structs.AccessTokenClaims{
 		UserID: user.UserID,
@@ -56,7 +57,9 @@ func GenerateAccessToken(user structs.User) (string, error) {
 	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
 	signedAccessToken, err := accessToken.SignedString(jwtSecret)
 	if err != nil {
-		return "", errors.WithStack(err)
+		return structs.User{}, errors.WithStack(err)
 	}
-	return signedAccessToken, nil
+	user.AccessToken = signedAccessToken
+
+	return user, nil
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/structs"
 	"github.com/gimaevra94/auth/app/tools"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/pkg/errors"
@@ -116,7 +117,7 @@ func SignUpUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = data.UserCheck("login", user.Login, user.Password)
+	err = data.SignUpUserCheck("login", user.Login, user.Password)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			CodeSend(w, r)
@@ -204,17 +205,17 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rememberMe := r.FormValue("rememberMe") != ""
-	signedRefreshToken, userID, expiresAt, err := tools.GenerateRefreshToken(rememberMe)
+	user.RememberMe = rememberMe
+
+	userID := uuid.New().String()
+	user.UserID = userID
+
+	user, err = tools.GenerateRefreshToken(user)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
-	user.UserID = userID
-	user.Token = signedRefreshToken
-	user.ExpiresAt = expiresAt
-	user.DeviceInfo = r.UserAgent()
 
 	err = data.UserAdd(user)
 	if err != nil {
@@ -230,16 +231,16 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	signedAccessToken, err := tools.GenerateAccessToken(user)
+	user, err = tools.GenerateAccessToken(user)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
-	data.SetAccessTokenCookie(w, signedAccessToken)
+	user.DeviceInfo = r.UserAgent()
 
-	err = data.SessionDataSet(w, r, "captcha", "captchaCounter", 3)
+	err = data.SessionDataSet(w, r, "auth", "user", user)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)

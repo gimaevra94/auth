@@ -52,26 +52,26 @@ func query(s string) string {
 	return fmt.Sprintf("select passwordHash, userID from user where %s = ? limit 1", s)
 }
 
-func UserCheck(queryValue string, usrValue string, password string) (string, error) {
-	row := db.QueryRow(query(queryValue), usrValue)
+func SignUpUserCheck(queryValue string, login, password string) error {
+	row := db.QueryRow(query(queryValue), login)
 	var passwordHash string
 	var userID string
 	err := row.Scan(&passwordHash, &userID)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "", errors.WithStack(err)
+			return errors.WithStack(err)
 		}
-		return "", errors.WithStack(err)
+		return errors.WithStack(err)
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(passwordHash),
 		[]byte(password))
 	if err != nil {
-		return "", errors.WithStack(err)
+		return errors.WithStack(err)
 	}
 
-	return userID, nil
+	return nil
 }
 
 func UserAdd(user structs.User) error {
@@ -90,21 +90,24 @@ func UserAdd(user structs.User) error {
 }
 
 func RefreshTokenAdd(user structs.User) error {
-	_, err := db.Exec(tokenInsertQuery, user.UserID, user.Token, user.ExpiresAt, user.DeviceInfo)
+	_, err := db.Exec(tokenInsertQuery, user.UserID, user.RefreshToken, user.RefreshExpiresAt, user.DeviceInfo)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func RefreshTokenCheck(userID string) (time.Time, error) {
-	row := db.QueryRow(tokenSelectQuery, userID)
+func RefreshTokenCheck(user structs.User) (structs.User, error) {
+	row := db.QueryRow(tokenSelectQuery, user.UserID)
 	var expireAt time.Time
 	err := row.Scan(&expireAt)
 	if err != nil {
-		return time.Time{}, errors.WithStack(err)
+		return structs.User{}, errors.WithStack(err)
 	}
-	return expireAt, nil
+
+	user.RefreshExpiresAt = expireAt
+
+	return user, nil
 }
 
 func YauthUserCheck(user structs.User) error {

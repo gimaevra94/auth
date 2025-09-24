@@ -8,64 +8,37 @@ import (
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/tools"
-	"github.com/pkg/errors"
 )
 
 func IsExpiredTokenMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tokenValue, err := data.CookieIsExist(r)
-		if err != nil {
-			if r.URL.String() != "sign-in/" {
-				http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
-				return
-			}
-		}
-
-		userID, err := data.SessionStringDataGet(r, "userID")
-		if err != nil {
-			log.Printf("%+v", errors.WithStack(err))
-			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
-			return
-		}
-
-		RefreshExpireAt, err := data.RefreshTokenCheck(userID)
+		user, err := data.SessionUserDataGet(r, "user")
 		if err != nil {
 			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 			return
 		}
 
-		if time.Now().After(RefreshExpireAt) {
+		if user.AccessToken == "" {
+			user, err := data.RefreshTokenCheck(user)
 			if err != nil {
-				http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
-				return
-			}
-		}
-
-		claims, err := tools.AccessTokenValidator(tokenValue)
-		if err != nil {
-			http.Redirect(w, r, consts.SignInURL, http.StatusFound)
-			return
-		}
-
-		expiresAtUnix := claims.ExpiresAt
-		expiresAtTime := time.Unix(expiresAtUnix, 0)
-
-		if time.Now().After(expiresAtTime) {
-
-			user, err := data.SessionUserDataGet(r, "user")
-			if err != nil {
-				log.Printf("%+v", errors.WithStack(err))
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
 
-			signedAuthToken, err := tools.GenerateAccessToken(user)
+			if time.Now().After(user.RefreshExpiresAt) {
+				user, err := tools.GenerateRefreshToken(user)
+				if err != nil {
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+					return
+				}
+			}
+
+			user, err = tools.RefreshTokenValidator(user)
 			if err != nil {
-				log.Printf("%+v", errors.WithStack(err))
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
-			data.SetAccessTokenCookie(w, signedAuthToken)
+
 		}
 
 		err = data.SessionEnd(w, r)
@@ -76,24 +49,21 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 		return
 
-		err := data.SessionEnd(w, r)
+		err = data.SessionDataSet(w, r, "captcha", "captchaCounter", 3)
 		if err != nil {
+			log.Printf("%+v", err)
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 			return
 		}
-		next.ServeHTTP(w, r)
 	})
 }
 
 func Logout(w http.ResponseWriter, r *http.Request) {
 	err := data.SessionEnd(w, r)
 	if err != nil {
-		log.Printf("%+v", errors.WithStack(err))
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
+		data.ClearCookie(w)
+		http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 	}
-
-	http.Redirect(w, r, consts.SignInURL, http.StatusFound)
 }
 
 func ClearCookies(w http.ResponseWriter, r *http.Request) {

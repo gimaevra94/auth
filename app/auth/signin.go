@@ -103,7 +103,7 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 	}
 
-	userID, err := data.UserCheck("login", user.Login, user.Password)
+	user, err = data.UserCheck("login", user)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["notExist"].Msg})
@@ -130,14 +130,10 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = data.SessionDataSet(w, r, "auth", "userID", userID)
-	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
-	}
+	rememberMe := r.FormValue("rememberMe") != ""
+	user.RememberMe = rememberMe
 
-	err = data.SessionDataSet(w, r, "captcha", "captchaCounter", 3)
+	err = data.SessionDataSet(w, r, "auth", "user", user)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
