@@ -101,3 +101,14 @@ func InputValidator(r *http.Request, login, email, password string, IsSignIn, Is
 
 	return nil
 }
+
+func CodeValidator(r *http.Request, clientCode, serverCode string) error {
+	if clientCode == "" {
+		return errors.WithStack(errors.New("clientCode not exist"))
+	}
+
+	if clientCode != serverCode {
+		return errors.WithStack(errors.New("codes not match"))
+	}
+	return nil
+}
