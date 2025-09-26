@@ -16,6 +16,7 @@ type User struct {
 	RefreshExpiresAt time.Time `sql:"refreshExpiresAt" json:"refreshExpiresAt"` //
 	AccessToken      string    `sql:"accessToken" json:"accessToken"`           //
 	DeviceInfo       string    `sql:"deviceInfo" json:"deviceInfo"`             //
+	RememberMe       bool      //
 }
 
 type AccessTokenClaims struct {
