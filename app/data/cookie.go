@@ -38,5 +38,10 @@ func CookieIsExist(r *http.Request) (string, error) {
 		return "", errors.New("token not exist")
 	}
 
-	return cookie.Value, nil
+	return cookie, nil
+}
+
+func ClearCookies(w http.ResponseWriter, r *http.Request) {
+	ClearCookie(w)
+	http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 }
