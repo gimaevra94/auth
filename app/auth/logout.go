@@ -12,7 +12,7 @@ import (
 
 func IsExpiredTokenMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user, err := data.SessionUserDataGet(r, "user")
+		user, err := data.SessionGetUser(r)
 		if err != nil {
 			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 			return

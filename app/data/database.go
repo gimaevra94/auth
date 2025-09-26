@@ -6,7 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/gimaevra94/auth/app/structs"
 	"github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
@@ -74,14 +73,14 @@ func SignUpUserCheck(queryValue string, login, password string) error {
 	return nil
 }
 
-func UserAdd(user structs.User) error {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password),
+func UserAdd(login, email, password, userID string) error {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password),
 		bcrypt.DefaultCost)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	_, err = db.Exec(userInsertQuery, user.UserID, user.Login, user.Email, hashedPassword)
+	_, err = db.Exec(userInsertQuery, userID, login, email, hashedPassword)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -89,29 +88,27 @@ func UserAdd(user structs.User) error {
 	return nil
 }
 
-func RefreshTokenAdd(user structs.User) error {
-	_, err := db.Exec(tokenInsertQuery, user.UserID, user.RefreshToken, user.RefreshExpiresAt, user.DeviceInfo)
+func RefreshTokenAdd(userID, refreshToken, deviceInfo string, refreshExpiresAt time.Time) error {
+	_, err := db.Exec(tokenInsertQuery, userID, refreshToken, refreshExpiresAt, deviceInfo)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func RefreshTokenCheck(user structs.User) (structs.User, error) {
-	row := db.QueryRow(tokenSelectQuery, user.UserID)
+func RefreshTokenCheck(userID string) (time.Time, error) {
+	row := db.QueryRow(tokenSelectQuery, userID)
 	var expireAt time.Time
 	err := row.Scan(&expireAt)
 	if err != nil {
-		return structs.User{}, errors.WithStack(err)
+		return time.Time{}, errors.WithStack(err)
 	}
 
-	user.RefreshExpiresAt = expireAt
-
-	return user, nil
+	return expireAt, nil
 }
 
-func YauthUserCheck(user structs.User) error {
-	row := db.QueryRow(yauthSelectQuery, user.Email)
+func YauthUserCheck(email string) error {
+	row := db.QueryRow(yauthSelectQuery, email)
 	var existingEmail string
 	err := row.Scan(&existingEmail)
 
@@ -125,8 +122,8 @@ func YauthUserCheck(user structs.User) error {
 	return nil
 }
 
-func YauthUserAdd(user structs.User) error {
-	_, err := db.Exec(yauthInsertQuery, user.Login, user.Email)
+func YauthUserAdd(login, email string) error {
+	_, err := db.Exec(yauthInsertQuery, login, email)
 	if err != nil {
 		return errors.WithStack(err)
 	}

@@ -35,6 +35,12 @@ func YandexAuthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
+	user, err := data.SessionGetUser(r)
+	if err != nil {
+		log.Printf("%v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+	}
+
 	yauthCode := r.URL.Query().Get("code")
 
 	if yauthCode == "" {
@@ -50,17 +56,34 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := getUserInfo(yandexAccessToken)
+	refreshToken, refreshExpiresAt, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, false, user.UserID)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
-	err = data.YauthUserCheck(user)
+	refreshClaims, err := tools.RefreshTokenValidator(user.RefreshToken)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+	}
+
+	user.RefreshTokenClaims = *refreshClaims
+	user.RefreshToken = refreshToken
+	user.RefreshExpiresAt = refreshExpiresAt
+
+	yandexUser, err := getYandexUserInfo(yandexAccessToken)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	err = data.YauthUserCheck(yandexUser.Email)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			err = data.YauthUserAdd(user)
+			err = data.YauthUserAdd(yandexUser.Login, yandexUser.Email)
 			if err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -69,17 +92,35 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	_, err = tools.GenerateAccessToken(user)
+	err = data.RefreshTokenAdd(user.UserID, user.RefreshToken, user.DeviceInfo, user.RefreshExpiresAt)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
-	err = data.SessionDataSet(w, r, "auth", "user", user)
+	signedAccessToken, err := tools.GenerateAccessToken(consts.AccessTokenExp15Min, user.UserID)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	accessClaims, err := tools.AccessTokenValidator(user.AccessToken)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+	}
+
+	user.AccessTokenClaims = *accessClaims
+	user.AccessToken = signedAccessToken
+	user.DeviceInfo = r.UserAgent()
+
+	err = data.SessionDataSet(w, r, "auth", user)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
 	}
 
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
@@ -119,7 +160,7 @@ func getAccessToken(yauthCode string) (string, error) {
 	return accessToken, nil
 }
 
-func getUserInfo(accessToken string) (structs.User, error) {
+func getYandexUserInfo(accessToken string) (structs.User, error) {
 	req, err := http.NewRequest("GET", userInfoURL, nil)
 	if err != nil {
 		return structs.User{}, errors.WithStack(err)

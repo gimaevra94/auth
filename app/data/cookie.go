@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func SetAccessTokenCookie(w http.ResponseWriter, v string) {
+func CookieAccessTokenSet(w http.ResponseWriter, v string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "token",
 		Path:     "/",

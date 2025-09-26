@@ -218,17 +218,25 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
+
+	refreshClaims, err := tools.RefreshTokenValidator(user.RefreshToken)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+	}
+
+	user.RefreshTokenClaims = *refreshClaims
 	user.RefreshToken = refreshToken
 	user.RefreshExpiresAt = refreshExpiresAt
 
-	err = data.UserAdd(user)
+	err = data.UserAdd(user.Login, user.Email, user.Password, user.UserID)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
-	err = data.RefreshTokenAdd(user)
+	err = data.RefreshTokenAdd(user.UserID, user.RefreshToken, user.DeviceInfo, user.RefreshExpiresAt)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -241,6 +249,14 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
+
+	accessClaims, err := tools.AccessTokenValidator(user.AccessToken)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+	}
+
+	user.AccessTokenClaims = *accessClaims
 	user.AccessToken = signedAccessToken
 	user.DeviceInfo = r.UserAgent()
 

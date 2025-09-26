@@ -16,8 +16,8 @@ var (
 	passwordRegex = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ\d!@#$%^&*\-\)]{4,30}$`)
 )
 
-func RefreshTokenValidator(user structs.User) (structs.User, error) {
-	signedToken, err := jwt.ParseWithClaims(user.RefreshToken, &structs.RefreshTokenClaims{}, func(t *jwt.Token) (interface{}, error) {
+func RefreshTokenValidator(refreshToken string) (*structs.RefreshTokenClaims, error) {
+	signedToken, err := jwt.ParseWithClaims(refreshToken, &structs.RefreshTokenClaims{}, func(t *jwt.Token) (interface{}, error) {
 		if t.Method != jwt.SigningMethodHS256 {
 			err := errors.New("unexpected signing method")
 			return nil, errors.WithStack(err)
@@ -26,22 +26,21 @@ func RefreshTokenValidator(user structs.User) (structs.User, error) {
 		return jwtSecret, nil
 	})
 	if err != nil {
-		return structs.User{}, errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
 	claims, ok := signedToken.Claims.(*structs.RefreshTokenClaims)
 	if !ok {
 		err := errors.New("Claims deserialize error")
-		return structs.User{}, errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
-	user.RefreshTokenClaims = *claims
 
 	if !signedToken.Valid {
 		err := errors.New("Refresh token invalid")
-		return structs.User{}, errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
-	return user, nil
+	return claims, nil
 }
 
 func AccessTokenValidator(token string) (*structs.AccessTokenClaims, error) {
