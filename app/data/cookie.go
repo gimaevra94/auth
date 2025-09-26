@@ -3,17 +3,19 @@ package data
 import (
 	"net/http"
 
+	"github.com/gimaevra94/auth/app/consts"
 	"github.com/pkg/errors"
 )
 
 func CookieAccessTokenSet(w http.ResponseWriter, v string) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     "token",
+		Name:     "accessToken",
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
 		Value:    v,
+		MaxAge:   consts.AccessTokenExp15Min,
 	})
 }
 
@@ -28,14 +30,14 @@ func ClearCookie(w http.ResponseWriter) {
 	})
 }
 
-func CookieIsExist(r *http.Request) (string, error) {
-	cookie, err := r.Cookie("token")
+func CookieIsExist(r *http.Request) (*http.Cookie, error) {
+	cookie, err := r.Cookie("accessToken")
 	if err != nil {
-		return "", errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
 	if cookie.Value == "" {
-		return "", errors.New("token not exist")
+		return nil, errors.New("accessToken not exist")
 	}
 
 	return cookie, nil

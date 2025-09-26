@@ -1,13 +1,14 @@
 package auth
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/tools"
+	"github.com/pkg/errors"
 )
 
 func IsExpiredTokenMW(next http.Handler) http.Handler {
@@ -18,43 +19,41 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 			return
 		}
 
-		if user.AccessToken == "" {
-			user, err := data.RefreshTokenCheck(user)
-			if err != nil {
-				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-				return
-			}
+		var accessToken string
+		cookie, err := data.CookieIsExist(r)
+		if err == nil {
+			accessToken = cookie.Value
+		}
 
-			if time.Now().After(user.RefreshExpiresAt) {
-				user, err := tools.GenerateRefreshToken(user)
-				if err != nil {
-					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		_, err = tools.AccessTokenValidator(accessToken)
+		if err != nil {
+			signedRefreshToken, err := data.RefreshTokenCheck(user.UserID)
+			if err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					http.Redirect(w, r, consts.SignInURL, http.StatusFound)
 					return
 				}
-			}
-
-			user, err = tools.RefreshTokenValidator(user)
-			if err != nil {
+				log.Printf("%v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
 
-		}
+			_, err = tools.RefreshTokenValidator(signedRefreshToken)
+			if err != nil {
+				log.Printf("%v", err)
+				http.Redirect(w, r, consts.SignInURL, http.StatusFound)
+				return
+			}
 
-		err = data.SessionEnd(w, r)
-		if err != nil {
-			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-			return
+			signedAccessToken, err := tools.GenerateAccessToken(consts.AccessTokenExp15Min, user.UserID)
+			if err != nil {
+				log.Printf("%v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+			data.CookieAccessTokenSet(w, signedAccessToken)
 		}
 		next.ServeHTTP(w, r)
-		return
-
-		err = data.SessionDataSet(w, r, "captcha", "captchaCounter", 3)
-		if err != nil {
-			log.Printf("%+v", err)
-			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-			return
-		}
 	})
 }
 
@@ -63,5 +62,6 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		data.ClearCookie(w)
 		http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+		return
 	}
 }

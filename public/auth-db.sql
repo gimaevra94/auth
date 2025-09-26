@@ -9,7 +9,6 @@ CREATE TABLE user (
 CREATE TABLE token (
     token VARCHAR(255) PRIMARY KEY,
     userID VARCHAR(255) NOT NULL,
-    expiresAt DATETIME NOT NULL,
     deviceInfo VARCHAR(255),
     FOREIGN KEY (userID) REFERENCES user(userID)
 );

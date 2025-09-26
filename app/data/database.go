@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
@@ -15,8 +14,8 @@ var db *sql.DB
 
 const (
 	userInsertQuery  = "insert into user (userId,login,email,passwordHash) values(?,?,?,?)"
-	tokenInsertQuery = "insert into token (userId,token,expiresAt,deviceInfo) values (?,?,?,?)"
-	tokenSelectQuery = "select expireAt from token where userID =? limit 1"
+	tokenInsertQuery = "insert into token (userId,token,deviceInfo) values (?,?,?)"
+	tokenSelectQuery = "select refreshToken from token where userID =? limit 1"
 	yauthSelectQuery = "select email from user where email = ? limit 1"
 	yauthInsertQuery = "insert into user (login,email) values(?,?)"
 )
@@ -51,7 +50,7 @@ func query(s string) string {
 	return fmt.Sprintf("select passwordHash, userID from user where %s = ? limit 1", s)
 }
 
-func SignUpUserCheck(queryValue string, login, password string) error {
+func UserCheck(queryValue string, login, password string) (string, error) {
 	row := db.QueryRow(query(queryValue), login)
 	var passwordHash string
 	var userID string
@@ -59,18 +58,18 @@ func SignUpUserCheck(queryValue string, login, password string) error {
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return errors.WithStack(err)
+			return userID, errors.WithStack(err)
 		}
-		return errors.WithStack(err)
+		return userID, errors.WithStack(err)
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(passwordHash),
 		[]byte(password))
 	if err != nil {
-		return errors.WithStack(err)
+		return userID, errors.WithStack(err)
 	}
 
-	return nil
+	return userID, nil
 }
 
 func UserAdd(login, email, password, userID string) error {
@@ -88,23 +87,25 @@ func UserAdd(login, email, password, userID string) error {
 	return nil
 }
 
-func RefreshTokenAdd(userID, refreshToken, deviceInfo string, refreshExpiresAt time.Time) error {
-	_, err := db.Exec(tokenInsertQuery, userID, refreshToken, refreshExpiresAt, deviceInfo)
+func RefreshTokenCheck(userID string) (string, error) {
+	row := db.QueryRow(tokenSelectQuery, userID)
+	var refreshToken string
+	err := row.Scan(&refreshToken)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", errors.WithStack(err)
+		}
+		return "", errors.WithStack(err)
+	}
+	return refreshToken, nil
+}
+
+func RefreshTokenAdd(userID, refreshToken, deviceInfo string) error {
+	_, err := db.Exec(tokenInsertQuery, userID, refreshToken, deviceInfo)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
-}
-
-func RefreshTokenCheck(userID string) (time.Time, error) {
-	row := db.QueryRow(tokenSelectQuery, userID)
-	var expireAt time.Time
-	err := row.Scan(&expireAt)
-	if err != nil {
-		return time.Time{}, errors.WithStack(err)
-	}
-
-	return expireAt, nil
 }
 
 func YauthUserCheck(email string) error {

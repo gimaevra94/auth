@@ -124,7 +124,7 @@ func SignUpUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = data.SignUpUserCheck("login", user.Login, user.Password)
+	_, err = data.UserCheck("login", user.Login, user.Password)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			CodeSend(w, r)
@@ -212,7 +212,7 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 	userID := uuid.New().String()
 	user.UserID = userID
 
-	refreshToken, refreshExpiresAt, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe, user.UserID)
+	refreshToken, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe, user.UserID)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -227,7 +227,6 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 
 	user.RefreshTokenClaims = *refreshClaims
 	user.RefreshToken = refreshToken
-	user.RefreshExpiresAt = refreshExpiresAt
 
 	err = data.UserAdd(user.Login, user.Email, user.Password, user.UserID)
 	if err != nil {
@@ -236,7 +235,7 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = data.RefreshTokenAdd(user.UserID, user.RefreshToken, user.DeviceInfo, user.RefreshExpiresAt)
+	err = data.RefreshTokenAdd(user.UserID, user.RefreshToken, user.DeviceInfo)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -250,17 +249,24 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessClaims, err := tools.AccessTokenValidator(user.AccessToken)
+	accessClaims, err := tools.AccessTokenValidator(signedAccessToken)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 	}
 
 	user.AccessTokenClaims = *accessClaims
-	user.AccessToken = signedAccessToken
 	user.DeviceInfo = r.UserAgent()
 
 	err = data.SessionDataSet(w, r, "auth", user)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	captchaCounter := 3
+	err = data.SessionDataSet(w, r, "captcha", captchaCounter)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
