@@ -31,7 +31,17 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if captchaCounter > 0 {
-		validatedLoginInput, err = tools.InputValidator(r, false, false)
+		login := r.FormValue("login")
+		email := r.FormValue("email")
+		password := r.FormValue("password")
+
+		user := structs.User{
+			Login:    login,
+			Email:    email,
+			Password: password,
+		}
+
+		err = tools.InputValidator(r, user.Login, user.Email, user.Password, false, false)
 		if err != nil {
 			if strings.Contains(err.Error(), "login") {
 				err := data.SessionDataSet(w, r, "captcha", "captchaCounter", captchaCounter-1)

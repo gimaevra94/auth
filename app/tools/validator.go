@@ -72,42 +72,32 @@ func AccessTokenValidator(token string) (*structs.AccessTokenClaims, error) {
 	return claims, nil
 }
 
-func InputValidator(r *http.Request, IsSignIn bool, IsPasswordReset bool) (structs.User, error) {
-
-	login := r.FormValue("login")
-	email := r.FormValue("email")
-	password := r.FormValue("password")
-
-	validatedLoginInput := structs.User{
-		Login:    login,
-		Email:    email,
-		Password: password,
-	}
+func InputValidator(r *http.Request, login, email, password string, IsSignIn, IsPasswordReset bool) error {
 
 	if login == "" {
-		return structs.User{}, errors.WithStack(errors.New("login not exist"))
+		return errors.WithStack(errors.New("login not exist"))
 	}
 	if !loginRegex.MatchString(login) {
-		return structs.User{}, errors.WithStack(errors.New("login invalid"))
+		return errors.WithStack(errors.New("login invalid"))
 	}
 
 	if !IsSignIn {
 		if email == "" {
-			return structs.User{}, errors.WithStack(errors.New("email not exist"))
+			return errors.WithStack(errors.New("email not exist"))
 		}
 		if !emailRegex.MatchString(email) {
-			return structs.User{}, errors.WithStack(errors.New("email invalid"))
+			return errors.WithStack(errors.New("email invalid"))
 		}
 	}
 
 	if !IsPasswordReset {
 		if password == "" {
-			return structs.User{}, errors.WithStack(errors.New("password not exist"))
+			return errors.WithStack(errors.New("password not exist"))
 		}
 		if !passwordRegex.MatchString(password) {
-			return structs.User{}, errors.WithStack(errors.New("password invalid"))
+			return errors.WithStack(errors.New("password invalid"))
 		}
 	}
 
-	return validatedLoginInput, nil
+	return nil
 }
