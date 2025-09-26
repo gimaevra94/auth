@@ -17,9 +17,9 @@ import (
 )
 
 func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
-	var validatedLoginInput structs.User
+	var user structs.User
 
-	captchaCounter, err := data.SessionIntDataGet(r, "captcha", "captchaCounter")
+	captchaCounter, err := data.SessionGetCaptcha(r, "captcha")
 	if err != nil {
 		if strings.Contains(err.Error(), "not exist") {
 			captchaCounter = 3
@@ -35,7 +35,7 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 		email := r.FormValue("email")
 		password := r.FormValue("password")
 
-		user := structs.User{
+		user = structs.User{
 			Login:    login,
 			Email:    email,
 			Password: password,
@@ -44,7 +44,7 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 		err = tools.InputValidator(r, user.Login, user.Email, user.Password, false, false)
 		if err != nil {
 			if strings.Contains(err.Error(), "login") {
-				err := data.SessionDataSet(w, r, "captcha", "captchaCounter", captchaCounter-1)
+				err := data.SessionDataSet(w, r, "captcha", captchaCounter-1)
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -62,7 +62,7 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if strings.Contains(err.Error(), "email") {
-				err := data.SessionDataSet(w, r, "captcha", "captchaCounter", captchaCounter-1)
+				err := data.SessionDataSet(w, r, "captcha", captchaCounter-1)
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -109,7 +109,7 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = data.SessionDataSet(w, r, "auth", "user", validatedLoginInput)
+	err = data.SessionDataSet(w, r, "auth", user)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -165,14 +165,16 @@ func CodeSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	msCode, err := tools.AuthCodeSender(user.Email)
+	serverCode, err := tools.AuthCodeSender(user.Email)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
-	err = data.SessionDataSet(w, r, "auth", "msCode", msCode)
+	user.ServerCode = serverCode
+
+	err = data.SessionDataSet(w, r, "auth", "msCode", serverCode)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)

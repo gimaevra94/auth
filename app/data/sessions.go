@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/gimaevra94/auth/app/structs"
 	"github.com/gorilla/sessions"
@@ -17,7 +16,6 @@ var captchaStore *sessions.CookieStore
 
 func InitStore() *sessions.CookieStore {
 	loginStore = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
-
 	threeMinutes := 180
 	loginStore.Options = &sessions.Options{
 		HttpOnly: true,
@@ -28,15 +26,15 @@ func InitStore() *sessions.CookieStore {
 	}
 
 	captchaStore = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
+	thirtyDays := 30 * 24 * 60 * 60
 	captchaStore.Options = &sessions.Options{
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 		Path:     "/",
-		MaxAge:   30 * 24 * 60 * 60,
+		MaxAge:   thirtyDays,
 		Secure:   false,
 	}
-
-	return loginStore
+	return nil
 }
 
 func SessionEnd(w http.ResponseWriter, r *http.Request) error {
@@ -53,7 +51,7 @@ func SessionEnd(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func SessionDataSet(w http.ResponseWriter, r *http.Request, storeName string, key string, consts any) error {
+func SessionDataSet(w http.ResponseWriter, r *http.Request, storeName string, consts any) error {
 	session, err := loginStore.Get(r, storeName)
 	if err != nil {
 		return errors.WithStack(err)
@@ -64,7 +62,7 @@ func SessionDataSet(w http.ResponseWriter, r *http.Request, storeName string, ke
 		return errors.WithStack(err)
 	}
 
-	session.Values[key] = jsonData
+	session.Values["user"] = jsonData
 	err = session.Save(r, w)
 	if err != nil {
 		return errors.WithStack(err)
@@ -72,15 +70,15 @@ func SessionDataSet(w http.ResponseWriter, r *http.Request, storeName string, ke
 	return nil
 }
 
-func SessionUserDataGet(r *http.Request, key string) (structs.User, error) {
+func SessionGetUser(r *http.Request) (structs.User, error) {
 	session, err := loginStore.Get(r, "auth")
 	if err != nil {
 		return structs.User{}, errors.WithStack(err)
 	}
 
-	byteData, ok := session.Values[key].([]byte)
+	byteData, ok := session.Values["user"].([]byte)
 	if !ok {
-		return structs.User{}, errors.WithStack(errors.New(fmt.Sprintf("%s not exist", key)))
+		return structs.User{}, errors.WithStack(errors.New(fmt.Sprintf("%s not exist", "user")))
 	}
 
 	var userData structs.User
@@ -92,15 +90,15 @@ func SessionUserDataGet(r *http.Request, key string) (structs.User, error) {
 	return userData, nil
 }
 
-func SessionIntDataGet(r *http.Request, storeName, key string) (int64, error) {
+func SessionGetCaptcha(r *http.Request, storeName string) (int64, error) {
 	session, err := loginStore.Get(r, storeName)
 	if err != nil {
 		return 0, errors.WithStack(err)
 	}
 
-	byteData, ok := session.Values[key].([]byte)
+	byteData, ok := session.Values["captchaCounter"].([]byte)
 	if !ok {
-		return 0, errors.WithStack(errors.New(fmt.Sprintf("%s not exist", key)))
+		return 0, errors.WithStack(errors.New(fmt.Sprintf("%s not exist", "captchaCounter")))
 	}
 
 	var intData int64
@@ -110,44 +108,4 @@ func SessionIntDataGet(r *http.Request, storeName, key string) (int64, error) {
 	}
 
 	return intData, nil
-}
-
-func SessionStringDataGet(r *http.Request, key string) (string, error) {
-	session, err := loginStore.Get(r, "auth")
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-
-	byteData, ok := session.Values[key].([]byte)
-	if !ok {
-		return "", errors.WithStack(errors.New(fmt.Sprintf("%s not exist", key)))
-	}
-
-	var stringData string
-	err = json.Unmarshal([]byte(byteData), &stringData)
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-
-	return stringData, nil
-}
-
-func SessionTimeDataGet(r *http.Request, key string) (time.Time, error) {
-	session, err := loginStore.Get(r, "auth")
-	if err != nil {
-		return time.Time{}, errors.WithStack(err)
-	}
-
-	byteData, ok := session.Values[key].([]byte)
-	if !ok {
-		return time.Time{}, errors.WithStack(errors.New(fmt.Sprintf("%s not exist", key)))
-	}
-
-	var timeData time.Time
-	err = json.Unmarshal([]byte(byteData), &timeData)
-	if err != nil {
-		return time.Time{}, errors.WithStack(err)
-	}
-
-	return timeData, nil
 }
