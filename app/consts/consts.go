@@ -9,11 +9,11 @@ const (
 	SignInURL           = "/sign-in"
 	SignInInputCheckURL = "/sign-in-input-check"
 
-	HomeURL          = "/home"
-	LogoutURL        = "/logout"
-	Err500URL        = "/500"
+	HomeURL   = "/home"
+	LogoutURL = "/logout"
+	Err500URL = "/500"
 
-	AccessTokenExp = 15 * 60
-	RefreshTokenExp = 7 * 24 * 60 * 60
-	
+	AccessTokenExp15Min    = 15 * 60
+	RefreshTokenExp7Days   = 7 * 24 * 60 * 60
+	RefreshTokenExp24Hours = 24 * 60 * 60
 )

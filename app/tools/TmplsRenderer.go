@@ -13,7 +13,7 @@ const (
 	PasswrdMsg           = "Password is invalid"
 	UserAlreadyExistMsg  = "User already exists"
 	UserNotExistMsg      = "User does not exist"
-	MsCodeMsg            = "Wrong code"
+	ServerCodeMsg        = "Wrong code"
 	MailSendingStatusMsg = "Sending is secsessful"
 )
 
@@ -58,7 +58,7 @@ var ErrMsg = map[string]errMsg{
 	"login":             {LoginMsg, LoginReqs},
 	"email":             {EmailMsg, EmailReqs},
 	"password":          {PasswrdMsg, PswrdReqs},
-	"msCode":            {MsCodeMsg, nil},
+	"serverCode":        {ServerCodeMsg, nil},
 	"alreadyExist":      {UserAlreadyExistMsg, nil},
 	"notExist":          {UserNotExistMsg, nil},
 	"mailSendingStatus": {MailSendingStatusMsg, nil},
@@ -164,8 +164,8 @@ const (
 		<p class="message">We've sent a verification code to your email. Please enter it below.</p>
 		<form method="POST" action="/user-add">
 			<div class="form-group">
-				<label for="userCode">Verification Code</label>
-				<input type="text" id="userCode" name="userCode" required maxlength="6" pattern="[0-9]*" inputmode="numeric">
+				<label for="clientCode">Verification Code</label>
+				<input type="text" id="clientCode" name="clientCode" required maxlength="6" pattern="[0-9]*" inputmode="numeric">
 			</div>
 			<button type="submit" class="btn">Verify</button>
 		</form>

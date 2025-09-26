@@ -59,9 +59,8 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 				}
 
 				return
-			}
 
-			if strings.Contains(err.Error(), "email") {
+			} else if strings.Contains(err.Error(), "email") {
 				err := data.SessionDataSet(w, r, "captcha", captchaCounter-1)
 				if err != nil {
 					log.Printf("%+v", err)
@@ -76,10 +75,9 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 				return
-			}
 
-			if strings.Contains(err.Error(), "password") {
-				err := data.SessionDataSet(w, r, "captcha", "captchaCounter", captchaCounter-1)
+			} else if strings.Contains(err.Error(), "password") {
+				err := data.SessionDataSet(w, r, "captcha", captchaCounter-1)
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -99,7 +97,6 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 			return
 		}
-
 	} else {
 		err := tools.Captcha(r)
 		if err != nil {
@@ -120,7 +117,7 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 func SignUpUserCheck(w http.ResponseWriter, r *http.Request) {
-	user, err := data.SessionUserDataGet(r, "user")
+	user, err := data.SessionGetUser(r)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -158,7 +155,7 @@ func SignUpUserCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 func CodeSend(w http.ResponseWriter, r *http.Request) {
-	user, err := data.SessionUserDataGet(r, "user")
+	user, err := data.SessionGetUser(r)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -171,10 +168,9 @@ func CodeSend(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
 	user.ServerCode = serverCode
 
-	err = data.SessionDataSet(w, r, "auth", "msCode", serverCode)
+	err = data.SessionDataSet(w, r, "auth", user)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -188,46 +184,42 @@ func CodeSend(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserAdd(w http.ResponseWriter, r *http.Request) {
-	user, err := data.SessionUserDataGet(r, "user")
+	user, err := data.SessionGetUser(r)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
-	userCode := r.FormValue("userCode")
-	if userCode == "" {
-		log.Printf("%+v", errors.WithStack(errors.New("userCode not exist")))
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
-	}
-
-	msCode, err := data.SessionStringDataGet(r, "msCode")
+	clientCode := r.FormValue("clientCode")
+	err = tools.CodeValidator(r, clientCode, user.ServerCode)
 	if err != nil {
-		log.Printf("%+v", errors.WithStack(errors.New("msCode not exist")))
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
-	}
+		if strings.Contains(err.Error(), "exist") {
+			log.Printf("%+v", err)
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
 
-	if userCode != msCode {
-		err = tools.TmplsRenderer(w, tools.BaseTmpl, "CodeSend", tools.ErrMsg["msCode"])
+		err = tools.TmplsRenderer(w, tools.BaseTmpl, "CodeSend", tools.ErrMsg["serverCode"])
 		if err != nil {
+			log.Printf("%+v", err)
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 			return
 		}
 	}
 
 	rememberMe := r.FormValue("rememberMe") != ""
-	user.RememberMe = rememberMe
-
 	userID := uuid.New().String()
 	user.UserID = userID
 
-	user, err = tools.GenerateRefreshToken(user)
+	refreshToken, refreshExpiresAt, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe, user.UserID)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
+	user.RefreshToken = refreshToken
+	user.RefreshExpiresAt = refreshExpiresAt
 
 	err = data.UserAdd(user)
 	if err != nil {
@@ -243,16 +235,16 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err = tools.GenerateAccessToken(user)
+	signedAccessToken, err := tools.GenerateAccessToken(consts.AccessTokenExp15Min, user.UserID)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
+	user.AccessToken = signedAccessToken
 	user.DeviceInfo = r.UserAgent()
 
-	err = data.SessionDataSet(w, r, "auth", "user", user)
+	err = data.SessionDataSet(w, r, "auth", user)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)

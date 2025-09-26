@@ -11,16 +11,15 @@ import (
 	"github.com/pkg/errors"
 )
 
-func GenerateRefreshToken(user structs.User) (structs.User, error) {
-	refreshTokenExp := consts.RefreshTokenExp
-	if !user.RememberMe {
-		refreshTokenExp = 24 * 60 * 60
+func GenerateRefreshToken(refreshTokenExp int, rememberMe bool, userID string) (string, time.Time, error) {
+	if !rememberMe {
+		refreshTokenExp = consts.RefreshTokenExp24Hours
 	}
 
 	jti := uuid.New().String()
 	expiresAt := time.Duration(refreshTokenExp) * time.Second
 	refreshTokenClaims := &structs.RefreshTokenClaims{
-		UserID: user.UserID,
+		UserID: userID,
 		JTI:    jti,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(expiresAt).Unix(),
@@ -32,21 +31,19 @@ func GenerateRefreshToken(user structs.User) (structs.User, error) {
 	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
 	signedRefreshToken, err := refreshToken.SignedString(jwtSecret)
 	if err != nil {
-		return structs.User{}, errors.WithStack(err)
+		return "", time.Time{}, errors.WithStack(err)
 	}
-	user.RefreshToken = signedRefreshToken
 
 	expiresAtUnix := refreshTokenClaims.ExpiresAt
 	expiresAtTime := time.Unix(expiresAtUnix, 0)
-	user.RefreshExpiresAt = expiresAtTime
 
-	return user, nil
+	return signedRefreshToken, expiresAtTime, nil
 }
 
-func GenerateAccessToken(user structs.User) (structs.User, error) {
-	expiresAt := time.Duration(consts.AccessTokenExp) * time.Second
+func GenerateAccessToken(accessTokenExp int, userID string) (string, error) {
+	expiresAt := time.Duration(accessTokenExp) * time.Second
 	accessTokenClaims := &structs.AccessTokenClaims{
-		UserID: user.UserID,
+		UserID: userID,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(expiresAt).Unix(),
 			IssuedAt:  time.Now().Unix(),
@@ -57,9 +54,8 @@ func GenerateAccessToken(user structs.User) (structs.User, error) {
 	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
 	signedAccessToken, err := accessToken.SignedString(jwtSecret)
 	if err != nil {
-		return structs.User{}, errors.WithStack(err)
+		return "", errors.WithStack(err)
 	}
-	user.AccessToken = signedAccessToken
 
-	return user, nil
+	return signedAccessToken, nil
 }

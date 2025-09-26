@@ -7,17 +7,15 @@ import (
 )
 
 type User struct {
-	UserID             string    `sql:"userId" json:"userId"`
-	Login              string    `sql:"login" json:"login"`
-	Email              string    `sql:"email" json:"email"`
-	Password           string    `sql:"password" json:"password"`
-	RefreshToken       string    `sql:"refreshToken" json:"refreshToken"`
-	AccessToken        string    `sql:"accessToken" json:"accessToken"`
-	RefreshExpiresAt   time.Time `sql:"refreshExpiresAt" json:"refreshExpiresAt"`
-	DeviceInfo         string    `sql:"deviceInfo" json:"deviceInfo"`
-	RememberMe         bool
-	AccessTokenClaims  AccessTokenClaims
-	RefreshTokenClaims RefreshTokenClaims
+	Login            string    `sql:"login" json:"login"`                       //
+	Email            string    `sql:"email" json:"email"`                       //
+	Password         string    `sql:"password" json:"password"`                 //
+	ServerCode       string    `sql:"serverCode" json:"serverCode"`             //
+	UserID           string    `sql:"userId" json:"userId"`                     //
+	RefreshToken     string    `sql:"refreshToken" json:"refreshToken"`         //
+	RefreshExpiresAt time.Time `sql:"refreshExpiresAt" json:"refreshExpiresAt"` //
+	AccessToken      string    `sql:"accessToken" json:"accessToken"`           //
+	DeviceInfo       string    `sql:"deviceInfo" json:"deviceInfo"`             //
 }
 
 type AccessTokenClaims struct {
