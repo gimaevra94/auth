@@ -90,10 +90,9 @@ func UserAdd(login, email, password, userID string) error {
 func RefreshTokenCheck(userID string) (string, string, string, bool, error) {
 	row := db.QueryRow(tokenSelectQuery, userID)
 	var refreshToken string
-	var deviceInfo string
 	var jti string
 	var cancelled bool
-	err := row.Scan(&refreshToken, &deviceInfo, &jti, &cancelled)
+	err := row.Scan(&refreshToken, &jti, &cancelled)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return "", "", "", false, errors.WithStack(err)
@@ -111,7 +110,7 @@ func RefreshTokenAdd(userID, refreshToken, deviceInfo, jti string) error {
 	return nil
 }
 
-func TokenCancel(jti string) error  {
+func TokenCancel(jti string) error {
 	db.QueryRow()
 }
 

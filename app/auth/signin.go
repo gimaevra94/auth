@@ -141,9 +141,10 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rememberMe := r.FormValue("rememberMe") != ""
-	user.RememberMe = rememberMe
 	user.UserID = userID
+	user.DeviceInfo = r.UserAgent()
 
+	
 	err = data.SessionDataSet(w, r, "auth", user)
 	if err != nil {
 		log.Printf("%+v", err)
@@ -160,4 +161,11 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
+
+	err = data.RefreshTokenAdd(user.UserID, user.RefreshToken, user.RefreshTokenClaims.Id, user.DeviceInfo)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
 }

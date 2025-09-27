@@ -47,13 +47,47 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
-			
-				_, err = tools.RefreshTokenValidator(user.RefreshToken)
+
+				signedRefreshTokenClaims, err = tools.RefreshTokenValidator(user.RefreshToken)
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
+
+				if signedRefreshTokenClaims.Id != jti {
+					err := errors.New("token id not match")
+					log.Printf("%v", errors.WithStack(err))
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+					return
+				}
+
+				if deviceInfo != r.UserAgent() {
+					err := tools.SendSuspiciousLoginEmail(user.Email, user.Login, r.UserAgent())
+					if err != nil {
+						log.Printf("%v", errors.WithStack(err))
+					}
+					http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+					return
+				}
+
+				if !cancelled {
+					err := errors.New("token has been cancelled")
+					log.Printf("%v", errors.WithStack(err))
+					http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+					return
+				}
+
+				//тут еще будет добавление токена в базу данных
+
+				signedAccessToken, err := tools.GenerateAccessToken(consts.AccessTokenExp15Min, user.UserID)
+				if err != nil {
+					log.Printf("%v", errors.WithStack(err))
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+					return
+				}
+
+				data.CookieAccessTokenSet(w, signedAccessToken)
 			}
 
 			if signedRefreshTokenClaims.Id != jti {
@@ -79,12 +113,15 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 				return
 			}
 
+			//тут еще будет добавление токена в базу данных
+
 			signedAccessToken, err := tools.GenerateAccessToken(consts.AccessTokenExp15Min, user.UserID)
 			if err != nil {
 				log.Printf("%v", errors.WithStack(err))
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
+
 			data.CookieAccessTokenSet(w, signedAccessToken)
 		}
 		next.ServeHTTP(w, r)

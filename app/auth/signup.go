@@ -219,13 +219,13 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	refreshClaims, err := tools.RefreshTokenValidator(user.RefreshToken)
+	signedRefreshTokenClaims, err := tools.RefreshTokenValidator(user.RefreshToken)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 	}
 
-	user.RefreshTokenClaims = *refreshClaims
+	user.RefreshTokenClaims = *signedRefreshTokenClaims
 	user.RefreshToken = refreshToken
 
 	err = data.UserAdd(user.Login, user.Email, user.Password, user.UserID)

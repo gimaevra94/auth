@@ -13,6 +13,7 @@ type User struct {
 	RefreshToken       string `sql:"refreshToken" json:"refreshToken"`
 	DeviceInfo         string `sql:"deviceInfo" json:"deviceInfo"`
 	RememberMe         bool   `json:"rememberMe"`
+	Cancelled bool
 	RefreshTokenClaims RefreshTokenClaims
 	AccessTokenClaims  AccessTokenClaims
 }

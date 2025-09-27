@@ -7,8 +7,10 @@ CREATE TABLE user (
 );
 
 CREATE TABLE token (
-    token VARCHAR(255) PRIMARY KEY,
+    FOREIGN KEY (userID) REFERENCES user(userID),
+    token VARCHAR(255) NOT NULL,
     userID VARCHAR(255) NOT NULL,
     deviceInfo VARCHAR(255),
-    FOREIGN KEY (userID) REFERENCES user(userID)
+    jti VARCHAR(255) PRIMARY KEY,
+    cancelled BOOLEAN DEFAULT FALSE
 );
