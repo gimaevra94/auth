@@ -30,15 +30,15 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 			signedRefreshToken, jti, deviceInfo, cancelled, err := data.RefreshTokenCheck(user.UserID)
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
-					http.Redirect(w, r, consts.SignInURL, http.StatusFound)
+					http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 					return
 				}
-				log.Printf("%v", err)
+				log.Printf("%v", errors.WithStack(err))
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
 
-			_, err = tools.RefreshTokenValidator(signedRefreshToken)
+			signedRefreshTokenClaims, err := tools.RefreshTokenValidator(signedRefreshToken)
 			if err != nil {
 				rememberMe := r.FormValue("rememberMe") != ""
 				_, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe, user.UserID)
@@ -66,7 +66,7 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 			if deviceInfo != r.UserAgent() {
 				err := tools.SendSuspiciousLoginEmail(user.Email, user.Login, r.UserAgent())
 				if err != nil {
-					log.Printf("%v", err)
+					log.Printf("%v", errors.WithStack(err))
 				}
 				http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 				return
@@ -81,7 +81,7 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 
 			signedAccessToken, err := tools.GenerateAccessToken(consts.AccessTokenExp15Min, user.UserID)
 			if err != nil {
-				log.Printf("%v", err)
+				log.Printf("%v", errors.WithStack(err))
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
@@ -98,4 +98,16 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 		return
 	}
+}
+
+func SimpleLogout(w http.ResponseWriter, r *http.Request) {
+	err := data.SessionEnd(w, r)
+	if err != nil {
+		log.Printf("%v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	data.ClearCookie(w)
+	http.Redirect(w, r, consts.SignInURL, http.StatusFound)
 }
