@@ -87,17 +87,18 @@ func UserAdd(login, email, password, userID string) error {
 	return nil
 }
 
-func RefreshTokenCheck(userID string) (string, error) {
+func RefreshTokenCheck(userID string) (string, string, error) {
 	row := db.QueryRow(tokenSelectQuery, userID)
 	var refreshToken string
-	err := row.Scan(&refreshToken)
+	var deviceInfo string
+	err := row.Scan(&refreshToken, &deviceInfo)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "", errors.WithStack(err)
+			return "", "", errors.WithStack(err)
 		}
-		return "", errors.WithStack(err)
+		return "", "", errors.WithStack(err)
 	}
-	return refreshToken, nil
+	return refreshToken, deviceInfo, nil
 }
 
 func RefreshTokenAdd(userID, refreshToken, deviceInfo string) error {
