@@ -27,7 +27,7 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 
 		_, err = tools.AccessTokenValidator(accessToken)
 		if err != nil {
-			signedRefreshToken, err := data.RefreshTokenCheck(user.UserID)
+			signedRefreshToken, deviceInfo, err := data.RefreshTokenCheck(user.UserID)
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
 					http.Redirect(w, r, consts.SignInURL, http.StatusFound)
@@ -43,6 +43,10 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 				log.Printf("%v", err)
 				http.Redirect(w, r, consts.SignInURL, http.StatusFound)
 				return
+			}
+
+			if deviceInfo != r.UserAgent() {
+				http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 			}
 
 			signedAccessToken, err := tools.GenerateAccessToken(consts.AccessTokenExp15Min, user.UserID)
