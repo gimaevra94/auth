@@ -235,7 +235,7 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = data.RefreshTokenAdd(user.UserID, user.RefreshToken, user.DeviceInfo)
+	err = data.RefreshTokenAdd(user.UserID, user.RefreshToken, user.RefreshTokenClaims.Id, user.DeviceInfo)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)

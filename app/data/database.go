@@ -14,7 +14,7 @@ var db *sql.DB
 
 const (
 	userInsertQuery  = "insert into user (userId,login,email,passwordHash) values(?,?,?,?)"
-	tokenInsertQuery = "insert into token (userId,token,deviceInfo) values (?,?,?)"
+	tokenInsertQuery = "insert into token (userId,token,jti,deviceInfo) values (?,?,?,?)"
 	tokenSelectQuery = "select refreshToken from token where userID =? limit 1"
 	yauthSelectQuery = "select email from user where email = ? limit 1"
 	yauthInsertQuery = "insert into user (login,email) values(?,?)"
@@ -87,26 +87,32 @@ func UserAdd(login, email, password, userID string) error {
 	return nil
 }
 
-func RefreshTokenCheck(userID string) (string, string, error) {
+func RefreshTokenCheck(userID string) (string, string, string, bool, error) {
 	row := db.QueryRow(tokenSelectQuery, userID)
 	var refreshToken string
 	var deviceInfo string
-	err := row.Scan(&refreshToken, &deviceInfo)
+	var jti string
+	var cancelled bool
+	err := row.Scan(&refreshToken, &deviceInfo, &jti, &cancelled)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "", "", errors.WithStack(err)
+			return "", "", "", false, errors.WithStack(err)
 		}
-		return "", "", errors.WithStack(err)
+		return "", "", "", false, errors.WithStack(err)
 	}
-	return refreshToken, deviceInfo, nil
+	return refreshToken, jti, deviceInfo, cancelled, nil
 }
 
-func RefreshTokenAdd(userID, refreshToken, deviceInfo string) error {
-	_, err := db.Exec(tokenInsertQuery, userID, refreshToken, deviceInfo)
+func RefreshTokenAdd(userID, refreshToken, deviceInfo, jti string) error {
+	_, err := db.Exec(tokenInsertQuery, userID, refreshToken, jti, deviceInfo)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
+}
+
+func TokenCancel(jti string) error  {
+	db.QueryRow()
 }
 
 func YauthUserCheck(email string) error {
