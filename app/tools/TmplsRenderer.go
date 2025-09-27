@@ -274,6 +274,9 @@ const (
 			<form method="GET" action="/logout">
 				<button type="submit" class="btn btn-danger">Sign Out</button>
 			</form>
+			<form method="GET" action="/simple-logout">
+				<button type="submit" class="btn btn-warning">Logout (Current Session)</button>
+			</form>
 		</div>
 		<div class="welcome">
 			<p>You have successfully signed in. You can now use all the features of the application.</p>
