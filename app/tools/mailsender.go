@@ -13,8 +13,9 @@ import (
 )
 
 var (
-	senderEmail      string
-	authCodeSubject  = "Auth code"
+	senderEmail            string
+	authCodeSubject        = "Auth code"
+	suspiciousLoginSubject = "Suspicious Login Alert!"
 )
 
 func codeGenerate() string {
@@ -33,9 +34,18 @@ func smtpAuth(senderEmail string) smtp.Auth {
 
 func executeTmpl(senderEmail, email, subject string, data any) ([]byte, error) {
 	var body bytes.Buffer
-	err := BaseTmpl.ExecuteTemplate(&body, "mailCode", data)
-	if err != nil {
-		return []byte{}, errors.WithStack(err)
+
+	switch subject {
+	case authCodeSubject:
+		err := BaseTmpl.ExecuteTemplate(&body, "mailCode", data)
+		if err != nil {
+			return []byte{}, errors.WithStack(err)
+		}
+	case suspiciousLoginSubject:
+		err := BaseTmpl.ExecuteTemplate(&body, "suspiciousLoginMail", data)
+		if err != nil {
+			return []byte{}, errors.WithStack(err)
+		}
 	}
 
 	msg := []byte(
@@ -81,4 +91,25 @@ func AuthCodeSender(email string) (string, error) {
 	}
 
 	return msCode, nil
+}
+
+func SendSuspiciousLoginEmail(email, login, deviceInfo string) error {
+	senderEmail = os.Getenv("MAIL_SENDER_EMAIL")
+	auth := smtpAuth(senderEmail)
+
+	data := struct {
+		Login      string
+		DeviceInfo string
+	}{Login: login, DeviceInfo: deviceInfo}
+	msg, err := executeTmpl(senderEmail, email, suspiciousLoginSubject, data)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	err = mailSend(senderEmail, email, auth, msg)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
 }

@@ -45,7 +45,12 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 			}
 
 			if deviceInfo != r.UserAgent() {
+				err := tools.SendSuspiciousLoginEmail(user.Email, user.Login, r.UserAgent())
+				if err != nil {
+					log.Printf("%v", err)
+				}
 				http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+				return
 			}
 
 			signedAccessToken, err := tools.GenerateAccessToken(consts.AccessTokenExp15Min, user.UserID)

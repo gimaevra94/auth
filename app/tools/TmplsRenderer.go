@@ -47,6 +47,7 @@ var (
 	_        = Must(BaseTmpl.Parse(HomeTMPL))
 	_        = Must(BaseTmpl.Parse(CodeSendTMPL))
 	_        = Must(BaseTmpl.Parse(mailCodeTMPL))
+	_        = Must(BaseTmpl.Parse(suspiciousLoginMailTMPL))
 )
 
 type errMsg struct {
@@ -349,6 +350,72 @@ const (
         <p>Your verification code:</p>
         <div class="code-box">{{.Code}}</div>
         <p>Enter this code to continue.</p>
+    </div>
+</body>
+</html>
+{{ end }}
+`
+
+	suspiciousLoginMailTMPL = `
+{{ define "suspiciousLoginMail" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Suspicious Login Attempt</title>
+    <style>
+        :root {
+            --primary-color: #dc2626;
+            --text-color: #e5e7eb;
+            --bg-color: #1f2937;
+            --container-bg: #374151;
+            --border-color: #4b5563;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #1f2937;
+            color: #e5e7eb;
+            line-height: 1.5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 400px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: #374151;
+            border-radius: 8px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #dc2626; /* Red for warning */
+        }
+        p {
+            margin-bottom: 1.5rem;
+            color: #e5e7eb;
+        }
+        .warning-text {
+            color: #fca5a5; /* Lighter red */
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Suspicious Login Attempt Detected!</h1>
+        <p>Dear {{.Login}},</p>
+        <p>We detected a login attempt to your account from an unrecognized device or location.</p>
+        <p class="warning-text">Device Info: {{.DeviceInfo}}</p>
+        <p>If this was you, you can ignore this email. If you did not attempt to log in, please secure your account immediately by changing your password.</p>
+        <p>Thank you for your vigilance.</p>
     </div>
 </body>
 </html>
