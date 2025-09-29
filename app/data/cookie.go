@@ -7,15 +7,15 @@ import (
 	"github.com/pkg/errors"
 )
 
-func CookieAccessTokenSet(w http.ResponseWriter, v string) {
+func UserPreferenceCookieSet(w http.ResponseWriter, v []byte) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     "accessToken",
+		Name:     "userPreference",
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
-		Value:    v,
-		MaxAge:   consts.AccessTokenExp15Min,
+		Value:    string(v),
+		MaxAge:   consts.TemporaryUserIDExp,
 	})
 }
 

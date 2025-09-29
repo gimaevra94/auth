@@ -2,6 +2,7 @@ package auth
 
 import (
 	"database/sql"
+	"encoding/json"
 	"log"
 	"net/http"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/structs"
 	"github.com/gimaevra94/auth/app/tools"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -113,7 +115,7 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 	}
 
-	userID, err := data.UserCheck("login", user.Login, user.Password)
+	err = data.UserCheck("login", user.Login, user.Password)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["notExist"].Msg})
@@ -141,16 +143,28 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rememberMe := r.FormValue("rememberMe") != ""
-	user.UserID = userID
-	user.DeviceInfo = r.UserAgent()
+	temporaryUserID := uuid.New().String()
 
-	
-	err = data.SessionDataSet(w, r, "auth", user)
+	preferences := structs.UserPreferences{
+		TemporaryUserID: temporaryUserID,
+		RememberMe:      rememberMe,
+	}
+
+	err = data.TemporaryUserIDAdd(user.Login, temporaryUserID)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
+
+	jsonData, err := json.Marshal(preferences)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	data.UserPreferenceCookieSet(w, jsonData)
 
 	captchaCounter := 3
 	err = data.SessionDataSet(w, r, "captcha", captchaCounter)
@@ -161,11 +175,4 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
-
-	err = data.RefreshTokenAdd(user.UserID, user.RefreshToken, user.RefreshTokenClaims.Id, user.DeviceInfo)
-	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
-	}
 }

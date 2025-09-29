@@ -13,8 +13,9 @@ import (
 var db *sql.DB
 
 const (
-	userInsertQuery  = "insert into user (userId,login,email,passwordHash) values(?,?,?,?)"
-	tokenInsertQuery = "insert into token (userId,token,jti,deviceInfo) values (?,?,?,?)"
+	userInsertQuery  = "insert into user (userId,login,email,passwordHash,temporaryUserID,permanentUserID,temporaryCancelled) values(?,?,?,?,?,?,?)"
+	temporaryIDQuery = "update user set temporaryUserID where login = ?"
+	tokenInsertQuery = "insert into token (userId,token,deviceInfo,tokenCancelled) values (?,?,?,?)"
 	tokenSelectQuery = "select refreshToken from token where userID =? limit 1"
 	yauthSelectQuery = "select email from user where email = ? limit 1"
 	yauthInsertQuery = "insert into user (login,email) values(?,?)"
@@ -47,39 +48,47 @@ func DBConn() error {
 }
 
 func query(s string) string {
-	return fmt.Sprintf("select passwordHash, userID from user where %s = ? limit 1", s)
+	return fmt.Sprintf("select passwordHash, permanentUserID,temporaryCancelled from user where %s = ? limit 1", s)
 }
 
-func UserCheck(queryValue string, login, password string) (string, error) {
+func UserCheck(queryValue string, login, password string) error {
 	row := db.QueryRow(query(queryValue), login)
 	var passwordHash string
-	var userID string
-	err := row.Scan(&passwordHash, &userID)
+	var permanentUserID string
+	err := row.Scan(&passwordHash, &permanentUserID)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return userID, errors.WithStack(err)
+			return errors.WithStack(err)
 		}
-		return userID, errors.WithStack(err)
+		return errors.WithStack(err)
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(passwordHash),
 		[]byte(password))
 	if err != nil {
-		return userID, errors.WithStack(err)
+		return errors.WithStack(err)
 	}
 
-	return userID, nil
+	return nil
 }
 
-func UserAdd(login, email, password, userID string) error {
+func TemporaryUserIDAdd(login, temporaryUserID string) error {
+	_, err := db.Exec(temporaryIDQuery, temporaryUserID, login)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func UserAdd(login, email, password, temporaryUserID, permanentUserID string, temporaryCancelled bool) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password),
 		bcrypt.DefaultCost)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	_, err = db.Exec(userInsertQuery, userID, login, email, hashedPassword)
+	_, err = db.Exec(userInsertQuery, login, email, hashedPassword, temporaryUserID, permanentUserID, temporaryCancelled)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -87,32 +96,32 @@ func UserAdd(login, email, password, userID string) error {
 	return nil
 }
 
-func RefreshTokenCheck(userID string) (string, string, string, bool, error) {
+func RefreshTokenCheck(userID string) (string, string, bool, error) {
 	row := db.QueryRow(tokenSelectQuery, userID)
 	var refreshToken string
-	var jti string
+	var deviceInfo string
 	var cancelled bool
-	err := row.Scan(&refreshToken, &jti, &cancelled)
+	err := row.Scan(&refreshToken, &cancelled)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "", "", "", false, errors.WithStack(err)
+			return "", "", false, errors.WithStack(err)
 		}
-		return "", "", "", false, errors.WithStack(err)
+		return "", "", false, errors.WithStack(err)
 	}
-	return refreshToken, jti, deviceInfo, cancelled, nil
+	return refreshToken, deviceInfo, cancelled, nil
 }
 
-func RefreshTokenAdd(userID, refreshToken, deviceInfo, jti string) error {
-	_, err := db.Exec(tokenInsertQuery, userID, refreshToken, jti, deviceInfo)
+func RefreshTokenAdd(permanentUserID, refreshToken, deviceInfo string, tokenCancelled bool) error {
+	_, err := db.Exec(tokenInsertQuery, permanentUserID, refreshToken, deviceInfo, tokenCancelled)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func TokenCancel(jti string) error {
-	db.QueryRow()
-}
+//func TokenCancel(jti string) error {
+//	db.QueryRow()
+//}
 
 func YauthUserCheck(email string) error {
 	row := db.QueryRow(yauthSelectQuery, email)

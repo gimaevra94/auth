@@ -124,7 +124,7 @@ func SignUpUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = data.UserCheck("login", user.Login, user.Password)
+	err = data.UserCheck("login", user.Login, user.Password)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			CodeSend(w, r)
@@ -209,56 +209,34 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rememberMe := r.FormValue("rememberMe") != ""
-	userID := uuid.New().String()
-	user.UserID = userID
 
-	refreshToken, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe, user.UserID)
+	refreshToken, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
-	signedRefreshTokenClaims, err := tools.RefreshTokenValidator(user.RefreshToken)
+	err = tools.RefreshTokenValidator(refreshToken)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 	}
 
-	user.RefreshTokenClaims = *signedRefreshTokenClaims
-	user.RefreshToken = refreshToken
+	temporaryUserID := uuid.New().String()
+	permanentUserID := uuid.New().String()
+	temporaryCancelled := false
 
-	err = data.UserAdd(user.Login, user.Email, user.Password, user.UserID)
-	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
-	}
-
-	err = data.RefreshTokenAdd(user.UserID, user.RefreshToken, user.RefreshTokenClaims.Id, user.DeviceInfo)
+	err = data.UserAdd(user.Login, user.Email, user.Password, temporaryUserID, permanentUserID, temporaryCancelled)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
-	signedAccessToken, err := tools.GenerateAccessToken(consts.AccessTokenExp15Min, user.UserID)
-	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
-	}
+	tokenCancelled := false
 
-	accessClaims, err := tools.AccessTokenValidator(signedAccessToken)
-	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-	}
-
-	user.AccessTokenClaims = *accessClaims
-	user.DeviceInfo = r.UserAgent()
-
-	err = data.SessionDataSet(w, r, "auth", user)
+	err = data.RefreshTokenAdd(permanentUserID, refreshToken, r.UserAgent(), tokenCancelled)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)

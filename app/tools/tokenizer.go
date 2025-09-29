@@ -5,30 +5,23 @@ import (
 	"time"
 
 	"github.com/gimaevra94/auth/app/consts"
-	"github.com/gimaevra94/auth/app/structs"
 	"github.com/golang-jwt/jwt"
-	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
 
-func GenerateRefreshToken(refreshTokenExp int, rememberMe bool, userID string) (string, error) {
+func GenerateRefreshToken(refreshTokenExp int, rememberMe bool) (string, error) {
 	if !rememberMe {
 		refreshTokenExp = consts.RefreshTokenExp24Hours
 	}
 
-	jti := uuid.New().String()
 	expiresAt := time.Duration(refreshTokenExp) * time.Second
-	refreshTokenClaims := &structs.RefreshTokenClaims{
 
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(expiresAt).Unix(),
-			IssuedAt:  time.Now().Unix(),
-			Subject: userID,
-			Id:    jti,
-		},
+	standardClaims := jwt.StandardClaims{
+		ExpiresAt: time.Now().Add(expiresAt).Unix(),
+		IssuedAt:  time.Now().Unix(),
 	}
 
-	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshTokenClaims)
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, standardClaims)
 	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
 	signedRefreshToken, err := refreshToken.SignedString(jwtSecret)
 	if err != nil {
@@ -38,13 +31,13 @@ func GenerateRefreshToken(refreshTokenExp int, rememberMe bool, userID string) (
 	return signedRefreshToken, nil
 }
 
-func GenerateAccessToken(accessTokenExp int, userID string) (string, error) {
+/*func GenerateAccessToken(accessTokenExp int, userID string) (string, error) {
 	expiresAt := time.Duration(accessTokenExp) * time.Second
 	accessTokenClaims := &structs.AccessTokenClaims{
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(expiresAt).Unix(),
 			IssuedAt:  time.Now().Unix(),
-			Subject: userID,
+			Subject:   userID,
 		},
 	}
 
@@ -56,4 +49,4 @@ func GenerateAccessToken(accessTokenExp int, userID string) (string, error) {
 	}
 
 	return signedAccessToken, nil
-}
+}*/

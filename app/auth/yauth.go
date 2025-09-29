@@ -56,21 +56,18 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	refreshToken, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, false, user.UserID)
+	refreshToken, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, false)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
-	refreshClaims, err := tools.RefreshTokenValidator(user.RefreshToken)
+	err = tools.RefreshTokenValidator(refreshToken)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 	}
-
-	user.RefreshTokenClaims = *refreshClaims
-	user.RefreshToken = refreshToken
 
 	yandexUser, err := getYandexUserInfo(yandexAccessToken)
 	if err != nil {
@@ -91,14 +88,14 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = data.RefreshTokenAdd(user.UserID, user.RefreshToken, user.RefreshTokenClaims.Id, user.DeviceInfo)
+	err = data.RefreshTokenAdd(permanentUserID, refreshToken, r.UserAgent(), tokenCancelled)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
-	signedAccessToken, err := tools.GenerateAccessToken(consts.AccessTokenExp15Min, user.UserID)
+	/*signedAccessToken, err := tools.GenerateAccessToken(consts.AccessTokenExp15Min, user.UserID)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -109,9 +106,8 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-	}
+	}*/
 
-	user.AccessTokenClaims = *accessClaims
 	user.DeviceInfo = r.UserAgent()
 
 	err = data.SessionDataSet(w, r, "auth", user)

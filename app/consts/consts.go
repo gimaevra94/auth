@@ -13,7 +13,7 @@ const (
 	LogoutURL = "/logout"
 	Err500URL = "/500"
 
-	AccessTokenExp15Min    = 15 * 60
+	TemporaryUserIDExp     = 30 * 24 * 60 * 60
 	RefreshTokenExp7Days   = 7 * 24 * 60 * 60
 	RefreshTokenExp24Hours = 24 * 60 * 60
 )

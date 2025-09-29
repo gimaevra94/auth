@@ -5,7 +5,6 @@ import (
 	"os"
 	"regexp"
 
-	"github.com/gimaevra94/auth/app/structs"
 	"github.com/golang-jwt/jwt"
 	"github.com/pkg/errors"
 )
@@ -16,8 +15,8 @@ var (
 	passwordRegex = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ\d!@#$%^&*\-\)]{4,30}$`)
 )
 
-func RefreshTokenValidator(refreshToken string) (*structs.RefreshTokenClaims, error) {
-	signedToken, err := jwt.ParseWithClaims(refreshToken, &structs.RefreshTokenClaims{}, func(t *jwt.Token) (interface{}, error) {
+func RefreshTokenValidator(refreshToken string) error {
+	signedToken, err := jwt.ParseWithClaims(refreshToken, &jwt.StandardClaims{}, func(t *jwt.Token) (interface{}, error) {
 		if t.Method != jwt.SigningMethodHS256 {
 			err := errors.New("unexpected signing method")
 			return nil, errors.WithStack(err)
@@ -26,24 +25,18 @@ func RefreshTokenValidator(refreshToken string) (*structs.RefreshTokenClaims, er
 		return jwtSecret, nil
 	})
 	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	claims, ok := signedToken.Claims.(*structs.RefreshTokenClaims)
-	if !ok {
-		err := errors.New("Claims deserialize error")
-		return nil, errors.WithStack(err)
+		return errors.WithStack(err)
 	}
 
 	if !signedToken.Valid {
 		err := errors.New("Refresh token invalid")
-		return nil, errors.WithStack(err)
+		return errors.WithStack(err)
 	}
 
-	return claims, nil
+	return nil
 }
 
-func AccessTokenValidator(token string) (*structs.AccessTokenClaims, error) {
+/*func AccessTokenValidator(token string) (*structs.AccessTokenClaims, error) {
 
 	signedToken, err := jwt.ParseWithClaims(token, &structs.AccessTokenClaims{}, func(t *jwt.Token) (interface{}, error) {
 		if t.Method != jwt.SigningMethodHS256 {
@@ -69,7 +62,7 @@ func AccessTokenValidator(token string) (*structs.AccessTokenClaims, error) {
 	}
 
 	return claims, nil
-}
+}*/
 
 func InputValidator(r *http.Request, login, email, password string, IsSignIn, IsPasswordReset bool) error {
 
