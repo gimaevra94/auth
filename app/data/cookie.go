@@ -19,9 +19,9 @@ func UserPreferenceCookieSet(w http.ResponseWriter, v []byte) {
 	})
 }
 
-func ClearCookie(w http.ResponseWriter) {
+func ClearCookies(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     "token",
+		Name:     "userPreference",
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   true,
@@ -30,20 +30,20 @@ func ClearCookie(w http.ResponseWriter) {
 	})
 }
 
-func CookieIsExist(r *http.Request) (*http.Cookie, error) {
-	cookie, err := r.Cookie("accessToken")
+func GetCookies(r *http.Request) (*http.Cookie, error) {
+	cookie, err := r.Cookie("userPreference")
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
 	if cookie.Value == "" {
-		return nil, errors.New("accessToken not exist")
+		return nil, errors.New("userPreference not exist")
 	}
 
 	return cookie, nil
 }
 
-func ClearCookies(w http.ResponseWriter, r *http.Request) {
-	ClearCookie(w)
+func ClearCookiesDev(w http.ResponseWriter, r *http.Request) {
+	ClearCookies(w)
 	http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 }

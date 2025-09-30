@@ -66,7 +66,7 @@ func initRouter() *chi.Mux {
 	})
 
 	r.Get("/dev", func(w http.ResponseWriter, r *http.Request) {
-		data.ClearCookie(w)
+		data.ClearCookies(w)
 		err := data.SessionEnd(w, r)
 		if err != nil {
 			log.Printf("%+v", err)
@@ -75,7 +75,7 @@ func initRouter() *chi.Mux {
 		}
 	})
 
-	r.Get("/clear", data.ClearCookies)
+	r.Get("/clear", data.ClearCookiesDev)
 
 	r.Get(consts.SignUpURL, htmls.SignUp)
 	r.Post(consts.SignUpInputCheckURL, auth.SignUpInputCheck)

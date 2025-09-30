@@ -12,6 +12,7 @@ import (
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/structs"
 	"github.com/gimaevra94/auth/app/tools"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
 
@@ -88,34 +89,29 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = data.RefreshTokenAdd(permanentUserID, refreshToken, r.UserAgent(), tokenCancelled)
+	rememberMe := r.FormValue("rememberMe") != ""
+	temporaryUserID := uuid.New().String()
+
+	userPreferences := structs.UserPreferences{
+		TemporaryUserID: temporaryUserID,
+		RememberMe:      rememberMe,
+	}
+
+	err = data.TemporaryUserIDAdd(user.Login, temporaryUserID)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
-	/*signedAccessToken, err := tools.GenerateAccessToken(consts.AccessTokenExp15Min, user.UserID)
+	jsonData, err := json.Marshal(userPreferences)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
-	accessClaims, err := tools.AccessTokenValidator(signedAccessToken)
-	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-	}*/
-
-	user.DeviceInfo = r.UserAgent()
-
-	err = data.SessionDataSet(w, r, "auth", user)
-	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
-	}
+	data.UserPreferenceCookieSet(w, jsonData)
 
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }

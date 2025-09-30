@@ -115,7 +115,7 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 	}
 
-	err = data.UserCheck("login", user.Login, user.Password)
+	err = data.UserCheck(user.Login, user.Password)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["notExist"].Msg})
@@ -145,7 +145,7 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 	rememberMe := r.FormValue("rememberMe") != ""
 	temporaryUserID := uuid.New().String()
 
-	preferences := structs.UserPreferences{
+	userPreferences := structs.UserPreferences{
 		TemporaryUserID: temporaryUserID,
 		RememberMe:      rememberMe,
 	}
@@ -157,7 +157,7 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jsonData, err := json.Marshal(preferences)
+	jsonData, err := json.Marshal(userPreferences)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)

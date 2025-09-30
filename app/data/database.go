@@ -2,7 +2,6 @@ package data
 
 import (
 	"database/sql"
-	"fmt"
 	"os"
 
 	"github.com/go-sql-driver/mysql"
@@ -14,11 +13,17 @@ var db *sql.DB
 
 const (
 	userInsertQuery  = "insert into user (userId,login,email,passwordHash,temporaryUserID,permanentUserID,temporaryCancelled) values(?,?,?,?,?,?,?)"
-	temporaryIDQuery = "update user set temporaryUserID where login = ?"
 	tokenInsertQuery = "insert into token (userId,token,deviceInfo,tokenCancelled) values (?,?,?,?)"
-	tokenSelectQuery = "select refreshToken from token where userID =? limit 1"
-	yauthSelectQuery = "select email from user where email = ? limit 1"
 	yauthInsertQuery = "insert into user (login,email) values(?,?)"
+
+	userSelectQuery   = "select passwordHash, permanentUserID from user where %s = ? limit 1"
+	tokenSelectQuery  = "select refreshToken,tokenCancelled,deviceInfo from token where permanentUserID =? and deviceInfo =? limit 1"
+	yauthSelectQuery  = "select email from user where email = ? limit 1"
+	mwUserSelectQuery = "select permanentUserID from user where %s = ? limit 1"
+
+	temporaryIDUpdateQuery = "update user set temporaryUserID = ? where login = ?"
+	tokenUpdateQuery       = "update token set tokenCancelled =? where refreshToken =? and deviceInfo =?"
+	temporaryUserIDQuery   = "update user set tokenCancelled =? where temporaryUserID =?"
 )
 
 func DBConn() error {
@@ -47,15 +52,16 @@ func DBConn() error {
 	return nil
 }
 
-func query(s string) string {
-	return fmt.Sprintf("select passwordHash, permanentUserID,temporaryCancelled from user where %s = ? limit 1", s)
+func DBClose() {
+	if db != nil {
+		db.Close()
+	}
 }
 
-func UserCheck(queryValue string, login, password string) error {
-	row := db.QueryRow(query(queryValue), login)
+func UserCheck(login, password string) error {
+	row := db.QueryRow(userSelectQuery, login)
 	var passwordHash string
-	var permanentUserID string
-	err := row.Scan(&passwordHash, &permanentUserID)
+	err := row.Scan(&passwordHash)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -73,12 +79,46 @@ func UserCheck(queryValue string, login, password string) error {
 	return nil
 }
 
-func TemporaryUserIDAdd(login, temporaryUserID string) error {
-	_, err := db.Exec(temporaryIDQuery, temporaryUserID, login)
+func RefreshTokenCheck(permanentUserID, userAgent string) (string, string, bool, error) {
+	row := db.QueryRow(tokenSelectQuery, permanentUserID)
+	var refreshToken string
+	var deviceInfo string
+	var tokenCancelled bool
+
+	err := row.Scan(&refreshToken, &deviceInfo, &tokenCancelled)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", "", false, errors.WithStack(err)
+		}
+		return "", "", false, errors.WithStack(err)
+	}
+	return refreshToken, deviceInfo, tokenCancelled, nil
+}
+
+func YauthUserCheck(email string) error {
+	row := db.QueryRow(yauthSelectQuery, email)
+	var existingEmail string
+	err := row.Scan(&existingEmail)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return errors.WithStack(err)
+		}
 		return errors.WithStack(err)
 	}
+
 	return nil
+}
+
+func MWUsernCheck(key string) (string, bool, error) {
+	row := db.QueryRow(mwUserSelectQuery, key)
+	var permanentUserID string
+	var temporaryUserID bool
+	err := row.Scan(&permanentUserID, &temporaryUserID)
+	if err != nil {
+		return "", false, errors.WithStack(err)
+	}
+	return permanentUserID, temporaryUserID, nil
 }
 
 func UserAdd(login, email, password, temporaryUserID, permanentUserID string, temporaryCancelled bool) error {
@@ -96,19 +136,12 @@ func UserAdd(login, email, password, temporaryUserID, permanentUserID string, te
 	return nil
 }
 
-func RefreshTokenCheck(userID string) (string, string, bool, error) {
-	row := db.QueryRow(tokenSelectQuery, userID)
-	var refreshToken string
-	var deviceInfo string
-	var cancelled bool
-	err := row.Scan(&refreshToken, &cancelled)
+func TemporaryUserIDAdd(login, temporaryUserID string) error {
+	_, err := db.Exec(temporaryIDUpdateQuery, temporaryUserID, login)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return "", "", false, errors.WithStack(err)
-		}
-		return "", "", false, errors.WithStack(err)
+		return errors.WithStack(err)
 	}
-	return refreshToken, deviceInfo, cancelled, nil
+	return nil
 }
 
 func RefreshTokenAdd(permanentUserID, refreshToken, deviceInfo string, tokenCancelled bool) error {
@@ -116,25 +149,6 @@ func RefreshTokenAdd(permanentUserID, refreshToken, deviceInfo string, tokenCanc
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	return nil
-}
-
-//func TokenCancel(jti string) error {
-//	db.QueryRow()
-//}
-
-func YauthUserCheck(email string) error {
-	row := db.QueryRow(yauthSelectQuery, email)
-	var existingEmail string
-	err := row.Scan(&existingEmail)
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return errors.WithStack(err)
-		}
-		return errors.WithStack(err)
-	}
-
 	return nil
 }
 
@@ -146,8 +160,18 @@ func YauthUserAdd(login, email string) error {
 	return nil
 }
 
-func DBClose() {
-	if db != nil {
-		db.Close()
+func TokenCancel(refreshToken, deviceInfo string) error {
+	_, err := db.Exec(tokenUpdateQuery, true)
+	if err != nil {
+		return errors.WithStack(err)
 	}
+	return err
+}
+
+func TemporaryUserIDCancel(temporaryUserID string) error {
+	_, err := db.Exec(temporaryUserIDQuery, true)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return err
 }

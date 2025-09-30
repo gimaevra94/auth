@@ -11,3 +11,9 @@ type UserPreferences struct {
 	TemporaryUserID string
 	RememberMe      bool
 }
+
+type Revocate struct {
+	RefreshToken string
+	DeviceInfo   string
+	UserPreferences
+}
