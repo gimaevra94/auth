@@ -57,7 +57,37 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	refreshToken, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, false)
+	yandexUser, err := getYandexUserInfo(yandexAccessToken)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	err = data.YauthUserCheck(yandexUser.Login)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			err = data.YauthUserAdd(yandexUser.Login, yandexUser.Email)
+			if err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+		}
+	}
+
+	temporaryUserID := uuid.New().String()
+	data.TemporaryUserIDCookieSet(w, temporaryUserID)
+
+	err = data.TemporaryUserIDAdd(user.Login, temporaryUserID)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	rememberMe := r.FormValue("rememberMe") != ""
+	refreshToken, err = tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -70,48 +100,15 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 	}
 
-	yandexUser, err := getYandexUserInfo(yandexAccessToken)
+	tokenCancelled := false
+	err = data.RefreshTokenAdd(permanentUserID, refreshToken, r.UserAgent(), tokenCancelled)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
-	err = data.YauthUserCheck(yandexUser.Email)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			err = data.YauthUserAdd(yandexUser.Login, yandexUser.Email)
-			if err != nil {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-				return
-			}
-		}
-	}
-
-	rememberMe := r.FormValue("rememberMe") != ""
-	temporaryUserID := uuid.New().String()
-
-	userPreferences := structs.UserPreferences{
-		TemporaryUserID: temporaryUserID,
-		RememberMe:      rememberMe,
-	}
-
-	err = data.TemporaryUserIDAdd(user.Login, temporaryUserID)
-	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
-	}
-
-	jsonData, err := json.Marshal(userPreferences)
-	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
-	}
-
-	data.UserPreferenceCookieSet(w, jsonData)
+	data.set(w, jsonData)
 
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }

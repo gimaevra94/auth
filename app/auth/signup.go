@@ -58,8 +58,6 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 
-				return
-
 			} else if strings.Contains(err.Error(), "email") {
 				err := data.SessionDataSet(w, r, "captcha", captchaCounter-1)
 				if err != nil {
@@ -74,7 +72,6 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
-				return
 
 			} else if strings.Contains(err.Error(), "password") {
 				err := data.SessionDataSet(w, r, "captcha", captchaCounter-1)
@@ -90,7 +87,6 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
-				return
 			}
 
 			log.Printf("%+v", err)
@@ -124,7 +120,7 @@ func SignUpUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = data.UserCheck(user.Login, user.Password)
+	_, err = data.UserCheck(user.Login, user.Password)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			CodeSend(w, r)
@@ -209,7 +205,6 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rememberMe := r.FormValue("rememberMe") != ""
-
 	refreshToken, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe)
 	if err != nil {
 		log.Printf("%+v", err)
@@ -235,7 +230,6 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tokenCancelled := false
-
 	err = data.RefreshTokenAdd(permanentUserID, refreshToken, r.UserAgent(), tokenCancelled)
 	if err != nil {
 		log.Printf("%+v", err)

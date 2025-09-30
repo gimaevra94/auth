@@ -7,13 +7,8 @@ type User struct {
 	ServerCode string `sql:"serverCode"`         //
 }
 
-type UserPreferences struct {
+type RevocatePreference struct {
+	RefreshToken    string
+	DeviceInfo      string
 	TemporaryUserID string
-	RememberMe      bool
-}
-
-type Revocate struct {
-	RefreshToken string
-	DeviceInfo   string
-	UserPreferences
 }

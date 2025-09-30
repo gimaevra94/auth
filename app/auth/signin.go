@@ -2,7 +2,6 @@ package auth
 
 import (
 	"database/sql"
-	"encoding/json"
 	"log"
 	"net/http"
 	"strings"
@@ -115,7 +114,7 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 	}
 
-	err = data.UserCheck(user.Login, user.Password)
+	permanentUserID, err := data.UserCheck(user.Login, user.Password)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["notExist"].Msg})
@@ -142,14 +141,9 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rememberMe := r.FormValue("rememberMe") != ""
 	temporaryUserID := uuid.New().String()
-
-	userPreferences := structs.UserPreferences{
-		TemporaryUserID: temporaryUserID,
-		RememberMe:      rememberMe,
-	}
-
+	data.TemporaryUserIDCookieSet(w, temporaryUserID)
+	
 	err = data.TemporaryUserIDAdd(user.Login, temporaryUserID)
 	if err != nil {
 		log.Printf("%+v", err)
@@ -157,14 +151,27 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jsonData, err := json.Marshal(userPreferences)
+	rememberMe := r.FormValue("rememberMe") != ""
+	refreshToken, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
-	data.UserPreferenceCookieSet(w, jsonData)
+	err = tools.RefreshTokenValidator(refreshToken)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+	}
+
+	tokenCancelled := false
+	err = data.RefreshTokenAdd(permanentUserID, refreshToken, r.UserAgent(), tokenCancelled)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
 
 	captchaCounter := 3
 	err = data.SessionDataSet(w, r, "captcha", captchaCounter)

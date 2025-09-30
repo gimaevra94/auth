@@ -7,21 +7,21 @@ import (
 	"github.com/pkg/errors"
 )
 
-func UserPreferenceCookieSet(w http.ResponseWriter, v []byte) {
+func TemporaryUserIDCookieSet(w http.ResponseWriter, v string) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     "userPreference",
+		Name:     "temporaryUserID",
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
-		Value:    string(v),
+		Value:    v,
 		MaxAge:   consts.TemporaryUserIDExp,
 	})
 }
 
-func ClearCookies(w http.ResponseWriter) {
+func TemporaryUserIDCookiesClear(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     "userPreference",
+		Name:     "temporaryUserID",
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   true,
@@ -30,20 +30,20 @@ func ClearCookies(w http.ResponseWriter) {
 	})
 }
 
-func GetCookies(r *http.Request) (*http.Cookie, error) {
-	cookie, err := r.Cookie("userPreference")
+func TemporaryUserIDCookiesGet(r *http.Request) (*http.Cookie, error) {
+	cookie, err := r.Cookie("temporaryUserID")
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
 	if cookie.Value == "" {
-		return nil, errors.New("userPreference not exist")
+		return nil, errors.New("temporaryUserID not exist")
 	}
 
 	return cookie, nil
 }
 
 func ClearCookiesDev(w http.ResponseWriter, r *http.Request) {
-	ClearCookies(w)
+	TemporaryUserIDCookiesClear(w)
 	http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 }

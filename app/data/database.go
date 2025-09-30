@@ -58,25 +58,26 @@ func DBClose() {
 	}
 }
 
-func UserCheck(login, password string) error {
+func UserCheck(login, password string) (string, error) {
 	row := db.QueryRow(userSelectQuery, login)
 	var passwordHash string
-	err := row.Scan(&passwordHash)
+	var permanentUserID string
+	err := row.Scan(&passwordHash, &permanentUserID)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return errors.WithStack(err)
+			return "", errors.WithStack(err)
 		}
-		return errors.WithStack(err)
+		return "", errors.WithStack(err)
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(passwordHash),
 		[]byte(password))
 	if err != nil {
-		return errors.WithStack(err)
+		return "", errors.WithStack(err)
 	}
 
-	return nil
+	return permanentUserID, nil
 }
 
 func RefreshTokenCheck(permanentUserID, userAgent string) (string, string, bool, error) {
@@ -95,7 +96,7 @@ func RefreshTokenCheck(permanentUserID, userAgent string) (string, string, bool,
 	return refreshToken, deviceInfo, tokenCancelled, nil
 }
 
-func YauthUserCheck(email string) error {
+func YauthUserCheck(login string) error {
 	row := db.QueryRow(yauthSelectQuery, email)
 	var existingEmail string
 	err := row.Scan(&existingEmail)
