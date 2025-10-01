@@ -33,6 +33,8 @@ func initEnv() {
 
 	envVars := []string{
 		"SESSION_SECRET",
+		"SESSION_AUTH_KEY",
+		"SESSION_ENCRYPTION_KEY",
 		"JWT_SECRET",
 		"DB_PASSWORD",
 		"MAIL_SENDER_EMAIL",

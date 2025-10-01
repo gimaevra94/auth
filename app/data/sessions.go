@@ -15,7 +15,10 @@ var loginStore *sessions.CookieStore
 var captchaStore *sessions.CookieStore
 
 func InitStore() *sessions.CookieStore {
-	loginStore = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
+	authKey := []byte(os.Getenv("SESSION_AUTH_KEY"))
+	encryptionKey := []byte(os.Getenv("SESSION_ENCRYPTION_KEY"))
+
+	loginStore = sessions.NewCookieStore(authKey, encryptionKey)
 	thirtyMinutes := 30 * 60
 	loginStore.Options = &sessions.Options{
 		HttpOnly: true,
