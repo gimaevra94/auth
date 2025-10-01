@@ -42,11 +42,34 @@ func Revocate(w http.ResponseWriter, r *http.Request, cookieClear, idCancel, tok
 	}
 
 	if tokenCancel {
-		err := data.TokenCancel(RevocatePreference.RefreshToken, RevocatePreference.DeviceInfo)
+		permanentUserID, _, err := data.MWUserCheck(temporaryUserID)
 		if err != nil {
 			log.Printf("%v", errors.WithStack(err))
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 			return
+		}
+
+		refreshToken, deviceInfo, tokenCancelled, err := data.RefreshTokenCheck(permanentUserID, r.UserAgent())
+		if err != nil {
+			log.Printf("%v", errors.WithStack(err))
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+
+		if deviceInfo != r.UserAgent() {
+			err := errors.New("deviceInfo not match")
+			log.Printf("%v", errors.WithStack(err))
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+
+		if !tokenCancelled {
+			err = data.TokenCancel(refreshToken, deviceInfo)
+			if err != nil {
+				log.Printf("%v", errors.WithStack(err))
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
 		}
 	}
 }
