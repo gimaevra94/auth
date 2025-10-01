@@ -14,11 +14,11 @@ var db *sql.DB
 const (
 	userInsertQuery  = "insert into user (userId,login,email,passwordHash,temporaryUserID,permanentUserID,temporaryCancelled) values(?,?,?,?,?,?,?)"
 	tokenInsertQuery = "insert into token (userId,token,deviceInfo,tokenCancelled) values (?,?,?,?)"
-	yauthInsertQuery = "insert into user (login,email) values(?,?)"
+	yauthInsertQuery = "insert into user (login, temporaryUserID, permanentUserID, temporaryCancelled) values(?,?,?,?)"
 
 	userSelectQuery   = "select passwordHash, permanentUserID from user where %s = ? limit 1"
 	tokenSelectQuery  = "select refreshToken,tokenCancelled,deviceInfo from token where permanentUserID =? and deviceInfo =? limit 1"
-	yauthSelectQuery  = "select email from user where email = ? limit 1"
+	yauthSelectQuery  = "select * from user where login = ? limit 1"
 	mwUserSelectQuery = "select permanentUserID from user where %s = ? limit 1"
 
 	temporaryIDUpdateQuery = "update user set temporaryUserID = ? where login = ?"
