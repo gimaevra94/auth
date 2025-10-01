@@ -96,19 +96,21 @@ func RefreshTokenCheck(permanentUserID, userAgent string) (string, string, bool,
 	return refreshToken, deviceInfo, tokenCancelled, nil
 }
 
-func YauthUserCheck(login string) error {
+func YauthUserCheck(login string) (string, string, string, error) {
 	row := db.QueryRow(yauthSelectQuery, login)
-	var existingEmail string
-	err := row.Scan(&existingEmail)
+	var email string
+	var password string
+	var permanentUserID string
+	err := row.Scan(&email, &password, &permanentUserID)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return errors.WithStack(err)
+			return "", "", "", errors.WithStack(err)
 		}
-		return errors.WithStack(err)
+		return "", "", "", errors.WithStack(err)
 	}
 
-	return nil
+	return email, password, permanentUserID, nil
 }
 
 func MWUsernCheck(key string) (string, bool, error) {
@@ -153,8 +155,8 @@ func RefreshTokenAdd(permanentUserID, refreshToken, deviceInfo string, tokenCanc
 	return nil
 }
 
-func YauthUserAdd(login, email string) error {
-	_, err := db.Exec(yauthInsertQuery, login, email)
+func YauthUserAdd(login, temporaryUserID, permanentUserID string, temporaryCancelled bool) error {
+	_, err := db.Exec(yauthInsertQuery, login, temporaryUserID, permanentUserID, temporaryCancelled)
 	if err != nil {
 		return errors.WithStack(err)
 	}
