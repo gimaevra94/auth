@@ -212,12 +212,6 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = tools.RefreshTokenValidate(refreshToken)
-	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-	}
-
 	temporaryUserID := uuid.New().String()
 	permanentUserID := uuid.New().String()
 	temporaryCancelled := false
