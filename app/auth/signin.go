@@ -181,5 +181,12 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	err = data.AuthSessionEnd(w, r)
+	if err != nil {
+		log.Printf("%v", errors.WithStack(err))
+		http.Redirect(w, r, consts.SignInURL, http.StatusFound)
+		return
+	}
+
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }

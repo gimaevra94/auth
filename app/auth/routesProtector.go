@@ -74,13 +74,6 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 			return
 		}
 
-		err = data.SessionEnd(w, r)
-		if err != nil {
-			log.Printf("%v", errors.WithStack(err))
-			http.Redirect(w, r, consts.SignInURL, http.StatusFound)
-			return
-		}
-
 		next.ServeHTTP(w, r)
 	})
 }
