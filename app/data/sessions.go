@@ -16,12 +16,12 @@ var captchaStore *sessions.CookieStore
 
 func InitStore() *sessions.CookieStore {
 	loginStore = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
-	threeMinutes := 180
+	thirtyMinutes := 30 * 60
 	loginStore.Options = &sessions.Options{
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 		Path:     "/",
-		MaxAge:   threeMinutes,
+		MaxAge:   thirtyMinutes,
 		Secure:   false,
 	}
 
