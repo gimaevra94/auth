@@ -64,40 +64,30 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var permanentUserID string
-	err = data.YauthUserCheck(yandexUser.Login)
+	temporaryUserID := uuid.New().String()
+	permanentUserID := uuid.New().String()
+	temporaryCancelled := false
+
+	email, password, pepermanentID, err := data.YauthUserCheck(yandexUser.Login)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			err = data.YauthUserAdd(yandexUser.Login, yandexUser.Email)
-			if err != nil {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-				return
-			}
-			// Присвоить permanentUserID после добавления нового пользователя
-			permanentUserID, err = data.GetPermanentUserIDByLogin(yandexUser.Login)
-			if err != nil {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-				return
-			}
-		} else {
-			log.Printf("%+v", err)
-			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-			return
-		}
-	} else {
-		// Присвоить permanentUserID для существующего пользователя
-		permanentUserID, err = data.GetPermanentUserIDByLogin(yandexUser.Login)
-		if err != nil {
-			log.Printf("%+v", err)
-			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-			return
-		}
-	}
 
-	temporaryUserID := uuid.New().String()
-	data.TemporaryUserIDCookieSet(w, temporaryUserID)
+			err = data.YauthUserAdd(yandexUser.Login, temporaryUserID, permanentUserID, temporaryCancelled)
+			if err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+		}
+
+			log.Printf("%+v", err)
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+
+	if email == "" && password == "" && pepermanentID != "" {
+		data.TemporaryUserIDCookieSet(w, temporaryUserID)
+	}
 
 	err = data.TemporaryUserIDAdd(user.Login, temporaryUserID)
 	if err != nil {
