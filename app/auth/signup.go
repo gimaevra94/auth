@@ -19,7 +19,7 @@ import (
 func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 	var user structs.User
 
-	captchaCounter, err := data.SessionGetCaptcha(r, "captcha")
+	captchaCounter, err := data.SessionCaptchaGet(r, "captcha")
 	if err != nil {
 		if strings.Contains(err.Error(), "not exist") {
 			captchaCounter = 3
@@ -41,7 +41,7 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 			Password: password,
 		}
 
-		err = tools.InputValidator(r, user.Login, user.Email, user.Password, false, false)
+		err = tools.InputValidate(r, user.Login, user.Email, user.Password, false, false)
 		if err != nil {
 			if strings.Contains(err.Error(), "login") {
 				err := data.SessionDataSet(w, r, "captcha", captchaCounter-1)
@@ -113,7 +113,7 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 func SignUpUserCheck(w http.ResponseWriter, r *http.Request) {
-	user, err := data.SessionGetUser(r)
+	user, err := data.SessionUserGet(r)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -151,14 +151,14 @@ func SignUpUserCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 func CodeSend(w http.ResponseWriter, r *http.Request) {
-	user, err := data.SessionGetUser(r)
+	user, err := data.SessionUserGet(r)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
-	serverCode, err := tools.AuthCodeSender(user.Email)
+	serverCode, err := tools.AuthCodeSend(user.Email)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -180,7 +180,7 @@ func CodeSend(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserAdd(w http.ResponseWriter, r *http.Request) {
-	user, err := data.SessionGetUser(r)
+	user, err := data.SessionUserGet(r)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -188,7 +188,7 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	clientCode := r.FormValue("clientCode")
-	err = tools.CodeValidator(r, clientCode, user.ServerCode)
+	err = tools.CodeValidate(r, clientCode, user.ServerCode)
 	if err != nil {
 		if strings.Contains(err.Error(), "exist") {
 			log.Printf("%+v", err)
@@ -212,7 +212,7 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = tools.RefreshTokenValidator(refreshToken)
+	err = tools.RefreshTokenValidate(refreshToken)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)

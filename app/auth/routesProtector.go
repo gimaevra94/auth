@@ -59,7 +59,7 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 			return
 		}
 
-		err = tools.RefreshTokenValidator(refreshToken)
+		err = tools.RefreshTokenValidate(refreshToken)
 		if err != nil {
 			Revocate(w, r, true, true, true)
 			http.Redirect(w, r, consts.SignInURL, http.StatusFound)

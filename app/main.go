@@ -66,8 +66,8 @@ func initRouter() *chi.Mux {
 	})
 
 	r.Get("/dev", func(w http.ResponseWriter, r *http.Request) {
-		data.ClearCookies(w)
-		err := data.SessionEnd(w, r)
+		data.ClearCookiesDev(w, r)
+		err := data.AuthSessionEnd(w, r)
 		if err != nil {
 			log.Printf("%+v", err)
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)

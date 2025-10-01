@@ -36,7 +36,7 @@ func YandexAuthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
-	user, err := data.SessionGetUser(r)
+	user, err := data.SessionUserGet(r)
 	if err != nil {
 		log.Printf("%v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -114,7 +114,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = tools.RefreshTokenValidator(refreshToken)
+	err = tools.RefreshTokenValidate(refreshToken)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)

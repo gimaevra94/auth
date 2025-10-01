@@ -15,7 +15,7 @@ var (
 	passwordRegex = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ\d!@#$%^&*\-\)]{4,30}$`)
 )
 
-func RefreshTokenValidator(refreshToken string) error {
+func RefreshTokenValidate(refreshToken string) error {
 	signedToken, err := jwt.ParseWithClaims(refreshToken, &jwt.StandardClaims{}, func(t *jwt.Token) (interface{}, error) {
 		if t.Method != jwt.SigningMethodHS256 {
 			err := errors.New("unexpected signing method")
@@ -94,7 +94,7 @@ func InputValidator(r *http.Request, login, email, password string, IsSignIn, Is
 	return nil
 }
 
-func CodeValidator(r *http.Request, clientCode, serverCode string) error {
+func CodeValidate(r *http.Request, clientCode, serverCode string) error {
 	if clientCode == "" {
 		return errors.WithStack(errors.New("clientCode not exist"))
 	}

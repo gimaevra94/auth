@@ -74,7 +74,7 @@ func mailSend(senderEmail, email string, auth smtp.Auth, msg []byte) error {
 	return nil
 }
 
-func AuthCodeSender(email string) (string, error) {
+func AuthCodeSend(email string) (string, error) {
 	senderEmail = os.Getenv("MAIL_SENDER_EMAIL")
 	msCode := codeGenerate()
 	auth := smtpAuth(senderEmail)

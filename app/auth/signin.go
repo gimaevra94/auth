@@ -23,7 +23,7 @@ type SignInPageData struct {
 func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 	var user structs.User
 
-	captchaCounter, err := data.SessionGetCaptcha(r, "captcha")
+	captchaCounter, err := data.SessionCaptchaGet(r, "captcha")
 	if err != nil {
 		if strings.Contains(err.Error(), "not exist") {
 			captchaCounter = 3
@@ -45,7 +45,7 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 			Password: password,
 		}
 
-		err = tools.InputValidator(r, user.Login, "", user.Password, true, false)
+		err = tools.InputValidate(r, user.Login, "", user.Password, true, false)
 		if err != nil {
 			if strings.Contains(err.Error(), "login") {
 				err := data.SessionDataSet(w, r, "captcha", captchaCounter-1)
@@ -108,7 +108,7 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
-	user, err := data.SessionGetUser(r)
+	user, err := data.SessionUserGet(r)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -159,7 +159,7 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = tools.RefreshTokenValidator(refreshToken)
+	err = tools.RefreshTokenValidate(refreshToken)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
