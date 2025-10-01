@@ -25,8 +25,8 @@ const (
 func YandexAuthHandler(w http.ResponseWriter, r *http.Request) {
 	authParams := url.Values{
 		"response_type": {"code"},
-		"client_id":     {clientID},
-		"redirect_uri":  {"/ya_callback"},
+		"client_id":     {os.Getenv("clientID")},
+		"redirect_uri":  {consts.YandexCallbackURL},
 	}
 
 	authURLWithParamsUrl := authURL + "?" + authParams.Encode()

@@ -9,9 +9,10 @@ const (
 	SignInURL           = "/sign-in"
 	SignInInputCheckURL = "/sign-in-input-check"
 
-	HomeURL   = "/home"
-	LogoutURL = "/logout"
-	Err500URL = "/500"
+	HomeURL           = "/home"
+	LogoutURL         = "/logout"
+	Err500URL         = "/500"
+	YandexCallbackURL = "/ya_callback"
 
 	TemporaryUserIDExp     = 30 * 24 * 60 * 60
 	RefreshTokenExp7Days   = 7 * 24 * 60 * 60
