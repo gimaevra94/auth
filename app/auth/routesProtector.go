@@ -20,7 +20,7 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 		}
 
 		temporaryUserID := cookie.Value
-		permanentUserID, temporaryCancelled, err := data.MWUserCheck(temporaryUserID)
+		login, email, permanentUserID, temporaryCancelled, err := data.MWUserCheck(temporaryUserID)
 		if err != nil {
 			log.Printf("%v", errors.WithStack(err))
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -61,7 +61,12 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 
 		if tokenCancelled {
 			Revocate(w, r, true, true, false)
-			//алерт на почту
+			err := tools.SendSuspiciousLoginEmail(login, email, deviceInfo)
+			if err != nil {
+				log.Printf("%v", errors.WithStack(err))
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
 			http.Redirect(w, r, consts.SignInURL, http.StatusFound)
 			return
 		}

@@ -12,14 +12,14 @@ import (
 var db *sql.DB
 
 const (
-	userInsertQuery  = "insert into user (userId,login,email,passwordHash,temporaryUserID,permanentUserID,temporaryCancelled) values(?,?,?,?,?,?,?)"
+	userInsertQuery  = "insert into user (login,email,passwordHash,temporaryUserID,permanentUserID,temporaryCancelled) values(?,?,?,?,?,?,?)"
 	tokenInsertQuery = "insert into token (userId,token,deviceInfo,tokenCancelled) values (?,?,?,?)"
 	yauthInsertQuery = "insert into user (login, temporaryUserID, permanentUserID, temporaryCancelled) values(?,?,?,?)"
 
-	userSelectQuery   = "select passwordHash, permanentUserID from user where %s = ? limit 1"
-	tokenSelectQuery  = "select refreshToken,tokenCancelled,deviceInfo from token where permanentUserID =? and deviceInfo =? limit 1"
-	yauthSelectQuery  = "select * from user where login = ? limit 1"
-	mwUserSelectQuery = "select permanentUserID from user where %s = ? limit 1"
+	userSelectQuery        = "select passwordHash, permanentUserID from user where temporaryUserID = ? limit 1"
+	tokenSelectQuery       = "select refreshToken,tokenCancelled,deviceInfo from token where permanentUserID =? and deviceInfo =? limit 1"
+	yauthSelectQuery       = "select email,password,temporaryUserID from user where login = ? limit 1"
+	mwUserSelectQuery      = "select login, email, permanentUserID, temporaryCancelled from user where temporaryUserID = ? limit 1"
 
 	temporaryIDUpdateQuery = "update user set temporaryUserID = ? where login = ?"
 	tokenUpdateQuery       = "update token set tokenCancelled =? where refreshToken =? and deviceInfo =?"
@@ -113,15 +113,17 @@ func YauthUserCheck(login string) (string, string, string, error) {
 	return email, password, permanentUserID, nil
 }
 
-func MWUserCheck(key string) (string, bool, error) {
+func MWUserCheck(key string) (string, string, string, bool, error) {
 	row := db.QueryRow(mwUserSelectQuery, key)
+	var login string
+	var email string
 	var permanentUserID string
 	var temporaryUserID bool
-	err := row.Scan(&permanentUserID, &temporaryUserID)
+	err := row.Scan(&login, &email, &permanentUserID, &temporaryUserID)
 	if err != nil {
-		return "", false, errors.WithStack(err)
+		return "", "", "", false, errors.WithStack(err)
 	}
-	return permanentUserID, temporaryUserID, nil
+	return login, email, permanentUserID, temporaryUserID, nil
 }
 
 func UserAdd(login, email, password, temporaryUserID, permanentUserID string, temporaryCancelled bool) error {
