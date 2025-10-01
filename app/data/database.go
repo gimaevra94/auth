@@ -113,7 +113,7 @@ func YauthUserCheck(login string) (string, string, string, error) {
 	return email, password, permanentUserID, nil
 }
 
-func MWUsernCheck(key string) (string, bool, error) {
+func MWUserCheck(key string) (string, bool, error) {
 	row := db.QueryRow(mwUserSelectQuery, key)
 	var permanentUserID string
 	var temporaryUserID bool

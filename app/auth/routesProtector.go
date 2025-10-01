@@ -20,7 +20,7 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 		}
 
 		temporaryUserID := cookie.Value
-		permanentUserID, temporaryCancelled, err := data.MWUsernCheck(temporaryUserID)
+		permanentUserID, temporaryCancelled, err := data.MWUserCheck(temporaryUserID)
 		if err != nil {
 			log.Printf("%v", errors.WithStack(err))
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
