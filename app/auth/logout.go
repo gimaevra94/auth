@@ -42,7 +42,7 @@ func Revocate(w http.ResponseWriter, r *http.Request, cookieClear, idCancel, tok
 	}
 
 	if tokenCancel {
-		permanentUserID, _, err := data.MWUserCheck(temporaryUserID)
+		_, _, permanentUserID, _, err := data.MWUserCheck(temporaryUserID)
 		if err != nil {
 			log.Printf("%v", errors.WithStack(err))
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
