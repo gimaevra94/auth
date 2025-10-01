@@ -7,12 +7,9 @@ import (
 
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
-	"github.com/gimaevra94/auth/app/structs"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/pkg/errors"
 )
-
-var RevocatePreference structs.RevocatePreference
 
 func IsExpiredTokenMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -48,10 +45,6 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 			return
 		}
-
-		RevocatePreference := structs.RevocatePreference{}
-		RevocatePreference.RefreshToken = refreshToken
-		RevocatePreference.DeviceInfo = deviceInfo
 
 		if deviceInfo != r.UserAgent() {
 			Revocate(w, r, true, true, true)

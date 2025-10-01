@@ -30,11 +30,10 @@ func Revocate(w http.ResponseWriter, r *http.Request, cookieClear, idCancel, tok
 
 	if cookieClear {
 		data.TemporaryUserIDCookiesClear(w)
-		return
 	}
 
 	if idCancel {
-		err := data.TemporaryUserIDCancel(RevocatePreference.TemporaryUserID)
+		err := data.TemporaryUserIDCancel(temporaryUserID)
 		if err != nil {
 			log.Printf("%v", errors.WithStack(err))
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
