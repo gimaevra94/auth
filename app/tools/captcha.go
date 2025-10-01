@@ -18,7 +18,7 @@ func Captcha(r *http.Request) error {
 
 	captchaURL := "https://www.google.com/recaptcha/api/siteverify"
 	captchaParams := url.Values{
-		"secret": {os.Getenv("GOOGLE_CAPTCHA_SECRET")},
+		"secret":   {os.Getenv("GOOGLE_CAPTCHA_SECRET")},
 		"response": {captchaToken},
 	}
 
@@ -26,6 +26,7 @@ func Captcha(r *http.Request) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
+	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	var result map[string]interface{}

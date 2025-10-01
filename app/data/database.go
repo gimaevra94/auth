@@ -20,7 +20,7 @@ const (
 	tokenSelectQuery       = "select refreshToken,tokenCancelled,deviceInfo from token where permanentUserID =? and deviceInfo =? limit 1"
 	yauthSelectQuery       = "select email,password,temporaryUserID from user where login = ? limit 1"
 	mwUserSelectQuery      = "select login, email, permanentUserID, temporaryCancelled from user where temporaryUserID = ? limit 1"
-
+	
 	temporaryIDUpdateQuery = "update user set temporaryUserID = ? where login = ?"
 	tokenUpdateQuery       = "update token set tokenCancelled =? where refreshToken =? and deviceInfo =?"
 	temporaryUserIDQuery   = "update user set tokenCancelled =? where temporaryUserID =?"
@@ -166,7 +166,7 @@ func YauthUserAdd(login, temporaryUserID, permanentUserID string, temporaryCance
 }
 
 func TokenCancel(refreshToken, deviceInfo string) error {
-	_, err := db.Exec(tokenUpdateQuery, true)
+	_, err := db.Exec(tokenUpdateQuery, true, deviceInfo)
 	if err != nil {
 		return errors.WithStack(err)
 	}

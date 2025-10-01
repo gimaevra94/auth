@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
@@ -34,12 +35,6 @@ func YandexAuthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
-	user, err := data.SessionUserGet(r)
-	if err != nil {
-		log.Printf("%v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-	}
-
 	yauthCode := r.URL.Query().Get("code")
 
 	if yauthCode == "" {
@@ -87,7 +82,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		data.TemporaryUserIDCookieSet(w, temporaryUserID)
 	}
 
-	err = data.TemporaryUserIDAdd(user.Login, temporaryUserID)
+	err = data.TemporaryUserIDAdd(yandexUser.Login, temporaryUserID)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -109,8 +104,6 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
-
 
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }
