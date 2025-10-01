@@ -20,6 +20,14 @@ func SimpleLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 func Revocate(w http.ResponseWriter, r *http.Request, cookieClear, idCancel, tokenCancel bool) {
+	cookie, err := data.TemporaryUserIDCookiesGet(r)
+	if err != nil {
+		log.Printf("%v", errors.WithStack(err))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+	temporaryUserID := cookie.Value
+
 	if cookieClear {
 		data.TemporaryUserIDCookiesClear(w)
 		return
