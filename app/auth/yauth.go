@@ -17,11 +17,9 @@ import (
 )
 
 const (
-	clientID     = "0c0c69265b9549b7ae1b994a2aecbcfb"
-	clientSecret = "a72af8c056c647c99d6b0ab470569b0b"
-	authURL      = "https://oauth.yandex.ru/authorize"
-	tokenURL     = "https://oauth.yandex.ru/token"
-	userInfoURL  = "https://login.yandex.ru/info"
+	authURL     = "https://oauth.yandex.ru/authorize"
+	tokenURL    = "https://oauth.yandex.ru/token"
+	userInfoURL = "https://login.yandex.ru/info"
 )
 
 func YandexAuthHandler(w http.ResponseWriter, r *http.Request) {
@@ -121,9 +119,9 @@ func getAccessToken(yauthCode string) (string, error) {
 	tokenParams := url.Values{
 		"grant_type":    {"authorization_code"},
 		"code":          {yauthCode},
-		"client_id":     {clientID},
-		"client_secret": {clientSecret},
-		"redirect_uri":  {consts.HomeURL},
+		"client_id":     {os.Getenv("clientID")},
+		"client_secret": {os.Getenv("clientSecret")},
+		"redirect_uri":  {consts.YandexCallbackURL},
 	}
 
 	resp, err := http.PostForm(tokenURL, tokenParams)

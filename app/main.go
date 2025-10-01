@@ -40,6 +40,8 @@ func initEnv() {
 		"MAIL_SENDER_EMAIL",
 		"MAIL_PASSWORD",
 		"GOOGLE_CAPTCHA_SECRET",
+		"clientID",
+		"clientSecret",
 	}
 
 	for _, v := range envVars {
@@ -88,7 +90,7 @@ func initRouter() *chi.Mux {
 	r.Post(consts.SignInInputCheckURL, auth.SignInInputCheck)
 
 	r.Get("/yauth", auth.YandexAuthHandler)
-	r.Get("/ya_callback", auth.YandexCallbackHandler)
+	r.Get(consts.YandexCallbackURL, auth.YandexCallbackHandler)
 
 	r.With(auth.IsExpiredTokenMW).Get(consts.HomeURL, htmls.Home)
 	r.With(auth.IsExpiredTokenMW).Get(consts.LogoutURL, auth.Logout)
