@@ -36,35 +36,7 @@ func RefreshTokenValidate(refreshToken string) error {
 	return nil
 }
 
-/*func AccessTokenValidator(token string) (*structs.AccessTokenClaims, error) {
-
-	signedToken, err := jwt.ParseWithClaims(token, &structs.AccessTokenClaims{}, func(t *jwt.Token) (interface{}, error) {
-		if t.Method != jwt.SigningMethodHS256 {
-			err := errors.New("unexpected signing method")
-			return nil, errors.WithStack(err)
-		}
-		jwtSecret := []byte(os.Getenv("JWT_SECRET"))
-		return jwtSecret, nil
-	})
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	claims, ok := signedToken.Claims.(*structs.AccessTokenClaims)
-	if !ok {
-		err := errors.New("Claims deserialize error")
-		return nil, errors.WithStack(err)
-	}
-
-	if !signedToken.Valid {
-		err := errors.New("Access token invalid")
-		return nil, errors.WithStack(err)
-	}
-
-	return claims, nil
-}*/
-
-func InputValidator(r *http.Request, login, email, password string, IsSignIn, IsPasswordReset bool) error {
+func InputValidate(r *http.Request, login, email, password string, IsSignIn, IsPasswordReset bool) error {
 
 	if login == "" {
 		return errors.WithStack(errors.New("login not exist"))

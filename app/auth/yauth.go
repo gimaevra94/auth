@@ -80,10 +80,10 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-			log.Printf("%+v", err)
-			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-			return
-		}
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
 
 	if email == "" && password == "" && pepermanentID != "" {
 		data.TemporaryUserIDCookieSet(w, temporaryUserID)

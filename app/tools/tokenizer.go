@@ -30,23 +30,3 @@ func GenerateRefreshToken(refreshTokenExp int, rememberMe bool) (string, error) 
 
 	return signedRefreshToken, nil
 }
-
-/*func GenerateAccessToken(accessTokenExp int, userID string) (string, error) {
-	expiresAt := time.Duration(accessTokenExp) * time.Second
-	accessTokenClaims := &structs.AccessTokenClaims{
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(expiresAt).Unix(),
-			IssuedAt:  time.Now().Unix(),
-			Subject:   userID,
-		},
-	}
-
-	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessTokenClaims)
-	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
-	signedAccessToken, err := accessToken.SignedString(jwtSecret)
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-
-	return signedAccessToken, nil
-}*/
