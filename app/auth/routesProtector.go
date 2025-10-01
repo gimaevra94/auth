@@ -60,7 +60,6 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 		}
 
 		if tokenCancelled {
-			log.Printf("%v", errors.WithStack(err))
 			Revocate(w, r, true, true, false)
 			//алерт на почту
 			http.Redirect(w, r, consts.SignInURL, http.StatusFound)
