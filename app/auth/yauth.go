@@ -64,6 +64,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var permanentUserID string
 	err = data.YauthUserCheck(yandexUser.Login)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -73,6 +74,25 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
+			// Присвоить permanentUserID после добавления нового пользователя
+			permanentUserID, err = data.GetPermanentUserIDByLogin(yandexUser.Login)
+			if err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+		} else {
+			log.Printf("%+v", err)
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+	} else {
+		// Присвоить permanentUserID для существующего пользователя
+		permanentUserID, err = data.GetPermanentUserIDByLogin(yandexUser.Login)
+		if err != nil {
+			log.Printf("%+v", err)
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
 		}
 	}
 
@@ -87,7 +107,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rememberMe := r.FormValue("rememberMe") != ""
-	refreshToken, err = tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe)
+	refreshToken, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -108,7 +128,12 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data.set(w, jsonData)
+	err = data.SessionDataSet(w, r, "auth", yandexUser)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
 
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }

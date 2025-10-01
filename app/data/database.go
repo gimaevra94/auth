@@ -97,7 +97,7 @@ func RefreshTokenCheck(permanentUserID, userAgent string) (string, string, bool,
 }
 
 func YauthUserCheck(login string) error {
-	row := db.QueryRow(yauthSelectQuery, email)
+	row := db.QueryRow(yauthSelectQuery, login)
 	var existingEmail string
 	err := row.Scan(&existingEmail)
 
@@ -159,6 +159,16 @@ func YauthUserAdd(login, email string) error {
 		return errors.WithStack(err)
 	}
 	return nil
+}
+
+func GetPermanentUserIDByLogin(login string) (string, error) {
+	row := db.QueryRow(mwUserSelectQuery, login) // Используем mwUserSelectQuery для получения permanentUserID
+	var permanentUserID string
+	err := row.Scan(&permanentUserID)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	return permanentUserID, nil
 }
 
 func TokenCancel(refreshToken, deviceInfo string) error {
