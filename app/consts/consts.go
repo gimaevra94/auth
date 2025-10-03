@@ -14,6 +14,10 @@ const (
 	Err500URL         = "/500"
 	YandexCallbackURL = "/ya_callback"
 
+	PasswordResetURL      = "/password-reset"
+	PasswordResetEmailURL = "/password-reset-email"
+	SetNewPasswordURL     = "/set-new-password"
+
 	TemporaryUserIDExp     = 30 * 24 * 60 * 60
 	RefreshTokenExp7Days   = 7 * 24 * 60 * 60
 	RefreshTokenExp24Hours = 24 * 60 * 60

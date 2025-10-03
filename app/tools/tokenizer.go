@@ -30,3 +30,26 @@ func GenerateRefreshToken(refreshTokenExp int, rememberMe bool) (string, error) 
 
 	return signedRefreshToken, nil
 }
+
+func GenerateResetToken(email string) (string, time.Time, error) {
+	expirationTime := time.Now().Add(15 * time.Minute)
+	
+	claims := jwt.StandardClaims{
+		ExpiresAt: expirationTime.Unix(),
+		IssuedAt:  time.Now().Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
+	tokenString, err := token.SignedString(jwtSecret)
+	if err != nil {
+		return "", time.Time{}, errors.Wrap(err, "failed to sign reset token")
+	}
+
+	return tokenString, expirationTime, nil
+}
+
+func GenerateResetLink(baseURL, token string) string {
+	return baseURL + "?token=" + token
+}

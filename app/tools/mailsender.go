@@ -16,6 +16,7 @@ var (
 	senderEmail            string
 	authCodeSubject        = "Auth code"
 	suspiciousLoginSubject = "Suspicious Login Alert!"
+	passwordResetSubject   = "Password Reset Request"
 )
 
 func codeGenerate() string {
@@ -43,6 +44,11 @@ func executeTmpl(senderEmail, email, subject string, data any) ([]byte, error) {
 		}
 	case suspiciousLoginSubject:
 		err := BaseTmpl.ExecuteTemplate(&body, "suspiciousLoginMail", data)
+		if err != nil {
+			return []byte{}, errors.WithStack(err)
+		}
+	case passwordResetSubject:
+		err := BaseTmpl.ExecuteTemplate(&body, "PasswordResetEmail", data)
 		if err != nil {
 			return []byte{}, errors.WithStack(err)
 		}
@@ -109,6 +115,24 @@ func SendSuspiciousLoginEmail(email, login, deviceInfo string) error {
 	err = mailSend(senderEmail, email, auth, msg)
 	if err != nil {
 		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+func SendPasswordResetEmail(email, resetLink string) error {
+	senderEmail = os.Getenv("MAIL_SENDER_EMAIL")
+	auth := smtpAuth(senderEmail)
+
+	data := struct{ ResetLink string }{ResetLink: resetLink}
+	msg, err := executeTmpl(senderEmail, email, passwordResetSubject, data)
+	if err != nil {
+		return err
+	}
+
+	err = mailSend(senderEmail, email, auth, msg)
+	if err != nil {
+		return err
 	}
 
 	return nil

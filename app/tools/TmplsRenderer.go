@@ -48,6 +48,9 @@ var (
 	_        = Must(BaseTmpl.Parse(CodeSendTMPL))
 	_        = Must(BaseTmpl.Parse(mailCodeTMPL))
 	_        = Must(BaseTmpl.Parse(suspiciousLoginMailTMPL))
+	_        = Must(BaseTmpl.Parse(PasswordResetTMPL))
+	_        = Must(BaseTmpl.Parse(PasswordResetEmailTMPL))
+	_        = Must(BaseTmpl.Parse(SetNewPasswordTMPL))
 )
 
 type errMsg struct {
@@ -286,6 +289,31 @@ const (
 </html>
 {{ end }}
 `
+	PasswordResetTMPL = `
+{{ define "PasswordReset" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Password Reset</title>
+	<link rel="stylesheet" href="/public/styles.css">
+</head>
+<body>
+	<div class="container">
+		<h1>Password Reset</h1>
+		<p class="message">Enter your email to reset your password.</p>
+		<form method="POST" action="/password-reset-check-email">
+			<div class="form-group">
+				<label for="email">Email</label>
+				<input type="email" id="email" name="email" required autocomplete="email">
+			</div>
+			<button type="submit" class="btn">Submit</button>
+		</form>
+	</div>
+</body>
+</html>
+{{ end }}
+`
 	mailCodeTMPL = `
 {{ define "mailCode" }}
 <!DOCTYPE html>
@@ -419,6 +447,105 @@ const (
         <p class="warning-text">Device Info: {{.DeviceInfo}}</p>
         <p>If this was you, you can ignore this email. If you did not attempt to log in, please secure your account immediately by changing your password.</p>
         <p>Thank you for your vigilance.</p>
+    </div>
+</body>
+</html>
+{{ end }}
+`
+	PasswordResetEmailTMPL = `
+{{ define "PasswordResetEmail" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Password Reset</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --text-color: #e5e7eb;
+            --bg-color: #1f2937;
+            --container-bg: #374151;
+            --border-color: #4b5563;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        .container {
+            max-width: 400px;
+            padding: 2rem;
+            background: var(--container-bg);
+            border-radius: 8px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+        p {
+            margin-bottom: 1.5rem;
+            color: var(--text-color);
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin-top: 1rem;
+            background-color: var(--primary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Password Reset</h1>
+        <p>You have requested a password reset. Please click the link below to reset your password:</p>
+        <p><a href="{{.ResetLink}}" class="button">Reset Password</a></p>
+        <p>If you did not request a password reset, please ignore this email.</p>
+    </div>
+</body>
+</html>
+{{ end }}
+`
+	SetNewPasswordTMPL = `
+{{ define "SetNewPassword" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Set New Password</title>
+    <link rel="stylesheet" href="/public/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Set New Password</h1>
+        {{if .Msg}}<div class="error-message">{{.Msg}}</div>{{end}}
+        <form method="POST" action="/set-new-password">
+            <div class="form-group">
+                <label for="oldPassword">Old Password</label>
+                <input type="password" id="oldPassword" name="oldPassword" required autocomplete="current-password">
+            </div>
+            <div class="form-group">
+                <label for="newPassword">New Password</label>
+                <input type="password" id="newPassword" name="newPassword" required autocomplete="new-password">
+            </div>
+            <div class="form-group">
+                <label for="confirmPassword">Confirm New Password</label>
+                <input type="password" id="confirmPassword" name="confirmPassword" required autocomplete="new-password">
+            </div>
+            <button type="submit" class="btn">Set Password</button>
+        </form>
     </div>
 </body>
 </html>

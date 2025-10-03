@@ -92,10 +92,14 @@ func initRouter() *chi.Mux {
 	r.Get("/yauth", auth.YandexAuthHandler)
 	r.Get(consts.YandexCallbackURL, auth.YandexCallbackHandler)
 
+	r.Get(consts.PasswordResetURL, htmls.PasswordReset)
+	r.Post(consts.SetNewPasswordURL, htmls.SetNewPassword)
+
 	r.With(auth.IsExpiredTokenMW).Get(consts.HomeURL, htmls.Home)
 	r.With(auth.IsExpiredTokenMW).Get(consts.LogoutURL, auth.Logout)
 
 	r.Get(consts.Err500URL, htmls.Err500)
+
 	return r
 }
 

@@ -57,6 +57,24 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func PasswordReset(w http.ResponseWriter, r *http.Request) {
+	err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", nil)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+}
+
+func SetNewPassword(w http.ResponseWriter, r *http.Request) {
+	err := tools.TmplsRenderer(w, tools.BaseTmpl, "SetNewPassword", nil)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+}
+
 func Err500(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, templatesPath+"/500.html")
 }
