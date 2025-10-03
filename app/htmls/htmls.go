@@ -58,7 +58,8 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func PasswordReset(w http.ResponseWriter, r *http.Request) {
-	err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", nil)
+	msg := r.URL.Query().Get("msg")
+	err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", struct{ Msg string }{Msg: msg})
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)

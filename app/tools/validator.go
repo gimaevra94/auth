@@ -36,7 +36,7 @@ func RefreshTokenValidate(refreshToken string) error {
 	return nil
 }
 
-func InputValidate(r *http.Request, login, email, password string, IsSignIn, IsPasswordReset bool) error {
+func InputValidate(r *http.Request, login, email, password string, IsSignIn bool) error {
 
 	if login == "" {
 		return errors.WithStack(errors.New("login not exist"))
@@ -45,21 +45,19 @@ func InputValidate(r *http.Request, login, email, password string, IsSignIn, IsP
 		return errors.WithStack(errors.New("login invalid"))
 	}
 
+	if password == "" {
+		return errors.WithStack(errors.New("password not exist"))
+	}
+	if !passwordRegex.MatchString(password) {
+		return errors.WithStack(errors.New("password invalid"))
+	}
+
 	if !IsSignIn {
 		if email == "" {
 			return errors.WithStack(errors.New("email not exist"))
 		}
 		if !emailRegex.MatchString(email) {
 			return errors.WithStack(errors.New("email invalid"))
-		}
-	}
-
-	if !IsPasswordReset {
-		if password == "" {
-			return errors.WithStack(errors.New("password not exist"))
-		}
-		if !passwordRegex.MatchString(password) {
-			return errors.WithStack(errors.New("password invalid"))
 		}
 	}
 
@@ -73,6 +71,16 @@ func CodeValidate(r *http.Request, clientCode, serverCode string) error {
 
 	if clientCode != serverCode {
 		return errors.WithStack(errors.New("codes not match"))
+	}
+	return nil
+}
+
+func PasswordResetEmailValidate(email string) error {
+	if email == "" {
+		return errors.WithStack(errors.New("email not exist"))
+	}
+	if !emailRegex.MatchString(email) {
+		return errors.WithStack(errors.New("email invalid"))
 	}
 	return nil
 }

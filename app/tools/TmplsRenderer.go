@@ -301,8 +301,9 @@ const (
 <body>
 	<div class="container">
 		<h1>Password Reset</h1>
+		{{if .Msg}}<div class="message">{{.Msg}}</div>{{end}}
 		<p class="message">Enter your email to reset your password.</p>
-		<form method="POST" action="/password-reset-check-email">
+		<form method="POST" action="/password-reset-email">
 			<div class="form-group">
 				<label for="email">Email</label>
 				<input type="email" id="email" name="email" required autocomplete="email">

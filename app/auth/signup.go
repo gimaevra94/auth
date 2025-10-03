@@ -41,7 +41,7 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 			Password: password,
 		}
 
-		err = tools.InputValidate(r, user.Login, user.Email, user.Password, false, false)
+		err = tools.InputValidate(r, user.Login, user.Email, user.Password, false)
 		if err != nil {
 			if strings.Contains(err.Error(), "login") {
 				err := data.SessionDataSet(w, r, "captcha", captchaCounter-1)

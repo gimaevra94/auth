@@ -3,6 +3,7 @@ package data
 import (
 	"database/sql"
 	"os"
+	"time"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
@@ -16,14 +17,19 @@ const (
 	tokenInsertQuery = "insert into token (userId,token,deviceInfo,tokenCancelled) values (?,?,?,?)"
 	yauthInsertQuery = "insert into user (login, temporaryUserID, permanentUserID, temporaryCancelled) values(?,?,?,?)"
 
-	userSelectQuery        = "select passwordHash, permanentUserID from user where temporaryUserID = ? limit 1"
-	tokenSelectQuery       = "select refreshToken,tokenCancelled,deviceInfo from token where permanentUserID =? and deviceInfo =? limit 1"
-	yauthSelectQuery       = "select email,password,temporaryUserID from user where login = ? limit 1"
-	mwUserSelectQuery      = "select login, email, permanentUserID, temporaryCancelled from user where temporaryUserID = ? limit 1"
-	
-	temporaryIDUpdateQuery = "update user set temporaryUserID = ? where login = ?"
-	tokenUpdateQuery       = "update token set tokenCancelled =? where refreshToken =? and deviceInfo =?"
-	temporaryUserIDQuery   = "update user set tokenCancelled =? where temporaryUserID =?"
+	userSelectQuery               = "select passwordHash, permanentUserID from user where temporaryUserID = ? limit 1"
+	passwordResetEmailSelectQuery = "select permanentUserID from user where email = ?"
+	tokenSelectQuery              = "select refreshToken,tokenCancelled,deviceInfo from token where permanentUserID =? and deviceInfo =? limit 1"
+	yauthSelectQuery              = "select email,password,temporaryUserID from user where login = ? limit 1"
+	mwUserSelectQuery             = "select login, email, permanentUserID, temporaryCancelled from user where temporaryUserID = ? limit 1"
+
+	temporaryIDUpdateQuery        = "update user set temporaryUserID = ? where login = ?"
+	tokenUpdateQuery              = "update token set tokenCancelled =? where refreshToken =? and deviceInfo =?"
+	temporaryUserIDQuery          = "update user set tokenCancelled =? where temporaryUserID =?"
+	updatePasswordQuery           = "update user set passwordHash = ? where email = ?"
+	insertPasswordResetTokenQuery = "insert into password_reset_tokens (token, permanentUserID, email, expiresAt, revoked) values (?, ?, ?, ?, ?)"
+	revokePasswordResetTokenQuery = "update password_reset_tokens set revoked = TRUE where token = ?"
+	checkResetTokenStatusQuery    = "select revoked from password_reset_tokens where token = ?"
 )
 
 func DBConn() error {
@@ -77,6 +83,19 @@ func UserCheck(login, password string) (string, error) {
 		return "", errors.WithStack(err)
 	}
 
+	return permanentUserID, nil
+}
+
+func PasswordResetEmailCheck(email string) (string, error) {
+	row := db.QueryRow(passwordResetEmailSelectQuery, email)
+	var permanentUserID string
+	err := row.Scan(&permanentUserID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", errors.WithStack(err)
+		}
+		return "", errors.WithStack(err)
+	}
 	return permanentUserID, nil
 }
 
@@ -179,4 +198,51 @@ func TemporaryUserIDCancel(temporaryUserID string) error {
 		return errors.WithStack(err)
 	}
 	return err
+}
+
+func UpdatePassword(email, newPassword string) error {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword),
+		bcrypt.DefaultCost)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	_, err = db.Exec(updatePasswordQuery, hashedPassword, email)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+// SaveResetToken сохраняет токен сброса пароля в базу данных
+func SaveResetToken(tokenString, permanentUserID, email string, expiresAt time.Time) error {
+	_, err := db.Exec(insertPasswordResetTokenQuery, tokenString, permanentUserID, email, expiresAt, false)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+// RevokeResetToken отзывает токен сброса пароля
+func RevokeResetToken(tokenString string) error {
+	_, err := db.Exec(revokePasswordResetTokenQuery, tokenString)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+// IsResetTokenRevoked проверяет, отозван ли токен сброса пароля
+func IsResetTokenRevoked(tokenString string) (bool, error) {
+	row := db.QueryRow(checkResetTokenStatusQuery, tokenString)
+	var revoked bool
+	err := row.Scan(&revoked)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// Если токен не найден, он считается недействительным/отозванным
+			return true, nil
+		}
+		return false, errors.WithStack(err)
+	}
+	return revoked, nil
 }
