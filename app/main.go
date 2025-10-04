@@ -93,8 +93,8 @@ func initRouter() *chi.Mux {
 	r.Get(consts.YandexCallbackURL, auth.YandexCallbackHandler)
 
 	r.Get(consts.PasswordResetURL, htmls.PasswordReset)
-	r.Post(consts.PasswordResetEmailURL, auth.PasswordResetCheckEmail)
-	r.Post(consts.SetNewPasswordURL, auth.SetNewPasswordHandler)
+	r.Post(consts.PasswordResetEmailURL, auth.PasswordResetEmailCheck)
+	r.Post(consts.SetNewPasswordURL, auth.SetNewPassword)
 
 	r.With(auth.IsExpiredTokenMW).Get(consts.HomeURL, htmls.Home)
 	r.With(auth.IsExpiredTokenMW).Get(consts.LogoutURL, auth.Logout)

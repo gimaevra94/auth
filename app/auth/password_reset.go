@@ -11,9 +11,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-func PasswordResetCheckEmail(w http.ResponseWriter, r *http.Request) {
+func PasswordResetEmailCheck(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
-	err := tools.PasswordResetEmailValidate(email)
+	err := tools.EmailValidate(email)
 	if err != nil {
 		err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", struct{ Msg string }{Msg: tools.ErrMsg["email"].Msg})
 		if err != nil {
@@ -24,7 +24,7 @@ func PasswordResetCheckEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	permanentUserID, err := data.PasswordResetEmailCheck(email)
+	err = data.PasswordResetEmailCheck(email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", struct{ Msg string }{Msg: tools.ErrMsg["notExist"].Msg})
@@ -42,92 +42,84 @@ func PasswordResetCheckEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	baseURL := "http://localhost:8080/set-new-password"
-	resetLink, expiresAt, tokenString, err := tools.GenerateResetLink(email, permanentUserID, baseURL)
+	resetLink, err := tools.GenerateResetLink(email, baseURL)
 	if err != nil {
-		log.Printf("%+v", errors.Wrap(err, "failed to generate reset link"))
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
-	}
-
-	err = data.SaveResetToken(tokenString, permanentUserID, email, expiresAt)
-	if err != nil {
-		log.Printf("%+v", errors.Wrap(err, "failed to save reset token to DB"))
+		log.Printf("%+v", errors.WithStack(err))
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
 	err = tools.SendPasswordResetEmail(email, resetLink)
 	if err != nil {
-		log.Printf("%+v", errors.Wrap(err, "failed to send password reset email"))
+		log.Printf("%+v", errors.WithStack(err))
 		err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", struct{ Msg string }{Msg: tools.MailSendingStatusMsg})
 		if err != nil {
-			log.Printf("%+v", errors.Wrap(err, "failed to render success message"))
+			log.Printf("%+v", errors.WithStack(err))
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 			return
 		}
 	}
 }
 
-// SetNewPasswordHandler обрабатывает установку нового пароля после сброса
-func SetNewPasswordHandler(w http.ResponseWriter, r *http.Request) {
-	tokenString := r.URL.Query().Get("token")
-	if tokenString == "" {
-		log.Println("Reset token missing")
+func SetNewPassword(w http.ResponseWriter, r *http.Request) {
+	signedToken := r.URL.Query().Get("token")
+	if signedToken == "" {
+		log.Println("reset-token not exist")
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
-	claims, err := tools.ValidateResetToken(tokenString)
+	claims, err := tools.ValidateResetToken(signedToken)
 	if err != nil {
-		log.Printf("%+v", errors.Wrap(err, "invalid or expired reset token"))
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound) // или на страницу с ошибкой токена
-		return
-	}
-
-	// Проверяем, отозван ли токен
-	revoked, err := data.IsResetTokenRevoked(tokenString)
-	if err != nil {
-		log.Printf("%+v", errors.Wrap(err, "failed to check if reset token is revoked"))
+		log.Printf("%+v", errors.WithStack(err))
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-	if revoked {
-		log.Println("Attempt to use a revoked or non-existent reset token")
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound) // Токен отозван
+
+	cancelled, err := data.ResetTokenCheck(signedToken)
+	if err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+	if cancelled {
+		err := errors.New("reset-token invalid")
+		log.Printf("%+v", errors.WithStack(err))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
 	newPassword := r.FormValue("newPassword")
 	confirmPassword := r.FormValue("confirmPassword")
 
-	// Заглушка: Здесь должна быть валидация пароля
-	if newPassword == "" || newPassword != confirmPassword {
+	if newPassword != confirmPassword {
 		log.Println("New password validation failed")
 		err := tools.TmplsRenderer(w, tools.BaseTmpl, "SetNewPassword", struct{ Msg string }{Msg: tools.ErrMsg["password"].Msg})
 		if err != nil {
-			log.Printf("%+v", errors.Wrap(err, "failed to render password reset error"))
+			log.Printf("%+v", errors.WithStack(err))
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 			return
 		}
-		return
+
+		err = tools.PasswordValidate(newPassword)
+		if err != nil {
+			log.Printf("%+v", errors.WithStack(err))
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
 	}
 
-	// Заглушка: Обновление пароля в базе данных
-	// claims.Subject будет содержать email пользователя, для которого нужно сбросить пароль
-	err = data.UpdatePassword(claims.Email, newPassword) // Теперь используем claims.Email
+	err = data.UpdatePassword(claims.Email, newPassword)
 	if err != nil {
-		log.Printf("%+v", errors.Wrap(err, "failed to update password in DB"))
+		log.Printf("%+v", errors.WithStack(err))
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
-	// Отзываем токен после успешного сброса пароля
-	err = data.RevokeResetToken(tokenString)
+	err = data.ResetTokenCancel(signedToken)
 	if err != nil {
-		log.Printf("%+v", errors.Wrap(err, "failed to revoke reset token"))
-		// Мы не перенаправляем на 500, так как пароль уже изменен. Просто логируем.
+		log.Printf("%+v", errors.WithStack(err))
 	}
 
-	// Успешный сброс пароля, перенаправление на страницу входа
 	http.Redirect(w, r, consts.SignInURL+"?msg=PasswordSuccessfullyReset", http.StatusFound)
 }

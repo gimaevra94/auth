@@ -75,12 +75,22 @@ func CodeValidate(r *http.Request, clientCode, serverCode string) error {
 	return nil
 }
 
-func PasswordResetEmailValidate(email string) error {
+func EmailValidate(email string) error {
 	if email == "" {
 		return errors.WithStack(errors.New("email not exist"))
 	}
 	if !emailRegex.MatchString(email) {
 		return errors.WithStack(errors.New("email invalid"))
+	}
+	return nil
+}
+
+func PasswordValidate(password string) error {
+	if password == "" {
+		return errors.WithStack(errors.New("password not exist"))
+	}
+	if !passwordRegex.MatchString(password) {
+		return errors.WithStack(errors.New("password invalid"))
 	}
 	return nil
 }

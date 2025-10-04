@@ -3,34 +3,15 @@ package data
 import (
 	"database/sql"
 	"os"
-	"time"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/gimaevra94/auth/app/consts" 
 )
 
 var db *sql.DB
-
-const (
-	userInsertQuery  = "insert into user (login,email,passwordHash,temporaryUserID,permanentUserID,temporaryCancelled) values(?,?,?,?,?,?,?)"
-	tokenInsertQuery = "insert into token (userId,token,deviceInfo,tokenCancelled) values (?,?,?,?)"
-	yauthInsertQuery = "insert into user (login, temporaryUserID, permanentUserID, temporaryCancelled) values(?,?,?,?)"
-
-	userSelectQuery               = "select passwordHash, permanentUserID from user where temporaryUserID = ? limit 1"
-	passwordResetEmailSelectQuery = "select permanentUserID from user where email = ?"
-	tokenSelectQuery              = "select refreshToken,tokenCancelled,deviceInfo from token where permanentUserID =? and deviceInfo =? limit 1"
-	yauthSelectQuery              = "select email,password,temporaryUserID from user where login = ? limit 1"
-	mwUserSelectQuery             = "select login, email, permanentUserID, temporaryCancelled from user where temporaryUserID = ? limit 1"
-
-	temporaryIDUpdateQuery        = "update user set temporaryUserID = ? where login = ?"
-	tokenUpdateQuery              = "update token set tokenCancelled =? where refreshToken =? and deviceInfo =?"
-	temporaryUserIDQuery          = "update user set tokenCancelled =? where temporaryUserID =?"
-	updatePasswordQuery           = "update user set passwordHash = ? where email = ?"
-	insertPasswordResetTokenQuery = "insert into password_reset_tokens (token, permanentUserID, email, expiresAt, revoked) values (?, ?, ?, ?, ?)"
-	revokePasswordResetTokenQuery = "update password_reset_tokens set revoked = TRUE where token = ?"
-	checkResetTokenStatusQuery    = "select revoked from password_reset_tokens where token = ?"
-)
 
 func DBConn() error {
 	dbPassword := []byte(os.Getenv("DB_PASSWORD"))
@@ -65,7 +46,7 @@ func DBClose() {
 }
 
 func UserCheck(login, password string) (string, error) {
-	row := db.QueryRow(userSelectQuery, login)
+	row := db.QueryRow(consts.UserSelectQuery, login) 
 	var passwordHash string
 	var permanentUserID string
 	err := row.Scan(&passwordHash, &permanentUserID)
@@ -86,21 +67,21 @@ func UserCheck(login, password string) (string, error) {
 	return permanentUserID, nil
 }
 
-func PasswordResetEmailCheck(email string) (string, error) {
-	row := db.QueryRow(passwordResetEmailSelectQuery, email)
+func PasswordResetEmailCheck(email string) error {
+	row := db.QueryRow(consts.PasswordResetEmailSelectQuery, email)
 	var permanentUserID string
 	err := row.Scan(&permanentUserID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "", errors.WithStack(err)
+			return errors.WithStack(err)
 		}
-		return "", errors.WithStack(err)
+		return errors.WithStack(err)
 	}
-	return permanentUserID, nil
+	return nil
 }
 
 func RefreshTokenCheck(permanentUserID, userAgent string) (string, string, bool, error) {
-	row := db.QueryRow(tokenSelectQuery, permanentUserID)
+	row := db.QueryRow(consts.RefreshTokenSelectQuery, permanentUserID, userAgent)
 	var refreshToken string
 	var deviceInfo string
 	var tokenCancelled bool
@@ -116,7 +97,7 @@ func RefreshTokenCheck(permanentUserID, userAgent string) (string, string, bool,
 }
 
 func YauthUserCheck(login string) (string, string, string, error) {
-	row := db.QueryRow(yauthSelectQuery, login)
+	row := db.QueryRow(consts.YauthSelectQuery, login) 
 	var email string
 	var password string
 	var permanentUserID string
@@ -133,7 +114,7 @@ func YauthUserCheck(login string) (string, string, string, error) {
 }
 
 func MWUserCheck(key string) (string, string, string, bool, error) {
-	row := db.QueryRow(mwUserSelectQuery, key)
+	row := db.QueryRow(consts.MWUserSelectQuery, key) 
 	var login string
 	var email string
 	var permanentUserID string
@@ -145,6 +126,19 @@ func MWUserCheck(key string) (string, string, string, bool, error) {
 	return login, email, permanentUserID, temporaryUserID, nil
 }
 
+func ResetTokenCheck(signedToken string) (bool, error) {
+	row := db.QueryRow(consts.ResetTokenSelectQuery, signedToken)
+	var cancelled bool
+	err := row.Scan(&cancelled)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, errors.New("reset token not found or invalid")
+		}
+		return false, errors.WithStack(err)
+	}
+	return cancelled, nil
+}
+
 func UserAdd(login, email, password, temporaryUserID, permanentUserID string, temporaryCancelled bool) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password),
 		bcrypt.DefaultCost)
@@ -152,7 +146,7 @@ func UserAdd(login, email, password, temporaryUserID, permanentUserID string, te
 		return errors.WithStack(err)
 	}
 
-	_, err = db.Exec(userInsertQuery, login, email, hashedPassword, temporaryUserID, permanentUserID, temporaryCancelled)
+	_, err = db.Exec(consts.UserInsertQuery, login, email, hashedPassword, temporaryUserID, permanentUserID, temporaryCancelled) 
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -161,7 +155,7 @@ func UserAdd(login, email, password, temporaryUserID, permanentUserID string, te
 }
 
 func TemporaryUserIDAdd(login, temporaryUserID string) error {
-	_, err := db.Exec(temporaryIDUpdateQuery, temporaryUserID, login)
+	_, err := db.Exec(consts.TemporaryIDUpdateQuery, temporaryUserID, login) 
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -169,7 +163,7 @@ func TemporaryUserIDAdd(login, temporaryUserID string) error {
 }
 
 func RefreshTokenAdd(permanentUserID, refreshToken, deviceInfo string, tokenCancelled bool) error {
-	_, err := db.Exec(tokenInsertQuery, permanentUserID, refreshToken, deviceInfo, tokenCancelled)
+	_, err := db.Exec(consts.RefreshTokenInsertQuery, permanentUserID, refreshToken, deviceInfo, tokenCancelled) 
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -177,7 +171,15 @@ func RefreshTokenAdd(permanentUserID, refreshToken, deviceInfo string, tokenCanc
 }
 
 func YauthUserAdd(login, temporaryUserID, permanentUserID string, temporaryCancelled bool) error {
-	_, err := db.Exec(yauthInsertQuery, login, temporaryUserID, permanentUserID, temporaryCancelled)
+	_, err := db.Exec(consts.YauthInsertQuery, login, temporaryUserID, permanentUserID, temporaryCancelled) 
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func ResetTokenAdd(resetToken string) error {
+	_, err := db.Exec(consts.ResetTokenInsertQuery, resetToken, false) 
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -185,7 +187,7 @@ func YauthUserAdd(login, temporaryUserID, permanentUserID string, temporaryCance
 }
 
 func TokenCancel(refreshToken, deviceInfo string) error {
-	_, err := db.Exec(tokenUpdateQuery, true, deviceInfo)
+	_, err := db.Exec(consts.RefreshtokenUpdateQuery, true, refreshToken, deviceInfo) 
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -193,11 +195,19 @@ func TokenCancel(refreshToken, deviceInfo string) error {
 }
 
 func TemporaryUserIDCancel(temporaryUserID string) error {
-	_, err := db.Exec(temporaryUserIDQuery, true)
+	_, err := db.Exec(consts.TemporaryUserIDUpdateQuery, true, temporaryUserID) 
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return err
+}
+
+func ResetTokenCancel(tokenString string) error {
+	_, err := db.Exec(consts.ResetTokenUpdateQuery, tokenString) 
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
 }
 
 func UpdatePassword(email, newPassword string) error {
@@ -207,42 +217,9 @@ func UpdatePassword(email, newPassword string) error {
 		return errors.WithStack(err)
 	}
 
-	_, err = db.Exec(updatePasswordQuery, hashedPassword, email)
+	_, err = db.Exec(consts.PasswordUpdateQuery, hashedPassword, email)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
-}
-
-// SaveResetToken сохраняет токен сброса пароля в базу данных
-func SaveResetToken(tokenString, permanentUserID, email string, expiresAt time.Time) error {
-	_, err := db.Exec(insertPasswordResetTokenQuery, tokenString, permanentUserID, email, expiresAt, false)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	return nil
-}
-
-// RevokeResetToken отзывает токен сброса пароля
-func RevokeResetToken(tokenString string) error {
-	_, err := db.Exec(revokePasswordResetTokenQuery, tokenString)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	return nil
-}
-
-// IsResetTokenRevoked проверяет, отозван ли токен сброса пароля
-func IsResetTokenRevoked(tokenString string) (bool, error) {
-	row := db.QueryRow(checkResetTokenStatusQuery, tokenString)
-	var revoked bool
-	err := row.Scan(&revoked)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			// Если токен не найден, он считается недействительным/отозванным
-			return true, nil
-		}
-		return false, errors.WithStack(err)
-	}
-	return revoked, nil
 }

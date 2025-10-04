@@ -9,11 +9,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-// ResetClaims добавляет permanentUserID и email к стандартным утверждениям JWT
 type ResetClaims struct {
 	jwt.StandardClaims
-	PermanentUserID string `json:"permanent_user_id"`
-	Email           string `json:"email"`
+	Email string `json:"email"`
 }
 
 func GenerateRefreshToken(refreshTokenExp int, rememberMe bool) (string, error) {
@@ -38,7 +36,7 @@ func GenerateRefreshToken(refreshTokenExp int, rememberMe bool) (string, error) 
 	return signedRefreshToken, nil
 }
 
-func GenerateResetLink(email, permanentUserID, baseURL string) (string, time.Time, string, error) {
+func GenerateResetLink(email, baseURL string) (string, error) {
 	expirationTime := time.Now().Add(15 * time.Minute)
 
 	claims := ResetClaims{
@@ -46,27 +44,25 @@ func GenerateResetLink(email, permanentUserID, baseURL string) (string, time.Tim
 			ExpiresAt: expirationTime.Unix(),
 			IssuedAt:  time.Now().Unix(),
 		},
-		PermanentUserID: permanentUserID,
-		Email:           email,
+		Email: email,
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
-	tokenString, err := token.SignedString(jwtSecret)
+	signedToken, err := token.SignedString(jwtSecret)
 	if err != nil {
-		return "", time.Time{}, "", errors.Wrap(err, "failed to sign reset token")
+		return "", errors.WithStack(err)
 	}
 
-	resetLink := baseURL + "?token=" + tokenString
-	return resetLink, expirationTime, tokenString, nil
+	resetLink := baseURL + "?token=" + signedToken
+	return resetLink, nil
 }
 
-// ValidateResetToken извлекает и валидирует токен сброса пароля
-func ValidateResetToken(tokenString string) (*ResetClaims, error) {
+func ValidateResetToken(signedToken string) (*ResetClaims, error) {
 	claims := &ResetClaims{}
 
-	tok, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+	tok, err := jwt.ParseWithClaims(signedToken, claims, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
@@ -74,7 +70,7 @@ func ValidateResetToken(tokenString string) (*ResetClaims, error) {
 	})
 
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse token")
+		return nil, errors.WithStack(err)
 	}
 
 	if !tok.Valid {
