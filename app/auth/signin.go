@@ -18,20 +18,25 @@ import (
 type SignInPageData struct {
 	Msg                string
 	ShowForgotPassword bool
+	ShowCaptcha        bool
 }
 
 func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 	var user structs.User
 
+	var showCaptcha bool
+
 	captchaCounter, err := data.SessionCaptchaGet(r, "captcha")
 	if err != nil {
-		if strings.Contains(err.Error(), "not exist") {
-			captchaCounter = 3
-		} else {
-			log.Printf("%+v", err)
-			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-			return
-		}
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	if captchaCounter <= 0 {
+		showCaptcha = true
+	} else {
+		showCaptcha = false
 	}
 
 	if captchaCounter > 0 {
@@ -55,7 +60,7 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 
-				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["login"].Msg})
+				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["login"].Msg, ShowCaptcha: showCaptcha})
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -66,14 +71,14 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if strings.Contains(err.Error(), "password") {
-				err = data.SessionDataSet(w, r, "captcha", captchaCounter-1)
+				err := data.SessionDataSet(w, r, "captcha", captchaCounter-1)
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
 
-				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["password"].Msg, ShowForgotPassword: true})
+				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["password"].Msg, ShowForgotPassword: true, ShowCaptcha: showCaptcha})
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -114,10 +119,25 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 	}
 
+	var showCaptcha bool
+
+	captchaCounter, err := data.SessionCaptchaGet(r, "captcha")
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	if captchaCounter <= 0 {
+		showCaptcha = true
+	} else {
+		showCaptcha = false
+	}
+
 	permanentUserID, err := data.UserCheck(user.Login, user.Password)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["notExist"].Msg})
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["notExist"].Msg, ShowCaptcha: showCaptcha})
 			if err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -127,7 +147,7 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["password"].Msg, ShowForgotPassword: true})
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["password"].Msg, ShowForgotPassword: true, ShowCaptcha: showCaptcha})
 			if err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -143,7 +163,7 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 
 	temporaryUserID := uuid.New().String()
 	data.TemporaryUserIDCookieSet(w, temporaryUserID)
-	
+
 	err = data.TemporaryUserIDAdd(user.Login, temporaryUserID)
 	if err != nil {
 		log.Printf("%+v", err)
@@ -167,7 +187,7 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	captchaCounter := 3
+	captchaCounter = 3
 	err = data.SessionDataSet(w, r, "captcha", captchaCounter)
 	if err != nil {
 		log.Printf("%+v", err)
