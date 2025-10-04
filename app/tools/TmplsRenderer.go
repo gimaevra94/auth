@@ -122,7 +122,9 @@ const (
 				<input type="password" id="password" name="password" required autocomplete="new-password">
 			</div>
 			<!-- Google reCAPTCHA -->
-			<div class="g-recaptcha" data-sitekey="6LcKXborAAAAAI3qmADWne38O4aAKjJIfPwMNBdO"></div>
+			{{if .ShowCaptcha}}
+			<div class="g-recaptcha" data-sitekey="6LfUPt4rAAAAAAEU_lnGN9DbW_QngiTObsj8ro0D"></div>
+			{{end}}
 			<button type="submit" class="btn">Sign Up</button>
 		</form>
 		<div class="divider">
@@ -135,7 +137,9 @@ const (
 			Already have an account? <a href="/sign-in">Sign In</a>
 		</div>
 	</div>
+	{{if .ShowCaptcha}}
 	<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+	{{end}}
 </body>
 </html>
 {{ end }}
@@ -213,7 +217,9 @@ const (
 				<input type="password" id="password" name="password" required autocomplete="current-password">
 			</div>
 			<!-- Google reCAPTCHA -->
-			<div class="g-recaptcha" data-sitekey="6LcKXborAAAAAI3qmADWne38O4aAKjJIfPwMNBdO"></div>
+			{{if .ShowCaptcha}}
+			<div class="g-recaptcha" data-sitekey="6LfUPt4rAAAAAAEU_lnGN9DbW_QngiTObsj8ro0D"></div>
+			{{end}}
 			<button type="submit" class="btn">Sign In</button>
 		</form>
 		<div class="divider">
@@ -233,7 +239,9 @@ const (
 		</div>
 		{{end}}
 	</div>
+	{{if .ShowCaptcha}}
 	<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+	{{end}}
 </body>
 </html>
 {{ end }}
