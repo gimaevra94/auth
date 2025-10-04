@@ -122,7 +122,7 @@ const (
 				<input type="password" id="password" name="password" required autocomplete="new-password">
 			</div>
 			<!-- Google reCAPTCHA -->
-			<input type="hidden" id="recaptchaToken" name="g-recaptcha-response">
+			<div class="g-recaptcha" data-sitekey="6LcKXborAAAAAI3qmADWne38O4aAKjJIfPwMNBdO"></div>
 			<button type="submit" class="btn">Sign Up</button>
 		</form>
 		<div class="divider">
@@ -135,18 +135,7 @@ const (
 			Already have an account? <a href="/sign-in">Sign In</a>
 		</div>
 	</div>
-	<script src="https://www.google.com/recaptcha/api.js?render=6LcKXborAAAAAI3qmADWne38O4aAKjJIfPwMNBdO"></script>
-	<script>
-		grecaptcha.ready(function() {
-			document.querySelector('form').addEventListener('submit', function(event) {
-				event.preventDefault();
-				grecaptcha.execute('6LcKXborAAAAAI3qmADWne38O4aAKjJIfPwMNBdO', {action: 'signup'}).then(function(token) {
-					document.getElementById('recaptchaToken').value = token;
-					event.target.submit();
-				});
-			});
-		});
-	</script>
+	<script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </body>
 </html>
 {{ end }}
@@ -224,7 +213,7 @@ const (
 				<input type="password" id="password" name="password" required autocomplete="current-password">
 			</div>
 			<!-- Google reCAPTCHA -->
-			<input type="hidden" id="recaptchaTokenSignIn" name="g-recaptcha-response">
+			<div class="g-recaptcha" data-sitekey="6LcKXborAAAAAI3qmADWne38O4aAKjJIfPwMNBdO"></div>
 			<button type="submit" class="btn">Sign In</button>
 		</form>
 		<div class="divider">
@@ -244,18 +233,7 @@ const (
 		</div>
 		{{end}}
 	</div>
-	<script src="https://www.google.com/recaptcha/api.js?render=6LcKXborAAAAAI3qmADWne38O4aAKjJIfPwMNBdO"></script>
-	<script>
-		grecaptcha.ready(function() {
-			document.querySelector('form[action="/sign-in-input-check"]').addEventListener('submit', function(event) {
-				event.preventDefault();
-				grecaptcha.execute('6LcKXborAAAAAI3qmADWne38O4aAKjJIfPwMNBdO', {action: 'signin'}).then(function(token) {
-					document.getElementById('recaptchaTokenSignIn').value = token;
-					event.target.submit();
-				});
-			});
-		});
-	</script>
+	<script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </body>
 </html>
 {{ end }}

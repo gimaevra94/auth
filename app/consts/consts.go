@@ -24,21 +24,21 @@ const (
 )
 
 const (
-	UserInsertQuery         = "insert into user (login,email,passwordHash,temporaryUserID,permanentUserID,temporaryCancelled) values(?,?,?,?,?,?,?)"
-	RefreshTokenInsertQuery = "insert into refresh_token (userId,refresh_token,deviceInfo,tokenCancelled) values (?,?,?,?)"
+	UserInsertQuery         = "insert into user (login,email,passwordHash,temporaryUserID,permanentUserID,temporaryCancelled) values(?,?,?,?,?,?)"
+	RefreshTokenInsertQuery = "insert into refresh_token (userID,refreshToken,deviceInfo,tokenCancelled) values (?,?,?,?)"
 	YauthInsertQuery        = "insert into user (login, temporaryUserID, permanentUserID, temporaryCancelled) values(?,?,?,?)"
-	ResetTokenInsertQuery   = "insert into reset_token  (reset_token, cancelled) values (?, ?)"
+	ResetTokenInsertQuery   = "insert into reset_token  (token, cancelled) values (?, ?)"
 
-	UserSelectQuery               = "select passwordHash, permanentUserID from user where temporaryUserID = ? limit 1"
+	UserSelectQuery               = "select passwordHash, permanentUserID from user where login = ? limit 1"
 	PasswordResetEmailSelectQuery = "select permanentUserID from user where email = ?"
 	RefreshTokenSelectQuery       = "select refreshToken,tokenCancelled,deviceInfo from refresh_token where permanentUserID =? and deviceInfo =? limit 1"
-	YauthSelectQuery              = "select email,password,temporaryUserID from user where login = ? limit 1"
+	YauthSelectQuery              = "select email,passwordHash,permanentUserID from user where login = ? limit 1"
 	MWUserSelectQuery             = "select login, email, permanentUserID, temporaryCancelled from user where temporaryUserID = ? limit 1"
 	ResetTokenSelectQuery         = "select cancelled from reset_token where token = ?"
 
 	TemporaryIDUpdateQuery     = "update user set temporaryUserID = ? where login = ?"
 	RefreshtokenUpdateQuery    = "update refresh_token set tokenCancelled =? where refreshToken =? and deviceInfo =?"
-	TemporaryUserIDUpdateQuery = "update user set tokenCancelled =? where temporaryUserID =?"
+	TemporaryUserIDUpdateQuery = "update user set temporaryCancelled =? where temporaryUserID =?"
 	PasswordUpdateQuery        = "update user set passwordHash = ? where email = ?"
 	ResetTokenUpdateQuery      = "update reset_token  set cancelled = TRUE where token = ?"
 )

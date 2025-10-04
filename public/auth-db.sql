@@ -3,14 +3,21 @@ CREATE TABLE user (
     userID VARCHAR(255) NOT NULL UNIQUE,
     login VARCHAR(64) NOT NULL UNIQUE,
     email VARCHAR(128) NOT NULL UNIQUE,
-    passwordHash VARCHAR(255) NOT NULL
+    passwordHash VARCHAR(255) NOT NULL,
+    temporaryUserID VARCHAR(255) NOT NULL UNIQUE,
+    permanentUserID VARCHAR(255) NOT NULL UNIQUE,
+    temporaryCancelled BOOLEAN DEFAULT FALSE
 );
 
-CREATE TABLE token (
+CREATE TABLE refresh_token (
     FOREIGN KEY (userID) REFERENCES user(userID),
-    token VARCHAR(255) NOT NULL,
+    refreshToken VARCHAR(255) PRIMARY KEY,
     userID VARCHAR(255) NOT NULL,
     deviceInfo VARCHAR(255),
-    jti VARCHAR(255) PRIMARY KEY,
+    tokenCancelled BOOLEAN DEFAULT FALSE
+);
+
+CREATE TABLE reset_token (
+    token VARCHAR(255) PRIMARY KEY,
     cancelled BOOLEAN DEFAULT FALSE
 );

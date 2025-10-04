@@ -44,15 +44,5 @@ func Captcha(r *http.Request) error {
 		return errors.New("reCAPTCHA verification failed")
 	}
 
-	score, ok := result["score"].(float64)
-	if !ok || score < 0.5 {
-		return errors.New("reCAPTCHA score too low")
-	}
-
-	action, ok := result["action"].(string)
-	if !ok || (action != "signup" && action != "signin") {
-		return errors.New("reCAPTCHA action mismatch")
-	}
-
 	return nil
 }
