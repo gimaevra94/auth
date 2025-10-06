@@ -40,6 +40,14 @@ func InitStore() *sessions.CookieStore {
 	return nil
 }
 
+func AuthSessionGet(r *http.Request) (bool, error) {
+	session, err := loginStore.Get(r, "auth")
+	if err != nil {
+		return false, errors.WithStack(err)
+	}
+	return session.IsNew, nil
+}
+
 func AuthSessionEnd(w http.ResponseWriter, r *http.Request) error {
 	session, err := loginStore.Get(r, "auth")
 	if err != nil {
@@ -55,7 +63,7 @@ func AuthSessionEnd(w http.ResponseWriter, r *http.Request) error {
 }
 
 func SessionDataSet(w http.ResponseWriter, r *http.Request, storeName string, consts any) error {
-	session, err := loginStore.Get(r, storeName)
+	session, err := captchaStore.Get(r, storeName)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -94,7 +102,7 @@ func SessionUserGet(r *http.Request) (structs.User, error) {
 }
 
 func SessionCaptchaGet(r *http.Request, storeName string) (int64, error) {
-	session, err := loginStore.Get(r, storeName)
+	session, err := captchaStore.Get(r, storeName)
 	if err != nil {
 		return 0, errors.WithStack(err)
 	}
