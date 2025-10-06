@@ -111,7 +111,7 @@ const (
 		<form method="POST" action="/sign-up-input-check">
 			<div class="form-group">
 				<label for="username">Username</label>
-				<input type="text" id="username" name="login" required autocomplete="username">
+				<input type="text" id="username" name="login" required autocomplete="username" minlength="3" maxlength="30" pattern="^[a-zA-Zа-яА-ЯёЁ0-9]{3,30}$">
 			</div>
 			<div class="form-group">
 				<label for="email">Email</label>
@@ -119,7 +119,7 @@ const (
 			</div>
 			<div class="form-group">
 				<label for="password">Password</label>
-				<input type="password" id="password" name="password" required autocomplete="new-password">
+				<input type="password" id="password" name="password" required autocomplete="new-password" minlength="4" maxlength="30" pattern="^[a-zA-Zа-яА-ЯёЁ\d!@#$%^&*\\-\\)]{4,30}$">
 			</div>
 			<!-- Google reCAPTCHA -->
 			{{if .ShowCaptcha}}
