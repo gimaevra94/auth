@@ -262,4 +262,10 @@ input[type="email"]:focus {
     font-weight: bold;
     font-size: 1.1rem;
     margin-bottom: 1rem;
+}
+
+.g-recaptcha-centered {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1rem;
 } 

@@ -123,7 +123,7 @@ const (
 			</div>
 			<!-- Google reCAPTCHA -->
 			{{if .ShowCaptcha}}
-			<div class="g-recaptcha" data-sitekey="6LfUPt4rAAAAAAEU_lnGN9DbW_QngiTObsj8ro0D"></div>
+			<div class="g-recaptcha g-recaptcha-centered" data-sitekey="6LfUPt4rAAAAAAEU_lnGN9DbW_QngiTObsj8ro0D"></div>
 			{{end}}
 			<button type="submit" class="btn">Sign Up</button>
 		</form>
