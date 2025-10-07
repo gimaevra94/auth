@@ -1,8 +1,6 @@
 package tools
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"os"
 	"time"
 
@@ -80,14 +78,4 @@ func ValidateResetToken(signedToken string) (*ResetClaims, error) {
 	}
 
 	return claims, nil
-}
-
-func GenerateRandomKey(len int) (string, error) {
-	rawKey := make([]byte, len)
-	_, err := rand.Read(rawKey)
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-	encodedKey := base64.StdEncoding.EncodeToString(rawKey)
-	return encodedKey, nil
 }
