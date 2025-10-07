@@ -70,7 +70,7 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			if captchaCounter <= 0 {
+			if captchaCounter-1 <= 0 {
 				showCaptcha = true
 			} else {
 				showCaptcha = false
@@ -92,7 +92,7 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			if captchaCounter <= 0 {
+			if captchaCounter-1 <= 0 {
 				showCaptcha = true
 			} else {
 				showCaptcha = false
@@ -114,7 +114,7 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			if captchaCounter <= 0 {
+			if captchaCounter-1 <= 0 {
 				showCaptcha = true
 			} else {
 				showCaptcha = false
@@ -132,18 +132,6 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
-	}
-
-	// If input validation passes, but captcha is required, validate it.
-	// The captcha check should happen here, after all other input validation.
-	// The 'else' block related to 'if captchaCounter > 0' is removed.
-	if showCaptcha {
-		err := tools.Captcha(r)
-		if err != nil {
-			log.Printf("%+v", err)
-			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-			return
-		}
 	}
 
 	err = data.SessionDataSet(w, r, "auth", user)

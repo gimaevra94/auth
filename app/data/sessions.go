@@ -73,7 +73,11 @@ func SessionDataSet(w http.ResponseWriter, r *http.Request, storeName string, co
 		return errors.WithStack(err)
 	}
 
-	session.Values["user"] = jsonData
+	if storeName == "captcha" {
+		session.Values["captchaCounter"] = jsonData
+	} else {
+		session.Values["user"] = jsonData
+	}
 	err = session.Save(r, w)
 	if err != nil {
 		return errors.WithStack(err)
