@@ -40,14 +40,6 @@ func InitStore() *sessions.CookieStore {
 	return nil
 }
 
-func AuthSessionGet(r *http.Request) (bool, error) {
-	session, err := loginStore.Get(r, "auth")
-	if err != nil {
-		return false, errors.WithStack(err)
-	}
-	return session.IsNew, nil
-}
-
 func AuthSessionEnd(w http.ResponseWriter, r *http.Request) error {
 	session, err := loginStore.Get(r, "auth")
 	if err != nil {
@@ -62,8 +54,8 @@ func AuthSessionEnd(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func SessionDataSet(w http.ResponseWriter, r *http.Request, storeName string, consts any) error {
-	session, err := captchaStore.Get(r, storeName)
+func AuthSessionDataSet(w http.ResponseWriter, r *http.Request, consts any) error {
+	session, err := loginStore.Get(r, "user")
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -72,12 +64,27 @@ func SessionDataSet(w http.ResponseWriter, r *http.Request, storeName string, co
 	if err != nil {
 		return errors.WithStack(err)
 	}
+	session.Values["user"] = jsonData
 
-	if storeName == "captcha" {
-		session.Values["captchaCounter"] = jsonData
-	} else {
-		session.Values["user"] = jsonData
+	err = session.Save(r, w)
+	if err != nil {
+		return errors.WithStack(err)
 	}
+	return nil
+}
+
+func CaptchaSessionDataSet(w http.ResponseWriter, r *http.Request, consts any) error {
+	session, err := captchaStore.Get(r, "captcha")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	jsonData, err := json.Marshal(consts)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	session.Values["captcha"] = jsonData
+
 	err = session.Save(r, w)
 	if err != nil {
 		return errors.WithStack(err)
@@ -105,8 +112,8 @@ func SessionUserGet(r *http.Request) (structs.User, error) {
 	return userData, nil
 }
 
-func SessionCaptchaGet(r *http.Request, storeName string) (int64, error) {
-	session, err := captchaStore.Get(r, storeName)
+func SessionCaptchaCounterGet(r *http.Request) (int64, error) {
+	session, err := captchaStore.Get(r, "captcha")
 	if err != nil {
 		return 0, errors.WithStack(err)
 	}
@@ -123,4 +130,24 @@ func SessionCaptchaGet(r *http.Request, storeName string) (int64, error) {
 	}
 
 	return intData, nil
+}
+
+func SessionCaptchaShowGet(r *http.Request) (bool, error) {
+	session, err := captchaStore.Get(r, "captcha")
+	if err != nil {
+		return false, errors.WithStack(err)
+	}
+
+	byteData, ok := session.Values["captchaShow"].([]byte)
+	if !ok {
+		return false, errors.WithStack(errors.New(fmt.Sprintf("%s not exist", "captchaShow")))
+	}
+
+	var boolData bool
+	err = json.Unmarshal([]byte(byteData), &boolData)
+	if err != nil {
+		return false, errors.WithStack(err)
+	}
+
+	return boolData, nil
 }

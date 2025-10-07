@@ -18,37 +18,14 @@ import (
 
 type SignUpPageData struct {
 	Msg         string
-	ShowCaptcha bool
+	CaptchaShow bool
 }
 
 func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 	var user structs.User
-	var showCaptcha bool
-	var captchaCounter int64
+	var captchaShow bool
 
-	sessionisNew, err := data.AuthSessionGet(r)
-	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
-	}
-
-	captchaCounter, err = data.SessionCaptchaGet(r, "captcha")
-	if err != nil {
-		if sessionisNew && strings.Contains(err.Error(), "not exist") {
-			captchaCounter = 3
-		} else {
-			log.Printf("%+v", err)
-			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-			return
-		}
-	}
-
-	if captchaCounter <= 0 {
-		showCaptcha = true
-	} else {
-		showCaptcha = false
-	}
+	captchaCounter := 3
 
 	login := r.FormValue("login")
 	email := r.FormValue("email")
@@ -60,23 +37,14 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 		Password: password,
 	}
 
-	err = tools.InputValidate(r, user.Login, user.Email, user.Password, false)
+	err := tools.InputValidate(r, user.Login, user.Email, user.Password, false)
 	if err != nil {
 		if strings.Contains(err.Error(), "login") {
-			err := data.SessionDataSet(w, r, "captcha", captchaCounter-1)
-			if err != nil {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-				return
-			}
-
 			if captchaCounter-1 <= 0 {
-				showCaptcha = true
-			} else {
-				showCaptcha = false
+				captchaShow = true
 			}
 
-			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["login"].Msg, ShowCaptcha: showCaptcha})
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["login"].Msg, CaptchaShow: captchaShow})
 			if err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -85,20 +53,11 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 			return
 
 		} else if strings.Contains(err.Error(), "email") {
-			err := data.SessionDataSet(w, r, "captcha", captchaCounter-1)
-			if err != nil {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-				return
-			}
-
 			if captchaCounter-1 <= 0 {
-				showCaptcha = true
-			} else {
-				showCaptcha = false
+				captchaShow = true
 			}
 
-			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["email"].Msg, ShowCaptcha: showCaptcha})
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["email"].Msg, CaptchaShow: captchaShow})
 			if err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -107,20 +66,11 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 			return
 
 		} else if strings.Contains(err.Error(), "password") {
-			err := data.SessionDataSet(w, r, "captcha", captchaCounter-1)
-			if err != nil {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-				return
-			}
-
 			if captchaCounter-1 <= 0 {
-				showCaptcha = true
-			} else {
-				showCaptcha = false
+				captchaShow = true
 			}
 
-			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["password"].Msg, ShowCaptcha: showCaptcha})
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["password"].Msg, CaptchaShow: captchaShow})
 			if err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -134,7 +84,21 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = data.SessionDataSet(w, r, "auth", user)
+	err = data.AuthSessionDataSet(w, r, "auth", user)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	err = data.CaptchaSessionDataSet(w, r, "captcha", captchaCounter)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	err = data.CaptchaSessionDataSet(w, r, "captcha", captchaShow)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -152,7 +116,47 @@ func SignUpUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var showCaptcha bool
+	captchaCounter, err := data.SessionCaptchaCounterGet(r)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	captchaShow, err := data.SessionCaptchaShowGet(r)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	_, err = data.UserCheck(user.Login, user.Password)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			CodeSend(w, r)
+			return
+		}
+
+		if captchaCounter <= 0 {
+			showCaptcha = true
+		} else {
+			showCaptcha = false
+		}
+
+		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["password"].Msg, CaptchaShow: showCaptcha})
+			if err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+			return
+		}
+
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
 
 	captchaCounter, err := data.SessionCaptchaGet(r, "captcha")
 	if err != nil {
@@ -167,29 +171,7 @@ func SignUpUserCheck(w http.ResponseWriter, r *http.Request) {
 		showCaptcha = false
 	}
 
-	_, err = data.UserCheck(user.Login, user.Password)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			CodeSend(w, r)
-			return
-		}
-
-		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["password"].Msg, ShowCaptcha: showCaptcha})
-			if err != nil {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-				return
-			}
-			return
-		}
-
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
-	}
-
-	err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["alreadyExist"].Msg, ShowCaptcha: showCaptcha})
+	err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["alreadyExist"].Msg, CaptchaShow: showCaptcha})
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
