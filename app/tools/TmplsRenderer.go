@@ -122,7 +122,7 @@ const (
 				<input type="password" id="password" name="password" required autocomplete="new-password" minlength="4" maxlength="30" pattern="^[a-zA-Zа-яА-ЯёЁ\d!@#$%^&*\\-\\)]{4,30}$">
 			</div>
 			<!-- Google reCAPTCHA -->
-			{{if .ShowCaptcha}}
+			{{if .CaptchaShow}}
 			<div class="g-recaptcha g-recaptcha-centered" data-sitekey="6LfUPt4rAAAAAAEU_lnGN9DbW_QngiTObsj8ro0D"></div>
 			{{end}}
 			<button type="submit" class="btn">Sign Up</button>
@@ -137,7 +137,7 @@ const (
 			Already have an account? <a href="/sign-in">Sign In</a>
 		</div>
 	</div>
-	{{if .ShowCaptcha}}
+	{{if .CaptchaShow}}
 	<script src="https://www.google.com/recaptcha/api.js" async defer></script>
 	{{end}}
 </body>
@@ -217,7 +217,7 @@ const (
 				<input type="password" id="password" name="password" required autocomplete="current-password">
 			</div>
 			<!-- Google reCAPTCHA -->
-			{{if .ShowCaptcha}}
+			{{if .CaptchaShow}}
 			<div class="g-recaptcha" data-sitekey="6LfUPt4rAAAAAAEU_lnGN9DbW_QngiTObsj8ro0D"></div>
 			{{end}}
 			<button type="submit" class="btn">Sign In</button>
@@ -239,7 +239,7 @@ const (
 		</div>
 		{{end}}
 	</div>
-	{{if .ShowCaptcha}}
+	{{if .CaptchaShow}}
 	<script src="https://www.google.com/recaptcha/api.js" async defer></script>
 	{{end}}
 </body>

@@ -11,7 +11,7 @@ import (
 	"github.com/gimaevra94/auth/app/auth"
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
-	"github.com/gimaevra94/auth/app/htmls"
+	"github.com/gimaevra94/auth/app/tmpls"
 	"github.com/go-chi/chi"
 )
 
