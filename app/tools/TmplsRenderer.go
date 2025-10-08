@@ -66,6 +66,7 @@ var ErrMsg = map[string]errMsg{
 	"alreadyExist":      {UserAlreadyExistMsg, nil},
 	"notExist":          {UserNotExistMsg, nil},
 	"mailSendingStatus": {MailSendingStatusMsg, nil},
+	"captchaRequired":   {"Пожалуйста, пройдите проверку reCAPTCHA.", nil},
 }
 
 func TmplsRenderer(w http.ResponseWriter, tmpl *template.Template, templateName string, data interface{}) error {
@@ -108,18 +109,25 @@ const (
 	<div class="container">
 		<h1>Sign Up</h1>
 		{{if .Msg}}<div class="error-message">{{.Msg}}</div>{{end}}
+		{{if .Regs}}
+		<div class="requirements-list">
+			{{range .Regs}}
+			<div>{{.}}</div>
+			{{end}}
+		</div>
+		{{end}}
 		<form method="POST" action="/sign-up-input-check">
 			<div class="form-group">
 				<label for="username">Username</label>
-				<input type="text" id="username" name="login" required autocomplete="username" minlength="3" maxlength="30" pattern="^[a-zA-Zа-яА-ЯёЁ0-9]{3,30}$">
+				<input type="text" id="username" name="login">
 			</div>
 			<div class="form-group">
 				<label for="email">Email</label>
-				<input type="email" id="email" name="email" required autocomplete="email">
+				<input type="email" id="email" name="email">
 			</div>
 			<div class="form-group">
 				<label for="password">Password</label>
-				<input type="password" id="password" name="password" required autocomplete="new-password" minlength="4" maxlength="30" pattern="^[a-zA-Zа-яА-ЯёЁ\d!@#$%^&*\\-\\)]{4,30}$">
+				<input type="password" id="password" name="password">
 			</div>
 			<!-- Google reCAPTCHA -->
 			{{if .CaptchaShow}}
@@ -207,14 +215,21 @@ const (
 			<div class="error">{{.Msg}}</div>
 			{{end}}
 		{{end}}
+		{{if .Regs}}
+		<div class="requirements-list">
+			{{range .Regs}}
+			<div>{{.}}</div>
+			{{end}}
+		</div>
+		{{end}}
 		<form method="POST" action="/sign-in-input-check">
 			<div class="form-group">
 				<label for="login">Username</label>
-				<input type="text" id="login" name="login" required autocomplete="username">
+				<input type="text" id="login" name="login">
 			</div>
 			<div class="form-group">
 				<label for="password">Password</label>
-				<input type="password" id="password" name="password" required autocomplete="current-password">
+				<input type="password" id="password" name="password">
 			</div>
 			<!-- Google reCAPTCHA -->
 			{{if .CaptchaShow}}

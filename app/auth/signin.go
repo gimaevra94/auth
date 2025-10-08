@@ -19,6 +19,7 @@ type SignInPageData struct {
 	Msg                string
 	ShowForgotPassword bool
 	CaptchaShow        bool
+	Regs               []string
 }
 
 func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
@@ -44,7 +45,7 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 				captchaShow = true
 			}
 
-			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["login"].Msg, CaptchaShow: captchaShow})
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["login"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["login"].Regs})
 			if err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -58,7 +59,7 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 					captchaShow = true
 				}
 
-				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["password"].Msg, CaptchaShow: captchaShow})
+				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["password"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["password"].Regs})
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -125,7 +126,7 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 			if captchaCounter-1 <= 0 {
 				captchaShow = true
 			}
-			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["notExist"].Msg, CaptchaShow: captchaShow})
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["notExist"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["notExist"].Regs})
 			if err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -138,7 +139,7 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 			if captchaCounter-1 <= 0 {
 				captchaShow = true
 			}
-			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["password"].Msg, ShowForgotPassword: true, CaptchaShow: captchaShow})
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["password"].Msg, ShowForgotPassword: true, CaptchaShow: captchaShow, Regs: tools.ErrMsg["password"].Regs})
 			if err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)

@@ -19,11 +19,11 @@ import (
 type SignUpPageData struct {
 	Msg         string
 	CaptchaShow bool
+	Regs        []string
 }
 
 func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 	var user structs.User
-
 	var captchaShow bool
 
 	login := r.FormValue("login")
@@ -40,48 +40,56 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if strings.Contains(err.Error(), "exist") {
 			captchaCounter = 3
-			log.Printf("DEBUG: SignUpInputCheck - captchaCounter initialized to 3 (session not exist)")
 		} else {
 			log.Printf("%+v", err)
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 			return
 		}
-	} else {
-		log.Printf("DEBUG: SignUpInputCheck - Retrieved captchaCounter from session: %d", captchaCounter)
 	}
 
-	sessionCaptchaShow, err := data.SessionCaptchaShowGet(r)
+	captchaShow, err = data.SessionCaptchaShowGet(r)
 	if err != nil {
 		if strings.Contains(err.Error(), "exist") {
 			captchaShow = false
-			log.Printf("DEBUG: SignUpInputCheck - captchaShow initialized to false (session not exist)")
 		} else {
 			log.Printf("%+v", err)
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 			return
 		}
-	} else {
-		captchaShow = sessionCaptchaShow
-		log.Printf("DEBUG: SignUpInputCheck - Retrieved captchaShow from session: %t", captchaShow)
+	}
+
+	if captchaShow {
+		err = tools.Captcha(r)
+		if err != nil {
+			if strings.Contains(err.Error(), "captchaToken not exist") {
+				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["captchaRequired"].Msg, CaptchaShow: captchaShow, Regs: nil})
+				if err != nil {
+					log.Printf("%+v", err)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+					return
+				}
+				return
+			} else {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+		}
 	}
 
 	err = tools.InputValidate(r, user.Login, user.Email, user.Password, false)
 	if err != nil {
-		log.Printf("DEBUG: SignUpInputCheck - Input validation failed: %v", err)
 		if strings.Contains(err.Error(), "login") {
-			log.Printf("DEBUG: SignUpInputCheck - Handling login error. captchaCounter before decrement: %d", captchaCounter)
 			err := data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter-1)
 			if err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
-			log.Printf("DEBUG: SignUpInputCheck - captchaCounter decremented and saved to session: %d", captchaCounter-1)
 
 			captchaCounter -= 1
 			if captchaCounter == 0 {
 				captchaShow = true
-				log.Printf("DEBUG: SignUpInputCheck - captchaCounter hit 0, setting captchaShow to true: %t", captchaShow)
 
 				err = data.CaptchaSessionDataSet(w, r, "captchaShow", captchaShow)
 				if err != nil {
@@ -89,31 +97,28 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
-				log.Printf("DEBUG: SignUpInputCheck - captchaShow saved to session: %t", captchaShow)
 			}
 
-			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["login"].Msg, CaptchaShow: captchaShow})
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["login"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["login"].Regs})
 			if err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
+
 			return
 
 		} else if strings.Contains(err.Error(), "email") {
-			log.Printf("DEBUG: SignUpInputCheck - Handling email error. captchaCounter before decrement: %d", captchaCounter)
 			err := data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter-1)
 			if err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
-			log.Printf("DEBUG: SignUpInputCheck - captchaCounter decremented and saved to session: %d", captchaCounter-1)
 
 			captchaCounter -= 1
 			if captchaCounter == 0 {
 				captchaShow = true
-				log.Printf("DEBUG: SignUpInputCheck - captchaCounter hit 0, setting captchaShow to true: %t", captchaShow)
 
 				err = data.CaptchaSessionDataSet(w, r, "captchaShow", captchaShow)
 				if err != nil {
@@ -121,31 +126,28 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
-				log.Printf("DEBUG: SignUpInputCheck - captchaShow saved to session: %t", captchaShow)
 			}
 
-			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["email"].Msg, CaptchaShow: captchaShow})
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["email"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["email"].Regs})
 			if err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
+
 			return
 
 		} else if strings.Contains(err.Error(), "password") {
-			log.Printf("DEBUG: SignUpInputCheck - Handling password error. captchaCounter before decrement: %d", captchaCounter)
 			err := data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter-1)
 			if err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
-			log.Printf("DEBUG: SignUpInputCheck - captchaCounter decremented and saved to session: %d", captchaCounter-1)
 
 			captchaCounter -= 1
 			if captchaCounter == 0 {
 				captchaShow = true
-				log.Printf("DEBUG: SignUpInputCheck - captchaCounter hit 0, setting captchaShow to true: %t", captchaShow)
 
 				err = data.CaptchaSessionDataSet(w, r, "captchaShow", captchaShow)
 				if err != nil {
@@ -153,15 +155,15 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
-				log.Printf("DEBUG: SignUpInputCheck - captchaShow saved to session: %t", captchaShow)
 			}
 
-			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["password"].Msg, CaptchaShow: captchaShow})
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["password"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["password"].Regs})
 			if err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
+			
 			return
 		}
 
@@ -170,7 +172,6 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("DEBUG: SignUpInputCheck - Input validation successful.")
 	err = data.AuthSessionDataSet(w, r, user)
 	if err != nil {
 		log.Printf("%+v", err)
@@ -178,15 +179,15 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("DEBUG: SignUpInputCheck - Resetting captchaCounter to 3 and captchaShow to false after successful input.")
-	err = data.CaptchaSessionDataSet(w, r, "captchaCounter", 3) // При успешной валидации сбрасываем счетчик
+	captchaCounter = 3
+	err = data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
-	err = data.CaptchaSessionDataSet(w, r, "captchaShow", false) // Скрываем капчу
+	err = data.CaptchaSessionDataSet(w, r, "captchaShow", false)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -210,7 +211,6 @@ func SignUpUserCheck(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	} else {
-		log.Printf("DEBUG: SignUpUserCheck - Retrieved captchaCounter from session: %d", captchaCounter)
 	}
 
 	captchaShow, err := data.SessionCaptchaShowGet(r)
@@ -218,44 +218,35 @@ func SignUpUserCheck(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
-	} else {
-		log.Printf("DEBUG: SignUpUserCheck - Retrieved captchaShow from session: %t", captchaShow)
 	}
 
 	_, err = data.UserCheck(user.Login, user.Password)
 	if err != nil {
-		log.Printf("DEBUG: SignUpUserCheck - UserCheck failed: %v", err)
 		if errors.Is(err, sql.ErrNoRows) {
 			CodeSend(w, r)
 			return
 		}
 
 		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-			log.Printf("DEBUG: SignUpUserCheck - Handling bcrypt.ErrMismatchedHashAndPassword. captchaCounter before decrement: %d", captchaCounter)
 			if captchaCounter == 0 {
 				captchaShow = true
-				log.Printf("DEBUG: SignUpUserCheck - captchaCounter hit 0, setting captchaShow to true: %t", captchaShow)
 			}
 			captchaCounter -= 1
-			log.Printf("DEBUG: SignUpUserCheck - captchaCounter after decrement: %d", captchaCounter)
 
-			// Сохраняем обновленные значения в сессию
 			err = data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter)
 			if err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
-			log.Printf("DEBUG: SignUpUserCheck - captchaCounter saved to session: %d", captchaCounter)
 			err = data.CaptchaSessionDataSet(w, r, "captchaShow", captchaShow)
 			if err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
-			log.Printf("DEBUG: SignUpUserCheck - captchaShow saved to session: %t", captchaShow)
 
-			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["password"].Msg, CaptchaShow: captchaShow})
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["password"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["password"].Regs})
 			if err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -269,29 +260,23 @@ func SignUpUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("DEBUG: SignUpUserCheck - UserCheck successful or user already exists. captchaCounter before decrement: %d", captchaCounter)
 	if captchaCounter == 0 {
 		captchaShow = true
-		log.Printf("DEBUG: SignUpUserCheck - captchaCounter hit 0, setting captchaShow to true: %t", captchaShow)
 	}
 	captchaCounter -= 1
-	log.Printf("DEBUG: SignUpUserCheck - captchaCounter after decrement: %d", captchaCounter)
 
-	// Сохраняем обновленные значения в сессию
 	err = data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-	log.Printf("DEBUG: SignUpUserCheck - captchaCounter saved to session: %d", captchaCounter)
 	err = data.CaptchaSessionDataSet(w, r, "captchaShow", captchaShow)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-	log.Printf("DEBUG: SignUpUserCheck - captchaShow saved to session: %t", captchaShow)
 
 	err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["alreadyExist"].Msg, CaptchaShow: captchaShow})
 	if err != nil {
@@ -299,7 +284,6 @@ func SignUpUserCheck(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-	// Удалил закомментированные строки, так как они дублировали функционал сохранения сессии выше.
 }
 
 func CodeSend(w http.ResponseWriter, r *http.Request) {
