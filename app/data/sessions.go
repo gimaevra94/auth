@@ -54,6 +54,20 @@ func AuthSessionEnd(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+func CaptchaSessionEnd(w http.ResponseWriter, r *http.Request) error {
+	session, err := captchaStore.Get(r, "captcha")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	session.Options.MaxAge = -1
+	err = session.Save(r, w)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
 func AuthSessionDataSet(w http.ResponseWriter, r *http.Request, consts any) error {
 	session, err := loginStore.Get(r, "user")
 	if err != nil {
@@ -73,7 +87,7 @@ func AuthSessionDataSet(w http.ResponseWriter, r *http.Request, consts any) erro
 	return nil
 }
 
-func CaptchaSessionDataSet(w http.ResponseWriter, r *http.Request, consts any) error {
+func CaptchaSessionDataSet(w http.ResponseWriter, r *http.Request, key string, consts any) error {
 	session, err := captchaStore.Get(r, "captcha")
 	if err != nil {
 		return errors.WithStack(err)
@@ -83,7 +97,8 @@ func CaptchaSessionDataSet(w http.ResponseWriter, r *http.Request, consts any) e
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	session.Values["captcha"] = jsonData
+
+	session.Values[key] = jsonData
 
 	err = session.Save(r, w)
 	if err != nil {

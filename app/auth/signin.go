@@ -80,14 +80,14 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = data.CaptchaSessionDataSet(w, r, captchaCounter)
+	err = data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter-1)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
-	err = data.CaptchaSessionDataSet(w, r, captchaShow)
+	err = data.CaptchaSessionDataSet(w, r, "captchaShow", captchaShow)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -179,7 +179,7 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	captchaCounter = 3
-	err = data.CaptchaSessionDataSet(w, r, captchaCounter)
+	err = data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter-1)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
