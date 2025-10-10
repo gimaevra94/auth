@@ -116,7 +116,7 @@ const (
 			{{end}}
 		</div>
 		{{end}}
-		<form method="POST" action="/sign-up-input-check">
+		<form method="POST" action="/sign-up-input-check" id="signup-form">
 			<div class="form-group">
 				<label for="username">Username</label>
 				<input type="text" id="username" name="login">
@@ -133,18 +133,25 @@ const (
 			{{if .CaptchaShow}}
 			<div class="g-recaptcha g-recaptcha-centered" data-sitekey="6LfUPt4rAAAAAAEU_lnGN9DbW_QngiTObsj8ro0D"></div>
 			{{end}}
-			<button type="submit" class="btn">Sign Up</button>
+			<button type="submit" class="btn" id="signup-button">Sign Up</button>
 		</form>
 		<div class="divider">
 			<span>or</span>
 		</div>
-		<form method="POST" action="/yauth">
+		<form method="GET" action="/yauth">
 			<button type="submit" class="oauth-btn">Sign up with Yandex</button>
 		</form>
 		<div class="login-link">
 			Already have an account? <a href="/sign-in">Sign In</a>
 		</div>
 	</div>
+	<script>
+		document.getElementById('signup-form').addEventListener('submit', function() {
+			const button = document.getElementById('signup-button');
+			button.disabled = true;
+			button.textContent = 'Loading...';
+		});
+	</script>
 	{{if .CaptchaShow}}
 	<script src="https://www.google.com/recaptcha/api.js" async defer></script>
 	{{end}}

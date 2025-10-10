@@ -38,25 +38,16 @@ func RefreshTokenValidate(refreshToken string) error {
 
 func InputValidate(r *http.Request, login, email, password string, IsSignIn bool) error {
 
-	if login == "" {
-		return errors.WithStack(errors.New("login not exist"))
-	}
-	if !loginRegex.MatchString(login) {
+	if login == "" && !loginRegex.MatchString(login) {
 		return errors.WithStack(errors.New("login invalid"))
 	}
 
-	if password == "" {
-		return errors.WithStack(errors.New("password not exist"))
-	}
-	if !passwordRegex.MatchString(password) {
+	if password == "" && !passwordRegex.MatchString(password) {
 		return errors.WithStack(errors.New("password invalid"))
 	}
 
 	if !IsSignIn {
-		if email == "" {
-			return errors.WithStack(errors.New("email not exist"))
-		}
-		if !emailRegex.MatchString(email) {
+		if email == "" && !emailRegex.MatchString(email) {
 			return errors.WithStack(errors.New("email invalid"))
 		}
 	}

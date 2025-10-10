@@ -163,7 +163,7 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
-			
+
 			return
 		}
 
@@ -294,6 +294,13 @@ func CodeSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Если serverCode уже существует, не отправляем повторно
+	if user.ServerCode != "" {
+		log.Println("Verification code already sent for user:", user.Email)
+		http.Redirect(w, r, consts.CodeSendURL, http.StatusFound)
+		return
+	}
+
 	serverCode, err := tools.AuthCodeSend(user.Email)
 	if err != nil {
 		log.Printf("%+v", err)
@@ -352,7 +359,21 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 	permanentUserID := uuid.New().String()
 	temporaryCancelled := false
 
-	err = data.UserAdd(user.Login, user.Email, user.Password, temporaryUserID, permanentUserID, temporaryCancelled)
+	tx, err := data.DB.Begin()
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r)
+		}
+	}()
+	defer tx.Rollback()
+
+	err = data.UserAddTx(tx, user.Login, user.Email, user.Password, temporaryUserID, permanentUserID, temporaryCancelled)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -360,7 +381,14 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tokenCancelled := false
-	err = data.RefreshTokenAdd(permanentUserID, refreshToken, r.UserAgent(), tokenCancelled)
+	err = data.RefreshTokenAddTx(tx, permanentUserID, refreshToken, r.UserAgent(), tokenCancelled)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	err = tx.Commit()
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -369,6 +397,13 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 
 	captchaCounter := 3
 	err = data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter-1)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	err = data.CaptchaSessionDataSet(w, r, "captchaShow", false)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)

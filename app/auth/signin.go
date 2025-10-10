@@ -156,13 +156,6 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 	temporaryUserID := uuid.New().String()
 	data.TemporaryUserIDCookieSet(w, temporaryUserID)
 
-	err = data.TemporaryUserIDAdd(user.Login, temporaryUserID)
-	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
-	}
-
 	rememberMe := r.FormValue("rememberMe") != ""
 	refreshToken, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe)
 	if err != nil {
@@ -171,8 +164,36 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tx, err := data.DB.Begin()
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r)
+		}
+	}()
+	defer tx.Rollback()
+
+	err = data.TemporaryUserIDAddTx(tx, user.Login, temporaryUserID)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
 	tokenCancelled := false
-	err = data.RefreshTokenAdd(permanentUserID, refreshToken, r.UserAgent(), tokenCancelled)
+	err = data.RefreshTokenAddTx(tx, permanentUserID, refreshToken, r.UserAgent(), tokenCancelled)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	err = tx.Commit()
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)

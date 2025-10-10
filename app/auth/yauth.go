@@ -27,7 +27,7 @@ func YandexAuthHandler(w http.ResponseWriter, r *http.Request) {
 	authParams := url.Values{
 		"response_type": {"code"},
 		"client_id":     {os.Getenv("clientID")},
-		"redirect_uri":  {consts.YandexCallbackURL},
+		"redirect_uri":  {consts.YandexCallbackFullURL},
 	}
 
 	authURLWithParamsUrl := authURL + "?" + authParams.Encode()
@@ -61,11 +61,24 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	permanentUserID := uuid.New().String()
 	temporaryCancelled := false
 
+	tx, err := data.DB.Begin()
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r)
+		}
+	}()
+	defer tx.Rollback()
+
 	email, password, pepermanentID, err := data.YauthUserCheck(yandexUser.Login)
 	if err != nil {
 		if err == sql.ErrNoRows {
-
-			err = data.YauthUserAdd(yandexUser.Login, temporaryUserID, permanentUserID, temporaryCancelled)
+			err = data.YauthUserAddTx(tx, yandexUser.Login, temporaryUserID, permanentUserID, temporaryCancelled)
 			if err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -82,7 +95,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		data.TemporaryUserIDCookieSet(w, temporaryUserID)
 	}
 
-	err = data.TemporaryUserIDAdd(yandexUser.Login, temporaryUserID)
+	err = data.TemporaryUserIDAddTx(tx, yandexUser.Login, temporaryUserID)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -98,7 +111,14 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tokenCancelled := false
-	err = data.RefreshTokenAdd(permanentUserID, refreshToken, r.UserAgent(), tokenCancelled)
+	err = data.RefreshTokenAddTx(tx, permanentUserID, refreshToken, r.UserAgent(), tokenCancelled)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	err = tx.Commit()
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -114,7 +134,7 @@ func getAccessToken(yauthCode string) (string, error) {
 		"code":          {yauthCode},
 		"client_id":     {os.Getenv("clientID")},
 		"client_secret": {os.Getenv("clientSecret")},
-		"redirect_uri":  {consts.YandexCallbackURL},
+		"redirect_uri":  {consts.YandexCallbackFullURL},
 	}
 
 	resp, err := http.PostForm(tokenURL, tokenParams)

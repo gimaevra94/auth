@@ -9,10 +9,11 @@ const (
 	SignInURL           = "/sign-in"
 	SignInInputCheckURL = "/sign-in-input-check"
 
-	HomeURL           = "/home"
-	LogoutURL         = "/logout"
-	Err500URL         = "/500"
-	YandexCallbackURL = "/ya_callback"
+	HomeURL               = "/home"
+	LogoutURL             = "/logout"
+	Err500URL             = "/500"
+	YandexCallbackURL     = "/ya_callback"
+	YandexCallbackFullURL = "http://localhost:8080/ya_callback"
 
 	PasswordResetURL      = "/password-reset"
 	PasswordResetEmailURL = "/password-reset-email"

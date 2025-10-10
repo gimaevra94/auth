@@ -109,16 +109,37 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = data.UpdatePassword(claims.Email, newPassword)
+	tx, err := data.DB.Begin()
+	if err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r)
+		}
+	}()
+	defer tx.Rollback()
+
+	err = data.UpdatePasswordTx(tx, claims.Email, newPassword)
 	if err != nil {
 		log.Printf("%+v", errors.WithStack(err))
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
-	err = data.ResetTokenCancel(signedToken)
+	err = data.ResetTokenCancelTx(tx, signedToken)
 	if err != nil {
 		log.Printf("%+v", errors.WithStack(err))
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
 	}
 
 	http.Redirect(w, r, consts.SignInURL+"?msg=PasswordSuccessfullyReset", http.StatusFound)

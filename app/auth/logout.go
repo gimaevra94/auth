@@ -32,8 +32,22 @@ func Revocate(w http.ResponseWriter, r *http.Request, cookieClear, idCancel, tok
 		data.TemporaryUserIDCookiesClear(w)
 	}
 
+	tx, err := data.DB.Begin()
+	if err != nil {
+		log.Printf("%v", errors.WithStack(err))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r)
+		}
+	}()
+	defer tx.Rollback()
+
 	if idCancel {
-		err := data.TemporaryUserIDCancel(temporaryUserID)
+		err := data.TemporaryUserIDCancelTx(tx, temporaryUserID)
 		if err != nil {
 			log.Printf("%v", errors.WithStack(err))
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -64,12 +78,19 @@ func Revocate(w http.ResponseWriter, r *http.Request, cookieClear, idCancel, tok
 		}
 
 		if !tokenCancelled {
-			err = data.TokenCancel(refreshToken, deviceInfo)
+			err = data.TokenCancelTx(tx, refreshToken, deviceInfo)
 			if err != nil {
 				log.Printf("%v", errors.WithStack(err))
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
 		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Printf("%v", errors.WithStack(err))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
 	}
 }
