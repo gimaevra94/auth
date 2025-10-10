@@ -28,7 +28,8 @@ func InitStore() *sessions.CookieStore {
 		Secure:   false,
 	}
 
-	captchaStore = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
+	sessionSecret := []byte(os.Getenv("SESSION_SECRET"))
+	captchaStore = sessions.NewCookieStore(sessionSecret)
 	thirtyDays := 30 * 24 * 60 * 60
 	captchaStore.Options = &sessions.Options{
 		HttpOnly: true,
@@ -69,7 +70,7 @@ func CaptchaSessionEnd(w http.ResponseWriter, r *http.Request) error {
 }
 
 func AuthSessionDataSet(w http.ResponseWriter, r *http.Request, consts any) error {
-	session, err := loginStore.Get(r, "user")
+	session, err := loginStore.Get(r, "auth")
 	if err != nil {
 		return errors.WithStack(err)
 	}

@@ -1,18 +1,17 @@
 CREATE TABLE user (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    userID VARCHAR(255) NOT NULL UNIQUE,
     login VARCHAR(64) NOT NULL UNIQUE,
     email VARCHAR(128) NOT NULL UNIQUE,
-    passwordHash VARCHAR(255) NOT NULL,
+    passwordHash VARCHAR(255) NULL,
     temporaryUserID VARCHAR(255) NOT NULL UNIQUE,
     permanentUserID VARCHAR(255) NOT NULL UNIQUE,
     temporaryCancelled BOOLEAN DEFAULT FALSE
 );
 
 CREATE TABLE refresh_token (
-    FOREIGN KEY (userID) REFERENCES user(userID),
+    FOREIGN KEY (permanentUserID) REFERENCES user(permanentUserID),
     refreshToken VARCHAR(255) PRIMARY KEY,
-    userID VARCHAR(255) NOT NULL,
+    permanentUserID VARCHAR(255) NOT NULL,
     deviceInfo VARCHAR(255),
     tokenCancelled BOOLEAN DEFAULT FALSE
 );

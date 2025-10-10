@@ -170,8 +170,8 @@ func RefreshTokenAddTx(tx *sql.Tx, permanentUserID, refreshToken, deviceInfo str
 	return nil
 }
 
-func YauthUserAddTx(tx *sql.Tx, login, temporaryUserID, permanentUserID string, temporaryCancelled bool) error {
-	_, err := tx.Exec(consts.YauthInsertQuery, login, temporaryUserID, permanentUserID, temporaryCancelled)
+func YauthUserAddTx(tx *sql.Tx, login, email, temporaryUserID, permanentUserID string, temporaryCancelled bool) error {
+	_, err := tx.Exec(consts.YauthInsertQuery, login, email, temporaryUserID, permanentUserID, temporaryCancelled)
 	if err != nil {
 		return errors.WithStack(err)
 	}

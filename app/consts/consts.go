@@ -26,8 +26,8 @@ const (
 
 const (
 	UserInsertQuery         = "insert into user (login,email,passwordHash,temporaryUserID,permanentUserID,temporaryCancelled) values(?,?,?,?,?,?)"
-	RefreshTokenInsertQuery = "insert into refresh_token (userID,refreshToken,deviceInfo,tokenCancelled) values (?,?,?,?)"
-	YauthInsertQuery        = "insert into user (login, temporaryUserID, permanentUserID, temporaryCancelled) values(?,?,?,?)"
+	RefreshTokenInsertQuery = "insert into refresh_token (permanentUserID,refreshToken,deviceInfo,tokenCancelled) values (?,?,?,?)"
+	YauthInsertQuery        = "insert into user (login,email, temporaryUserID, permanentUserID, temporaryCancelled) values(?,?,?,?,?)"
 	ResetTokenInsertQuery   = "insert into reset_token  (token, cancelled) values (?, ?)"
 
 	UserSelectQuery               = "select passwordHash, permanentUserID from user where login = ? limit 1"

@@ -3,7 +3,7 @@ package structs
 type User struct {
 	UserID          string `sql:"userId"`
 	Login           string `sql:"login" json:"login"`
-	Email           string `sql:"email" json:"email"`
+	Email           string `sql:"email" json:"default_email"`
 	Password        string `sql:"passwordHash"`
 	ServerCode      string
 	TemporaryUserID string `sql:"temporaryUserID"`

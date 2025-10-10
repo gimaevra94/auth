@@ -28,10 +28,11 @@ func YandexAuthHandler(w http.ResponseWriter, r *http.Request) {
 		"response_type": {"code"},
 		"client_id":     {os.Getenv("clientID")},
 		"redirect_uri":  {consts.YandexCallbackFullURL},
+		"scope":         {"login:email"},
 	}
 
-	authURLWithParamsUrl := authURL + "?" + authParams.Encode()
-	http.Redirect(w, r, authURLWithParamsUrl, http.StatusFound)
+	authURLWithParams := authURL + "?" + authParams.Encode()
+	http.Redirect(w, r, authURLWithParams, http.StatusFound)
 }
 
 func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
@@ -75,23 +76,23 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 	defer tx.Rollback()
 
-	email, password, pepermanentID, err := data.YauthUserCheck(yandexUser.Login)
+	email, _, pepermanentID, err := data.YauthUserCheck(yandexUser.Login)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			err = data.YauthUserAddTx(tx, yandexUser.Login, temporaryUserID, permanentUserID, temporaryCancelled)
+		if errors.Is(err, sql.ErrNoRows) {
+			err = data.YauthUserAddTx(tx, yandexUser.Login, yandexUser.Email, temporaryUserID, permanentUserID, temporaryCancelled)
 			if err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
+		} else {
+			log.Printf("%+v", err)
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
 		}
-
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
 	}
 
-	if email == "" && password == "" && pepermanentID != "" {
+	if email == "" && pepermanentID != "" {
 		data.TemporaryUserIDCookieSet(w, temporaryUserID)
 	}
 
@@ -163,7 +164,9 @@ func getAccessToken(yauthCode string) (string, error) {
 }
 
 func getYandexUserInfo(accessToken string) (structs.User, error) {
-	req, err := http.NewRequest("GET", userInfoURL, nil)
+	userInfoURLWithParams := userInfoURL + "?format=json&with_openid_identity=1&with_email=1"
+
+	req, err := http.NewRequest("GET", userInfoURLWithParams, nil)
 	if err != nil {
 		return structs.User{}, errors.WithStack(err)
 	}
