@@ -178,7 +178,7 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 	}()
 	defer tx.Rollback()
 
-	err = data.TemporaryUserIDAddTx(tx, user.Login, temporaryUserID)
+	err = data.TemporaryUserIDAddTx(tx, user.Login, temporaryUserID, false)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)

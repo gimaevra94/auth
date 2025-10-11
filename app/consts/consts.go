@@ -11,6 +11,7 @@ const (
 
 	HomeURL               = "/home"
 	LogoutURL             = "/logout"
+	SimpleLogoutURL       = "/simple-logout"
 	Err500URL             = "/500"
 	YandexCallbackURL     = "/ya_callback"
 	YandexCallbackFullURL = "http://localhost:8080/ya_callback"
@@ -37,7 +38,7 @@ const (
 	MWUserSelectQuery             = "select login, email, permanentUserID, temporaryCancelled from user where temporaryUserID = ? limit 1"
 	ResetTokenSelectQuery         = "select cancelled from reset_token where token = ?"
 
-	TemporaryIDUpdateQuery     = "update user set temporaryUserID = ? where login = ?"
+	TemporaryIDUpdateQuery     = "update user set temporaryUserID = ?, temporaryCancelled = ? where login = ?"
 	RefreshtokenUpdateQuery    = "update refresh_token set tokenCancelled =? where refreshToken =? and deviceInfo =?"
 	TemporaryUserIDUpdateQuery = "update user set temporaryCancelled =? where temporaryUserID =?"
 	PasswordUpdateQuery        = "update user set passwordHash = ? where email = ?"

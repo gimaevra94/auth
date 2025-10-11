@@ -152,8 +152,8 @@ func UserAddTx(tx *sql.Tx, login, email, password, temporaryUserID, permanentUse
 	return nil
 }
 
-func TemporaryUserIDAddTx(tx *sql.Tx, login, temporaryUserID string) error {
-	_, err := tx.Exec(consts.TemporaryIDUpdateQuery, temporaryUserID, login)
+func TemporaryUserIDAddTx(tx *sql.Tx, login, temporaryUserID string, temporaryCancelled bool) error {
+	_, err := tx.Exec(consts.TemporaryIDUpdateQuery, temporaryUserID, temporaryCancelled, login)
 	if err != nil {
 		return errors.WithStack(err)
 	}

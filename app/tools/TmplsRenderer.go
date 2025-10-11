@@ -282,12 +282,14 @@ const (
 	<div class="container">
 		<div class="header">
 			<h1>Welcome</h1>
-			<form method="GET" action="/logout">
-				<button type="submit" class="btn btn-danger">Sign Out</button>
-			</form>
-			<form method="GET" action="/simple-logout">
-				<button type="submit" class="btn btn-primary">Logout</button>
-			</form>
+			<div class="header-buttons">
+				<form method="GET" action="/logout">
+					<button type="submit" class="btn btn-danger btn-equal-width">Sign Out</button>
+				</form>
+				<form method="GET" action="/simple-logout">
+					<button type="submit" class="btn btn-primary btn-equal-width">Logout</button>
+				</form>
+			</div>
 		</div>
 		<div class="welcome">
 			<p>You have successfully signed in. You can now use all the features of the application.</p>

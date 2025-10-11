@@ -98,6 +98,7 @@ func initRouter() *chi.Mux {
 
 	r.With(auth.IsExpiredTokenMW).Get(consts.HomeURL, htmls.Home)
 	r.With(auth.IsExpiredTokenMW).Get(consts.LogoutURL, auth.Logout)
+	r.With(auth.IsExpiredTokenMW).Get(consts.SimpleLogoutURL, auth.SimpleLogout)
 
 	r.Get(consts.Err500URL, htmls.Err500)
 
