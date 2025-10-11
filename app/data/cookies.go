@@ -12,8 +12,8 @@ func TemporaryUserIDCookieSet(w http.ResponseWriter, v string) {
 		Name:     "temporaryUserID",
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
 		Value:    v,
 		MaxAge:   consts.TemporaryUserIDExp,
 	})
@@ -24,8 +24,8 @@ func TemporaryUserIDCookiesClear(w http.ResponseWriter) {
 		Name:     "temporaryUserID",
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 	})
 }

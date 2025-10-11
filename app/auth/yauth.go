@@ -76,7 +76,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 	defer tx.Rollback()
 
-	email, _, pepermanentID, err := data.YauthUserCheck(yandexUser.Login)
+	pepermanentID, err := data.YauthUserCheck(yandexUser.Login)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			err = data.YauthUserAddTx(tx, yandexUser.Login, yandexUser.Email, temporaryUserID, permanentUserID, temporaryCancelled)
@@ -92,10 +92,14 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if email == "" && pepermanentID != "" {
+	if pepermanentID != "" {
+		log.Printf("yauth: Setting TemporaryUserID cookie for existing user. temporaryUserID: %s", temporaryUserID)
 		data.TemporaryUserIDCookieSet(w, temporaryUserID)
+		log.Printf("yauth: TemporaryUserID cookie set.")
+		permanentUserID = pepermanentID
 	}
 
+	log.Printf("yauth: Adding TemporaryUserID to database. login: %s, temporaryUserID: %s", yandexUser.Login, temporaryUserID)
 	err = data.TemporaryUserIDAddTx(tx, yandexUser.Login, temporaryUserID)
 	if err != nil {
 		log.Printf("%+v", err)

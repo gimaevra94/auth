@@ -286,7 +286,7 @@ const (
 				<button type="submit" class="btn btn-danger">Sign Out</button>
 			</form>
 			<form method="GET" action="/simple-logout">
-				<button type="submit" class="btn btn-warning">Logout (Current Session)</button>
+				<button type="submit" class="btn btn-primary">Logout</button>
 			</form>
 		</div>
 		<div class="welcome">

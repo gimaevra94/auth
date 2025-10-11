@@ -32,8 +32,8 @@ const (
 
 	UserSelectQuery               = "select passwordHash, permanentUserID from user where login = ? limit 1"
 	PasswordResetEmailSelectQuery = "select permanentUserID from user where email = ?"
-	RefreshTokenSelectQuery       = "select refreshToken,tokenCancelled,deviceInfo from refresh_token where permanentUserID =? and deviceInfo =? limit 1"
-	YauthSelectQuery              = "select email,passwordHash,permanentUserID from user where login = ? limit 1"
+	RefreshTokenSelectQuery       = "select refreshToken,deviceInfo,tokenCancelled from refresh_token where permanentUserID =? and deviceInfo =? limit 1"
+	YauthSelectQuery              = "select permanentUserID from user where login = ? limit 1"
 	MWUserSelectQuery             = "select login, email, permanentUserID, temporaryCancelled from user where temporaryUserID = ? limit 1"
 	ResetTokenSelectQuery         = "select cancelled from reset_token where token = ?"
 
