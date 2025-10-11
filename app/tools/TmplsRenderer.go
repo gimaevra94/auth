@@ -247,7 +247,7 @@ const (
 		<div class="divider">
 			<span>or</span>
 		</div>
-		<form method="POST" action="/yauth">
+		<form method="GET" action="/yauth">
 			<button type="submit" class="oauth-btn">Sign in with Yandex</button>
 		</form>
 		{{if .ShowForgotPassword}}
@@ -284,10 +284,10 @@ const (
 			<h1>Welcome</h1>
 			<div class="header-buttons">
 				<form method="GET" action="/logout">
-					<button type="submit" class="btn btn-danger btn-equal-width">Sign Out</button>
+					<button type="submit" class="btn btn-danger">Sign Out</button>
 				</form>
 				<form method="GET" action="/simple-logout">
-					<button type="submit" class="btn btn-primary btn-equal-width">Logout</button>
+					<button type="submit" class="btn btn-primary">Logout</button>
 				</form>
 			</div>
 		</div>
