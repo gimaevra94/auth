@@ -187,5 +187,5 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, consts.SignInURL+"?msg=PasswordSuccessfullyReset", http.StatusFound)
+	http.Redirect(w, r, consts.HomeURL+"?msg=PasswordSuccessfullyReset", http.StatusFound)
 }

@@ -38,16 +38,16 @@ func RefreshTokenValidate(refreshToken string) error {
 
 func InputValidate(r *http.Request, login, email, password string, IsSignIn bool) error {
 
-	if login != "" && !loginRegex.MatchString(login) {
+	if login == "" || !loginRegex.MatchString(login) {
 		return errors.WithStack(errors.New("login invalid"))
 	}
 
-	if password != "" && !passwordRegex.MatchString(password) {
+	if password == "" || !passwordRegex.MatchString(password) {
 		return errors.WithStack(errors.New("password invalid"))
 	}
 
 	if !IsSignIn {
-		if email != "" && !emailRegex.MatchString(email) {
+		if email == "" || !emailRegex.MatchString(email) {
 			return errors.WithStack(errors.New("email invalid"))
 		}
 	}
@@ -71,7 +71,7 @@ func EmailValidate(email string) error {
 		return errors.WithStack(errors.New("email invalid"))
 	}
 	return nil
-}	
+}
 
 func PasswordValidate(password string) error {
 	if password != "" && !passwordRegex.MatchString(password) {

@@ -47,7 +47,7 @@ func DBClose() {
 
 func UserCheck(login, password string) (string, error) {
 	row := DB.QueryRow(consts.UserSelectQuery, login)
-	var passwordHash string
+	var passwordHash sql.NullString
 	var permanentUserID string
 	err := row.Scan(&passwordHash, &permanentUserID)
 

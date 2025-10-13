@@ -38,7 +38,7 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 		Password: password,
 	}
 
-	err := tools.InputValidate(r, user.Login, "", user.Password, false)
+	err := tools.InputValidate(r, user.Login, "", user.Password, true)
 	if err != nil {
 		if strings.Contains(err.Error(), "login") {
 			if captchaCounter-1 <= 0 {
