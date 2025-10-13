@@ -356,6 +356,7 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	temporaryUserID := uuid.New().String()
+	data.TemporaryUserIDCookieSet(w, temporaryUserID)
 	permanentUserID := uuid.New().String()
 	temporaryCancelled := false
 

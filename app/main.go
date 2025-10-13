@@ -11,7 +11,7 @@ import (
 	"github.com/gimaevra94/auth/app/auth"
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
-	"github.com/gimaevra94/auth/app/tmpls"
+	htmls "github.com/gimaevra94/auth/app/tmpls"
 	"github.com/go-chi/chi"
 )
 
@@ -94,6 +94,7 @@ func initRouter() *chi.Mux {
 
 	r.Get(consts.PasswordResetURL, htmls.PasswordReset)
 	r.Post(consts.PasswordResetEmailURL, auth.PasswordResetEmailCheck)
+	r.Get(consts.SetNewPasswordURL, htmls.SetNewPassword)
 	r.Post(consts.SetNewPasswordURL, auth.SetNewPassword)
 
 	r.With(auth.IsExpiredTokenMW).Get(consts.HomeURL, htmls.Home)

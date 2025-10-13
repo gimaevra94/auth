@@ -95,7 +95,7 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	SignUpUserCheck(w, r)
+	SignInUserCheck(w, r)
 }
 
 func SignInUserCheck(w http.ResponseWriter, r *http.Request) {

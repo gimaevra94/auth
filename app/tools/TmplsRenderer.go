@@ -135,7 +135,7 @@ const (
 			{{end}}
 			<button type="submit" class="btn" id="signup-button">Sign Up</button>
 		</form>
-		<div class="divider">
+		<div class="divider signin-gap-fix">
 			<span>or</span>
 		</div>
 		<form method="GET" action="/yauth">
@@ -251,15 +251,13 @@ const (
 			<button type="submit" class="oauth-btn">Sign in with Yandex</button>
 		</form>
 		{{if .ShowForgotPassword}}
-		<div class="login-link">
-			Forgot your password? <a href="/forgot-password-email">Reset Password</a>
+		<div class="error-message reset-hint">
+			Forgot your password? <a href="/password-reset">Reset Password</a>
 		</div>
 		{{end}}
-		{{if eq .Msg "User does not exist"}}
-		<div class="login-link">
+		<div class="login-link signin-gap-fix">
 			Don't have an account? <a href="/sign-up">Sign Up</a>
 		</div>
-		{{end}}
 	</div>
 	{{if .CaptchaShow}}
 	<script src="https://www.google.com/recaptcha/api.js" async defer></script>
@@ -310,8 +308,8 @@ const (
 </head>
 <body>
 	<div class="container">
+		{{if not .Msg}}
 		<h1>Password Reset</h1>
-		{{if .Msg}}<div class="message">{{.Msg}}</div>{{end}}
 		<p class="message">Enter your email to reset your password.</p>
 		<form method="POST" action="/password-reset-email">
 			<div class="form-group">
@@ -320,6 +318,9 @@ const (
 			</div>
 			<button type="submit" class="btn">Submit</button>
 		</form>
+        {{else}}
+        <div class="message success-message" style="text-align:center; padding: 1.5rem 0;">{{.Msg}}</div>
+		{{end}}
 	</div>
 </body>
 </html>
@@ -520,8 +521,21 @@ const (
 <body>
     <div class="container">
         <h1>Password Reset</h1>
-        <p>You have requested a password reset. Please click the link below to reset your password:</p>
-        <p><a href="{{.ResetLink}}" class="button">Reset Password</a></p>
+        <p>You have requested a password reset. Please click the button below to reset your password:</p>
+        <p>
+            <a href="{{.ResetLink}}" target="_blank" rel="noopener" role="button" style="
+                display:inline-block;
+                background-color:#2563eb;
+                color:#ffffff;
+                text-decoration:none;
+                padding:10px 20px;
+                border-radius:6px;
+                font-weight:600;">
+                Reset Password
+            </a>
+        </p>
+        <p>If you don't see the button or it doesn't work, you can simply click this link, or copy and paste it into your browser:</p>
+        <p>{{.ResetLink}}</p>
         <p>If you did not request a password reset, please ignore this email.</p>
     </div>
 </body>
@@ -555,6 +569,7 @@ const (
                 <label for="confirmPassword">Confirm New Password</label>
                 <input type="password" id="confirmPassword" name="confirmPassword" required autocomplete="new-password">
             </div>
+            <input type="hidden" name="token" value="{{.Token}}">
             <button type="submit" class="btn">Set Password</button>
         </form>
     </div>

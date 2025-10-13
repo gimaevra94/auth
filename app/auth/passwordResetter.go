@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"net/url"
 
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
@@ -49,20 +50,64 @@ func PasswordResetEmailCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Сохраняем reset-token в БД, чтобы последующая проверка прошла успешно
+	// Токен берём из query параметра ссылки
+	if u, perr := url.Parse(resetLink); perr == nil {
+		token := u.Query().Get("token")
+		if token != "" {
+			tx, terr := data.DB.Begin()
+			if terr != nil {
+				log.Printf("%+v", errors.WithStack(terr))
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+			defer func() {
+				if r := recover(); r != nil {
+					tx.Rollback()
+					panic(r)
+				}
+			}()
+			defer tx.Rollback()
+
+			if aerr := data.ResetTokenAddTx(tx, token); aerr != nil {
+				log.Printf("%+v", errors.WithStack(aerr))
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+
+			if cerr := tx.Commit(); cerr != nil {
+				log.Printf("%+v", errors.WithStack(cerr))
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+		}
+	}
+
 	err = tools.SendPasswordResetEmail(email, resetLink)
 	if err != nil {
 		log.Printf("%+v", errors.WithStack(err))
-		err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", struct{ Msg string }{Msg: tools.MailSendingStatusMsg})
+		err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", struct{ Msg string }{Msg: "Не удалось отправить письмо. Проверьте адрес или позже попробуйте снова."})
 		if err != nil {
 			log.Printf("%+v", errors.WithStack(err))
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 			return
 		}
+		return
+	}
+
+	// Успех: показываем понятное подтверждение
+	if r.Method == http.MethodPost {
+		if err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", struct{ Msg string }{Msg: "Password reset link has been sent to your email."}); err != nil {
+			log.Printf("%+v", errors.WithStack(err))
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+		return
 	}
 }
 
 func SetNewPassword(w http.ResponseWriter, r *http.Request) {
-	signedToken := r.URL.Query().Get("token")
+	signedToken := r.FormValue("token")
 	if signedToken == "" {
 		log.Println("reset-token not exist")
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)

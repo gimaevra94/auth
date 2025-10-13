@@ -68,7 +68,12 @@ func PasswordReset(w http.ResponseWriter, r *http.Request) {
 }
 
 func SetNewPassword(w http.ResponseWriter, r *http.Request) {
-	err := tools.TmplsRenderer(w, tools.BaseTmpl, "SetNewPassword", nil)
+	token := r.URL.Query().Get("token")
+	msg := r.URL.Query().Get("msg")
+	err := tools.TmplsRenderer(w, tools.BaseTmpl, "SetNewPassword", struct {
+		Msg   string
+		Token string
+	}{Msg: msg, Token: token})
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)

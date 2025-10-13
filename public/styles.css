@@ -1,7 +1,7 @@
 :root {
     --primary-color: #2563eb;
     --error-color: #dc2626;
-    --success-color: #059669;
+    --success-color: #16a34a;
     --text-color: #e5e7eb;
     --bg-color: #1f2937;
     --container-bg: #374151;
@@ -279,6 +279,22 @@ input[type="email"]:focus {
     font-weight: bold;
     font-size: 1.1rem;
     margin-bottom: 1rem;
+}
+
+.reset-hint {
+    margin-top: 1rem;
+}
+
+/* Helper to normalize spacing after reset hint on Sign In page */
+.signin-gap-fix {
+    margin-top: 0;
+}
+
+.success-message {
+    color: var(--success-color);
+    font-weight: 600;
+    font-size: 1.05rem;
+    margin: 0;
 }
 
 .g-recaptcha-centered {
