@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
@@ -188,4 +189,78 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, consts.HomeURL+"?msg=PasswordSuccessfullyReset", http.StatusFound)
+}
+
+func SubmitPassword(w http.ResponseWriter, r *http.Request) {
+	// 1. Получаем temporaryUserID из куки
+	cookie, err := data.TemporaryUserIDCookiesGet(r)
+	if err != nil {
+		log.Printf("SetPasswordHandler: no temporaryUserID cookie: %+v", err)
+		http.Redirect(w, r, consts.SignInURL, http.StatusFound)
+		return
+	}
+	temporaryUserID := cookie.Value
+
+	// 2. Получаем данные пользователя (проверяем, что пароль ещё не задан)
+	row := data.DB.QueryRow(consts.PasswordSetQuery, temporaryUserID)
+	var login, email, permanentUserID string
+	err = row.Scan(&login, &email, &permanentUserID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			log.Println("SetPasswordHandler: user not found or password already set")
+			http.Redirect(w, r, consts.SignInURL, http.StatusFound)
+			return
+		}
+		log.Printf("SetPasswordHandler: DB error: %+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	// 3. Получаем данные формы
+	password := r.FormValue("password")
+	confirmPassword := r.FormValue("confirmPassword")
+
+	// 4. Проверка совпадения
+	if password != confirmPassword {
+		http.Redirect(w, r, consts.SetPasswordURL+"?msg=Passwords+do+not+match", http.StatusFound)
+		return
+	}
+
+	// 5. Валидация пароля
+	err = tools.InputValidate(r, "", "", password, false) // login и email пустые, проверяем только пароль
+	if err != nil {
+		if strings.Contains(err.Error(), "password") {
+			http.Redirect(w, r, consts.SetPasswordURL+"?msg="+tools.ErrMsg["password"].Msg, http.StatusFound)
+			return
+		}
+		log.Printf("SetPasswordHandler: validation error: %+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	// 6. Начинаем транзакцию и обновляем пароль
+	tx, err := data.DB.Begin()
+	if err != nil {
+		log.Printf("SetPasswordHandler: DB.Begin failed: %+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+	defer tx.Rollback()
+
+	err = data.UpdatePasswordByPermanentIDTx(tx, permanentUserID, password)
+	if err != nil {
+		log.Printf("SetPasswordHandler: UpdatePasswordByPermanentIDTx failed: %+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Printf("SetPasswordHandler: tx.Commit failed: %+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	// 7. Успешно — редирект на Home
+	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }

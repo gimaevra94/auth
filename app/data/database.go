@@ -58,6 +58,8 @@ func UserCheck(login, password string) (string, error) {
 		return "", errors.WithStack(err)
 	}
 
+	
+
 	err = bcrypt.CompareHashAndPassword([]byte(passwordHash),
 		[]byte(password))
 	if err != nil {
@@ -216,6 +218,19 @@ func UpdatePasswordTx(tx *sql.Tx, email, newPassword string) error {
 	}
 
 	_, err = tx.Exec(consts.PasswordUpdateQuery, hashedPassword, email)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func UpdatePasswordByPermanentIDTx(tx *sql.Tx, permanentUserID, newPassword string) error {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	_, err = tx.Exec(consts.PasswordUpdateByPermanentIDQuery, hashedPassword, permanentUserID)
 	if err != nil {
 		return errors.WithStack(err)
 	}

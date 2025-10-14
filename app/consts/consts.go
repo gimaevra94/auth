@@ -19,6 +19,8 @@ const (
 	PasswordResetURL      = "/password-reset"
 	PasswordResetEmailURL = "/password-reset-email"
 	SetNewPasswordURL     = "/set-new-password"
+	SetPasswordURL        = "/set-password"
+	SubmitPasswordURL     = "/submit-password"
 
 	TemporaryUserIDExp     = 30 * 24 * 60 * 60
 	RefreshTokenExp7Days   = 7 * 24 * 60 * 60
@@ -43,4 +45,16 @@ const (
 	TemporaryUserIDUpdateQuery = "update user set temporaryCancelled =? where temporaryUserID =?"
 	PasswordUpdateQuery        = "update user set passwordHash = ? where email = ?"
 	ResetTokenUpdateQuery      = "update reset_token  set cancelled = TRUE where token = ?"
+
+	PasswordSetQuery = `
+	SELECT login, email, permanent_user_id 
+	FROM users 
+	WHERE temporary_user_id = ? AND password_hash IS NULL
+`
+
+	PasswordUpdateByPermanentIDQuery = `
+UPDATE users 
+SET password_hash = ? 
+WHERE permanent_user_id = ?
+`
 )
