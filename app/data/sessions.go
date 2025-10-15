@@ -88,6 +88,15 @@ func AuthSessionDataSet(w http.ResponseWriter, r *http.Request, consts any) erro
 	return nil
 }
 
+// LoginSessionGet exposes the raw auth session (for internal flags)
+func LoginSessionGet(r *http.Request) (*sessions.Session, error) {
+	session, err := loginStore.Get(r, "auth")
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return session, nil
+}
+
 func CaptchaSessionDataSet(w http.ResponseWriter, r *http.Request, key string, consts any) error {
 	session, err := captchaStore.Get(r, "captcha")
 	if err != nil {

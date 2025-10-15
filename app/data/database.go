@@ -58,9 +58,11 @@ func UserCheck(login, password string) (string, error) {
 		return "", errors.WithStack(err)
 	}
 
-	
+	if !passwordHash.Valid {
+		return "", errors.WithStack(errors.New("password hash is NULL"))
+	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(passwordHash),
+	err = bcrypt.CompareHashAndPassword([]byte(passwordHash.String),
 		[]byte(password))
 	if err != nil {
 		return "", errors.WithStack(err)
@@ -156,6 +158,14 @@ func UserAddTx(tx *sql.Tx, login, email, password, temporaryUserID, permanentUse
 
 func TemporaryUserIDAddTx(tx *sql.Tx, login, temporaryUserID string, temporaryCancelled bool) error {
 	_, err := tx.Exec(consts.TemporaryIDUpdateQuery, temporaryUserID, temporaryCancelled, login)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func TemporaryUserIDAddByEmailTx(tx *sql.Tx, email, temporaryUserID string, temporaryCancelled bool) error {
+	_, err := tx.Exec(consts.TemporaryIDUpdateByEmailQuery, temporaryUserID, temporaryCancelled, email)
 	if err != nil {
 		return errors.WithStack(err)
 	}

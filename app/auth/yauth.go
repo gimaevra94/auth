@@ -40,7 +40,8 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	if yauthCode == "" {
 		log.Printf("%+v", errors.WithStack(errors.New("yauthCode not exist")))
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		// прямой заход без кода — отправляем на регистрацию
+		http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 		return
 	}
 

@@ -10,6 +10,7 @@ import (
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/tools"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
 
@@ -155,6 +156,15 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Получаем permanentUserID по email (нужен для записи refresh токена)
+	var permanentUserID string
+	row := data.DB.QueryRow(consts.PasswordResetEmailSelectQuery, claims.Email)
+	if err := row.Scan(&permanentUserID); err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
 	tx, err := data.DB.Begin()
 	if err != nil {
 		log.Printf("%+v", errors.WithStack(err))
@@ -169,6 +179,7 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 	}()
 	defer tx.Rollback()
 
+	// 1) Обновляем пароль
 	err = data.UpdatePasswordTx(tx, claims.Email, newPassword)
 	if err != nil {
 		log.Printf("%+v", errors.WithStack(err))
@@ -176,9 +187,32 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 2) Аннулируем reset token
 	err = data.ResetTokenCancelTx(tx, signedToken)
 	if err != nil {
 		log.Printf("%+v", errors.WithStack(err))
+	}
+
+	// 3) Создаём auth-сессию как при входе
+	temporaryUserID := uuid.New().String()
+	if err := data.TemporaryUserIDAddByEmailTx(tx, claims.Email, temporaryUserID, false); err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	rememberMe := false
+	refreshToken, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe)
+	if err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	if err := data.RefreshTokenAddTx(tx, permanentUserID, refreshToken, r.UserAgent(), false); err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
 	}
 
 	err = tx.Commit()
@@ -188,7 +222,9 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, consts.SignInURL+"?msg=PasswordSuccessfullyReset", http.StatusFound)
+	// Ставим куку и ведём в личный кабинет
+	data.TemporaryUserIDCookieSet(w, temporaryUserID)
+	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }
 
 func SubmitPassword(w http.ResponseWriter, r *http.Request) {

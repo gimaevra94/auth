@@ -38,7 +38,7 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 		Password: password,
 	}
 
-	err := tools.InputValidate(r, user.Login, "", user.Password, false)
+	err := tools.InputValidate(r, user.Login, "", user.Password, true)
 	if err != nil {
 		if strings.Contains(err.Error(), "login") {
 			if captchaCounter-1 <= 0 {
@@ -122,6 +122,17 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 
 	permanentUserID, err := data.UserCheck(user.Login, user.Password)
 	if err != nil {
+		// Если у пользователя нет пароля (вход через внешнего провайдера),
+		// отправляем на страницу установки пароля
+		if strings.Contains(err.Error(), "password hash is NULL") {
+			// Разрешаем переход на /set-password через сессионный флаг
+			if session, sErr := data.LoginSessionGet(r); sErr == nil {
+				session.Values["allowSetPassword"] = true
+				_ = session.Save(r, w)
+			}
+			http.Redirect(w, r, consts.SetPasswordURL+"?msg=Please+set+your+password", http.StatusFound)
+			return
+		}
 		if errors.Is(err, sql.ErrNoRows) {
 			if captchaCounter-1 <= 0 {
 				captchaShow = true

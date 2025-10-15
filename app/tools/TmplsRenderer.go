@@ -67,7 +67,7 @@ var ErrMsg = map[string]errMsg{
 	"alreadyExist":      {UserAlreadyExistMsg, nil},
 	"notExist":          {UserNotExistMsg, nil},
 	"mailSendingStatus": {MailSendingStatusMsg, nil},
-	"captchaRequired":   {"Please pass the verification reCAPTCHA.", nil},
+	"captchaRequired":   {"Pass the verification reCAPTCHA.", nil},
 }
 
 func TmplsRenderer(w http.ResponseWriter, tmpl *template.Template, templateName string, data interface{}) error {
@@ -329,31 +329,40 @@ const (
 `
 	SetPasswordTMPL = `
 {{ define "SetPassword" }}
-{{ template "base" . }}
-{{ define "title" }}Set Password{{ end }}
-{{ define "content" }}
-	<h1>Set Account Password</h1>
-	<p class="message">Your account was created via Yandex. To enable password login, set a password below.</p>
-	{{if .Msg}}<div class="error-message">{{.Msg}}</div>{{end}}
-	{{if .Regs}}
-	<div class="requirements-list">
-		{{range .Regs}}
-		<div>{{.}}</div>
-		{{end}}
-	</div>
-	{{end}}
-	<form method="POST" action="/set-password">
-		<div class="form-group">
-			<label for="password">Password</label>
-			<input type="password" id="password" name="password" required autocomplete="new-password">
-		</div>
-		<div class="form-group">
-			<label for="confirmPassword">Confirm Password</label>
-			<input type="password" id="confirmPassword" name="confirmPassword" required autocomplete="new-password">
-		</div>
-		<button type="submit" class="btn">Set Password</button>
-	</form>
-{{ end }}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Set Password</title>
+    <link rel="stylesheet" href="/public/styles.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    </head>
+<body>
+    <div class="container">
+        <h1>Set Account Password</h1>
+        <p class="message">Your account was created via Yandex. To enable password login, set a password below.</p>
+        {{if .Msg}}<div class="error-message">{{.Msg}}</div>{{end}}
+        {{if .Regs}}
+        <div class="requirements-list">
+            {{range .Regs}}
+            <div>{{.}}</div>
+            {{end}}
+        </div>
+        {{end}}
+        <form method="POST" action="/set-password">
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required autocomplete="new-password">
+            </div>
+            <div class="form-group">
+                <label for="confirmPassword">Confirm Password</label>
+                <input type="password" id="confirmPassword" name="confirmPassword" required autocomplete="new-password">
+            </div>
+            <button type="submit" class="btn">Set Password</button>
+        </form>
+    </div>
+</body>
+</html>
 {{ end }}
 `
 	mailCodeTMPL = `

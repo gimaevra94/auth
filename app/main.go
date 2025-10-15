@@ -81,12 +81,12 @@ func initRouter() *chi.Mux {
 
 	r.Get("/clear", data.ClearCookiesDev)
 
-	r.Get(consts.SignUpURL, htmls.SignUp)
+	r.With(auth.AlreadyAuthedRedirectMW).Get(consts.SignUpURL, htmls.SignUp)
 	r.Post(consts.SignUpInputCheckURL, auth.SignUpInputCheck)
-	r.Get(consts.CodeSendURL, htmls.CodeSend)
+	r.With(auth.SignUpFlowOnlyMW).Get(consts.CodeSendURL, htmls.CodeSend)
 	r.Post(consts.UserAddURL, auth.UserAdd)
 
-	r.Get(consts.SignInURL, htmls.SignIn)
+	r.With(auth.AlreadyAuthedRedirectMW).Get(consts.SignInURL, htmls.SignIn)
 	r.Post(consts.SignInInputCheckURL, auth.SignInInputCheck)
 
 	r.Get("/yauth", auth.YandexAuthHandler)
@@ -94,16 +94,16 @@ func initRouter() *chi.Mux {
 
 	r.Get(consts.PasswordResetURL, htmls.PasswordReset)
 	r.Post(consts.PasswordResetEmailURL, auth.PasswordResetEmailCheck)
-	r.Get(consts.SetNewPasswordURL, htmls.SetNewPassword)
+	r.With(auth.ResetTokenGuardMW).Get(consts.SetNewPasswordURL, htmls.SetNewPassword)
 	r.Post(consts.SetNewPasswordURL, auth.SetNewPassword)
-	r.Get(consts.SetPasswordURL, htmls.SetPassword)
+	r.With(auth.SetPasswordFlowOnlyMW).Get(consts.SetPasswordURL, htmls.SetPassword)
 	r.Post(consts.SubmitPasswordURL, auth.SubmitPassword)
 
 	r.With(auth.IsExpiredTokenMW).Get(consts.HomeURL, htmls.Home)
 	r.With(auth.IsExpiredTokenMW).Get(consts.LogoutURL, auth.Logout)
 	r.With(auth.IsExpiredTokenMW).Get(consts.SimpleLogoutURL, auth.SimpleLogout)
 
-	r.Get(consts.Err500URL, htmls.Err500)
+	r.With(auth.InternalOnly500MW).Get(consts.Err500URL, htmls.Err500)
 
 	return r
 }

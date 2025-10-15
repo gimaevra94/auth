@@ -40,11 +40,12 @@ const (
 	MWUserSelectQuery             = "select login, email, permanentUserID, temporaryCancelled from user where temporaryUserID = ? limit 1"
 	ResetTokenSelectQuery         = "select cancelled from reset_token where token = ?"
 
-	TemporaryIDUpdateQuery     = "update user set temporaryUserID = ?, temporaryCancelled = ? where login = ?"
-	RefreshtokenUpdateQuery    = "update refresh_token set tokenCancelled =? where refreshToken =? and deviceInfo =?"
-	TemporaryUserIDUpdateQuery = "update user set temporaryCancelled =? where temporaryUserID =?"
-	PasswordUpdateQuery        = "update user set passwordHash = ? where email = ?"
-	ResetTokenUpdateQuery      = "update reset_token  set cancelled = TRUE where token = ?"
+	TemporaryIDUpdateQuery        = "update user set temporaryUserID = ?, temporaryCancelled = ? where login = ?"
+	TemporaryIDUpdateByEmailQuery = "update user set temporaryUserID = ?, temporaryCancelled = ? where email = ?"
+	RefreshtokenUpdateQuery       = "update refresh_token set tokenCancelled =? where refreshToken =? and deviceInfo =?"
+	TemporaryUserIDUpdateQuery    = "update user set temporaryCancelled =? where temporaryUserID =?"
+	PasswordUpdateQuery           = "update user set passwordHash = ? where email = ?"
+	ResetTokenUpdateQuery         = "update reset_token  set cancelled = TRUE where token = ?"
 
 	PasswordSetQuery = `
 	SELECT login, email, permanent_user_id 
