@@ -23,31 +23,32 @@ type SignInPageData struct {
 }
 
 func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
+	log.Printf("[SignInInputCheck] Начало выполнения")
 	var user structs.User
 	var captchaShow bool
 
 	captchaCounter := 3
 
 	login := r.FormValue("login")
-	email := r.FormValue("email")
 	password := r.FormValue("password")
 
 	user = structs.User{
 		Login:    login,
-		Email:    email,
 		Password: password,
 	}
 
 	err := tools.InputValidate(r, user.Login, "", user.Password, true)
 	if err != nil {
+		log.Printf("[SignInInputCheck] Ошибка валидации: %v", err)
 		if strings.Contains(err.Error(), "login") {
 			if captchaCounter-1 <= 0 {
 				captchaShow = true
 			}
 
+			log.Printf("[SignInInputCheck] Отображение ошибки валидации логина")
 			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["login"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["login"].Regs})
 			if err != nil {
-				log.Printf("%+v", err)
+				log.Printf("[SignInInputCheck] Ошибка рендера страницы входа после невалидного логина: %+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
@@ -59,6 +60,7 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 					captchaShow = true
 				}
 
+				log.Printf("[SignInInputCheck] Отображение ошибки валидации пароля (на этапе ввода)")
 				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["password"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["password"].Regs})
 				if err != nil {
 					log.Printf("%+v", err)
@@ -73,6 +75,7 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
+	log.Printf("[SignInInputCheck] Валидация пройдена, сохраняем данные в сессию")
 
 	err = data.AuthSessionDataSet(w, r, user)
 	if err != nil {
@@ -95,10 +98,12 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Printf("[SignInInputCheck] Вызов SignInUserCheck")
 	SignInUserCheck(w, r)
 }
 
 func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
+	log.Printf("[SignInUserCheck] Начало выполнения")
 	user, err := data.SessionUserGet(r)
 	if err != nil {
 		log.Printf("%+v", err)
@@ -120,11 +125,14 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Printf("[SignInUserCheck] Проверка пользователя в БД: %s", user.Login)
 	permanentUserID, err := data.UserCheck(user.Login, user.Password)
 	if err != nil {
+		log.Printf("[SignInUserCheck] Ошибка при проверке пользователя: %v", err)
 		// Если у пользователя нет пароля (вход через внешнего провайдера),
 		// отправляем на страницу установки пароля
 		if strings.Contains(err.Error(), "password hash is NULL") {
+			log.Printf("[SignInUserCheck] У пользователя NULL пароль, перенаправление на установку пароля")
 			// Разрешаем переход на /set-password через сессионный флаг
 			if session, sErr := data.LoginSessionGet(r); sErr == nil {
 				session.Values["allowSetPassword"] = true
@@ -134,12 +142,13 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if errors.Is(err, sql.ErrNoRows) {
+			log.Printf("[SignInUserCheck] Пользователь не найден, отображение ошибки")
 			if captchaCounter-1 <= 0 {
 				captchaShow = true
 			}
 			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["notExist"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["notExist"].Regs})
 			if err != nil {
-				log.Printf("%+v", err)
+				log.Printf("[SignInUserCheck] Ошибка рендера страницы входа для несуществующего пользователя: %+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
@@ -147,12 +156,13 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+			log.Printf("[SignInUserCheck] Неверный пароль для существующего пользователя, отображение ошибки")
 			if captchaCounter-1 <= 0 {
 				captchaShow = true
 			}
 			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["password"].Msg, ShowForgotPassword: true, CaptchaShow: captchaShow, Regs: tools.ErrMsg["password"].Regs})
 			if err != nil {
-				log.Printf("%+v", err)
+				log.Printf("[SignInUserCheck] Ошибка рендера страницы входа для неверного пароля: %+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
@@ -163,6 +173,7 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
+	log.Printf("[SignInUserCheck] Пользователь успешно аутентифицирован, создание сессии")
 
 	temporaryUserID := uuid.New().String()
 	data.TemporaryUserIDCookieSet(w, temporaryUserID)

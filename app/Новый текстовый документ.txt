@@ -1,0 +1,3177 @@
+package auth
+
+import (
+	"log"
+	"net/http"
+
+	"github.com/gimaevra94/auth/app/consts"
+	"github.com/gimaevra94/auth/app/data"
+	"github.com/pkg/errors"
+)
+
+func Logout(w http.ResponseWriter, r *http.Request) {
+	Revocate(w, r, true, true, true)
+	http.Redirect(w, r, consts.SignInURL, http.StatusFound)
+}
+
+func SimpleLogout(w http.ResponseWriter, r *http.Request) {
+	Revocate(w, r, true, true, false)
+	http.Redirect(w, r, consts.SignInURL, http.StatusFound)
+}
+
+func Revocate(w http.ResponseWriter, r *http.Request, cookieClear, idCancel, tokenCancel bool) {
+	cookie, err := data.TemporaryUserIDCookiesGet(r)
+	if err != nil {
+		log.Printf("%v", errors.WithStack(err))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+	temporaryUserID := cookie.Value
+
+	if cookieClear {
+		data.TemporaryUserIDCookiesClear(w)
+	}
+
+	tx, err := data.DB.Begin()
+	if err != nil {
+		log.Printf("%v", errors.WithStack(err))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r)
+		}
+	}()
+	defer tx.Rollback()
+
+	if idCancel {
+		err := data.TemporaryUserIDCancelTx(tx, temporaryUserID)
+		if err != nil {
+			log.Printf("%v", errors.WithStack(err))
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+	}
+
+	if tokenCancel {
+		_, _, permanentUserID, _, err := data.MWUserCheck(temporaryUserID)
+		if err != nil {
+			log.Printf("%v", errors.WithStack(err))
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+
+		refreshToken, deviceInfo, tokenCancelled, err := data.RefreshTokenCheck(permanentUserID, r.UserAgent())
+		if err != nil {
+			log.Printf("%v", errors.WithStack(err))
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+
+		if deviceInfo != r.UserAgent() {
+			err := errors.New("deviceInfo not match")
+			log.Printf("%v", errors.WithStack(err))
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+
+		if !tokenCancelled {
+			err = data.TokenCancelTx(tx, refreshToken, deviceInfo)
+			if err != nil {
+				log.Printf("%v", errors.WithStack(err))
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Printf("%v", errors.WithStack(err))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+}
+package auth
+
+import (
+	"database/sql"
+	"log"
+	"net/http"
+	"net/url"
+	"strings"
+
+	"github.com/gimaevra94/auth/app/consts"
+	"github.com/gimaevra94/auth/app/data"
+	"github.com/gimaevra94/auth/app/tools"
+	"github.com/google/uuid"
+	"github.com/pkg/errors"
+)
+
+func PasswordResetEmailCheck(w http.ResponseWriter, r *http.Request) {
+	email := r.FormValue("email")
+	err := tools.EmailValidate(email)
+	if err != nil {
+		err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", struct{ Msg string }{Msg: tools.ErrMsg["email"].Msg})
+		if err != nil {
+			log.Printf("%+v", err)
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+		return
+	}
+
+	err = data.PasswordResetEmailCheck(email)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", struct{ Msg string }{Msg: tools.ErrMsg["notExist"].Msg})
+			if err != nil {
+				log.Printf("%+v", errors.WithStack(err))
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+			return
+		}
+
+		log.Printf("%+v", errors.WithStack(err))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	baseURL := "http://localhost:8080/set-new-password"
+	resetLink, err := tools.GenerateResetLink(email, baseURL)
+	if err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	// Сохраняем reset-token в БД, чтобы последующая проверка прошла успешно
+	// Токен берём из query параметра ссылки
+	if u, perr := url.Parse(resetLink); perr == nil {
+		token := u.Query().Get("token")
+		if token != "" {
+			tx, terr := data.DB.Begin()
+			if terr != nil {
+				log.Printf("%+v", errors.WithStack(terr))
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+			defer func() {
+				if r := recover(); r != nil {
+					tx.Rollback()
+					panic(r)
+				}
+			}()
+			defer tx.Rollback()
+
+			if aerr := data.ResetTokenAddTx(tx, token); aerr != nil {
+				log.Printf("%+v", errors.WithStack(aerr))
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+
+			if cerr := tx.Commit(); cerr != nil {
+				log.Printf("%+v", errors.WithStack(cerr))
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+		}
+	}
+
+	err = tools.SendPasswordResetEmail(email, resetLink)
+	if err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", struct{ Msg string }{Msg: "Не удалось отправить письмо. Проверьте адрес или позже попробуйте снова."})
+		if err != nil {
+			log.Printf("%+v", errors.WithStack(err))
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+		return
+	}
+
+	// Успех: показываем понятное подтверждение
+	if r.Method == http.MethodPost {
+		if err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", struct{ Msg string }{Msg: "Password reset link has been sent to your email."}); err != nil {
+			log.Printf("%+v", errors.WithStack(err))
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+		return
+	}
+}
+
+func SetNewPassword(w http.ResponseWriter, r *http.Request) {
+	signedToken := r.FormValue("token")
+	if signedToken == "" {
+		log.Println("reset-token not exist")
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	claims, err := tools.ValidateResetToken(signedToken)
+	if err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	cancelled, err := data.ResetTokenCheck(signedToken)
+	if err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+	if cancelled {
+		err := errors.New("reset-token invalid")
+		log.Printf("%+v", errors.WithStack(err))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	newPassword := r.FormValue("newPassword")
+	confirmPassword := r.FormValue("confirmPassword")
+
+	if newPassword != confirmPassword {
+		log.Println("New password validation failed")
+		err := tools.TmplsRenderer(w, tools.BaseTmpl, "SetNewPassword", struct{ Msg string }{Msg: tools.ErrMsg["password"].Msg})
+		if err != nil {
+			log.Printf("%+v", errors.WithStack(err))
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+
+		err = tools.PasswordValidate(newPassword)
+		if err != nil {
+			log.Printf("%+v", errors.WithStack(err))
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+	}
+
+	// Получаем permanentUserID по email (нужен для записи refresh токена)
+	var permanentUserID string
+	row := data.DB.QueryRow(consts.PasswordResetEmailSelectQuery, claims.Email)
+	if err := row.Scan(&permanentUserID); err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	tx, err := data.DB.Begin()
+	if err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r)
+		}
+	}()
+	defer tx.Rollback()
+
+	// 1) Обновляем пароль
+	err = data.UpdatePasswordTx(tx, claims.Email, newPassword)
+	if err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	// 2) Аннулируем reset token
+	err = data.ResetTokenCancelTx(tx, signedToken)
+	if err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+	}
+
+	// 3) Создаём auth-сессию как при входе
+	temporaryUserID := uuid.New().String()
+	if err := data.TemporaryUserIDAddByEmailTx(tx, claims.Email, temporaryUserID, false); err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	rememberMe := false
+	refreshToken, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe)
+	if err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	if err := data.RefreshTokenAddTx(tx, permanentUserID, refreshToken, r.UserAgent(), false); err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	// Ставим куку и ведём в личный кабинет
+	data.TemporaryUserIDCookieSet(w, temporaryUserID)
+	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
+}
+
+func SubmitPassword(w http.ResponseWriter, r *http.Request) {
+	// 1. Получаем temporaryUserID из куки
+	cookie, err := data.TemporaryUserIDCookiesGet(r)
+	if err != nil {
+		log.Printf("SetPasswordHandler: no temporaryUserID cookie: %+v", err)
+		http.Redirect(w, r, consts.SignInURL, http.StatusFound)
+		return
+	}
+	temporaryUserID := cookie.Value
+
+	// 2. Получаем данные пользователя (проверяем, что пароль ещё не задан)
+	row := data.DB.QueryRow(consts.PasswordSetQuery, temporaryUserID)
+	var login, email, permanentUserID string
+	err = row.Scan(&login, &email, &permanentUserID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			log.Println("SetPasswordHandler: user not found or password already set")
+			http.Redirect(w, r, consts.SignInURL, http.StatusFound)
+			return
+		}
+		log.Printf("SetPasswordHandler: DB error: %+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	// 3. Получаем данные формы
+	password := r.FormValue("password")
+	confirmPassword := r.FormValue("confirmPassword")
+
+	// 4. Проверка совпадения
+	if password != confirmPassword {
+		http.Redirect(w, r, consts.SetPasswordURL+"?msg=Passwords+do+not+match", http.StatusFound)
+		return
+	}
+
+	// 5. Валидация пароля
+	err = tools.InputValidate(r, "", "", password, false) // login и email пустые, проверяем только пароль
+	if err != nil {
+		if strings.Contains(err.Error(), "password") {
+			http.Redirect(w, r, consts.SetPasswordURL+"?msg="+tools.ErrMsg["password"].Msg, http.StatusFound)
+			return
+		}
+		log.Printf("SetPasswordHandler: validation error: %+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	// 6. Начинаем транзакцию и обновляем пароль
+	tx, err := data.DB.Begin()
+	if err != nil {
+		log.Printf("SetPasswordHandler: DB.Begin failed: %+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+	defer tx.Rollback()
+
+	err = data.UpdatePasswordByPermanentIDTx(tx, permanentUserID, password)
+	if err != nil {
+		log.Printf("SetPasswordHandler: UpdatePasswordByPermanentIDTx failed: %+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Printf("SetPasswordHandler: tx.Commit failed: %+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	// 7. Успешно — редирект на Home
+	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
+}
+package auth
+
+import (
+	"database/sql"
+	"log"
+	"net/http"
+
+	"github.com/gimaevra94/auth/app/consts"
+	"github.com/gimaevra94/auth/app/data"
+	"github.com/gimaevra94/auth/app/tools"
+	"github.com/pkg/errors"
+)
+
+func IsExpiredTokenMW(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("routesProtector: Request URL: %s", r.URL.Path)
+		log.Printf("routesProtector: Received cookies: %+v", r.Cookies())
+		cookie, err := data.TemporaryUserIDCookiesGet(r)
+		if err != nil {
+			log.Println("routesProtector: Redirecting to SignInURL because TemporaryUserID cookie not found or expired.")
+			http.Redirect(w, r, consts.SignInURL, http.StatusFound)
+			return
+		}
+
+		temporaryUserID := cookie.Value
+		login, email, permanentUserID, temporaryCancelled, err := data.MWUserCheck(temporaryUserID)
+		if err != nil {
+			log.Printf("%v", errors.WithStack(err))
+			log.Println("routesProtector: Redirecting to Err500URL because MWUserCheck failed.")
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+
+		if temporaryCancelled {
+			log.Println("routesProtector: Redirecting to SignInURL because temporaryUserID is cancelled.")
+			Revocate(w, r, true, false, false)
+			http.Redirect(w, r, consts.SignInURL, http.StatusFound)
+			return
+		}
+
+		refreshToken, deviceInfo, tokenCancelled, err := data.RefreshTokenCheck(permanentUserID, r.UserAgent())
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				log.Println("routesProtector: Redirecting to SignInURL because RefreshToken not found for permanentUserID or UserAgent.")
+				Revocate(w, r, true, true, false)
+				http.Redirect(w, r, consts.SignInURL, http.StatusFound)
+				return
+			}
+
+			log.Printf("%v", errors.WithStack(err))
+			log.Println("routesProtector: Redirecting to Err500URL because RefreshTokenCheck failed.")
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+
+		if deviceInfo != r.UserAgent() {
+			log.Println("routesProtector: Redirecting to SignInURL because UserAgent mismatch.")
+			Revocate(w, r, true, true, true)
+			http.Redirect(w, r, consts.SignInURL, http.StatusFound)
+			return
+		}
+
+		err = tools.RefreshTokenValidate(refreshToken)
+		if err != nil {
+			log.Println("routesProtector: Redirecting to SignInURL because RefreshToken is invalid or expired.")
+			Revocate(w, r, true, true, true)
+			http.Redirect(w, r, consts.SignInURL, http.StatusFound)
+			return
+		}
+
+		if tokenCancelled {
+			log.Println("routesProtector: Redirecting to SignInURL because RefreshToken is cancelled.")
+			Revocate(w, r, true, true, false)
+			err := tools.SendSuspiciousLoginEmail(login, email, deviceInfo)
+			if err != nil {
+				log.Printf("%v", errors.WithStack(err))
+				log.Println("routesProtector: Redirecting to Err500URL because SendSuspiciousLoginEmail failed.")
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+			http.Redirect(w, r, consts.SignInURL, http.StatusFound)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// AlreadyAuthedRedirectMW redirects authenticated users away from public pages (e.g., sign-in/sign-up)
+func AlreadyAuthedRedirectMW(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Try to read auth cookie; if missing, user is not authed -> show public page
+		cookie, err := data.TemporaryUserIDCookiesGet(r)
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		temporaryUserID := cookie.Value
+		_, _, permanentUserID, temporaryCancelled, err := data.MWUserCheck(temporaryUserID)
+		if err != nil || temporaryCancelled {
+			// Not a valid temporary session -> continue to public page
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		refreshToken, deviceInfo, tokenCancelled, err := data.RefreshTokenCheck(permanentUserID, r.UserAgent())
+		if err != nil || tokenCancelled || deviceInfo != r.UserAgent() {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		if err := tools.RefreshTokenValidate(refreshToken); err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// User is authenticated -> redirect to Home
+		http.Redirect(w, r, consts.HomeURL, http.StatusFound)
+	})
+}
+
+// SignUpFlowOnlyMW allows access only when signup flow is in progress
+// (session user exists and server code is generated). Otherwise redirects to SignUp.
+func SignUpFlowOnlyMW(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user, err := data.SessionUserGet(r)
+		if err != nil {
+			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+			return
+		}
+		if user.ServerCode == "" {
+			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// ResetTokenGuardMW ensures set-new-password is accessible only via a valid reset link
+func ResetTokenGuardMW(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token := r.URL.Query().Get("token")
+		if token == "" {
+			http.Redirect(w, r, consts.PasswordResetURL, http.StatusFound)
+			return
+		}
+		// Validate JWT structure and expiry
+		if _, err := tools.ValidateResetToken(token); err != nil {
+			http.Redirect(w, r, consts.PasswordResetURL, http.StatusFound)
+			return
+		}
+		// Check token presence and not cancelled in DB
+		cancelled, err := data.ResetTokenCheck(token)
+		if err != nil || cancelled {
+			http.Redirect(w, r, consts.PasswordResetURL, http.StatusFound)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+package auth
+
+import (
+	"database/sql"
+	"log"
+	"net/http"
+	"strings"
+
+	"github.com/gimaevra94/auth/app/consts"
+	"github.com/gimaevra94/auth/app/data"
+	"github.com/gimaevra94/auth/app/structs"
+	"github.com/gimaevra94/auth/app/tools"
+	"github.com/google/uuid"
+	"github.com/pkg/errors"
+	"golang.org/x/crypto/bcrypt"
+)
+
+type SignInPageData struct {
+	Msg                string
+	ShowForgotPassword bool
+	CaptchaShow        bool
+	Regs               []string
+}
+
+func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
+	log.Printf("[SignInInputCheck] Начало выполнения")
+	var user structs.User
+	var captchaShow bool
+
+	captchaCounter := 3
+
+	login := r.FormValue("login")
+	password := r.FormValue("password")
+
+	user = structs.User{
+		Login:    login,
+		Password: password,
+	}
+
+	err := tools.InputValidate(r, user.Login, "", user.Password, true)
+	if err != nil {
+		log.Printf("[SignInInputCheck] Ошибка валидации: %v", err)
+		if strings.Contains(err.Error(), "login") {
+			if captchaCounter-1 <= 0 {
+				captchaShow = true
+			}
+
+			log.Printf("[SignInInputCheck] Отображение ошибки валидации логина")
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["login"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["login"].Regs})
+			if err != nil {
+				log.Printf("[SignInInputCheck] Ошибка рендера страницы входа после невалидного логина: %+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+			return
+
+		} else {
+			if strings.Contains(err.Error(), "password") {
+				if captchaCounter-1 <= 0 {
+					captchaShow = true
+				}
+
+				log.Printf("[SignInInputCheck] Отображение ошибки валидации пароля (на этапе ввода)")
+				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["password"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["password"].Regs})
+				if err != nil {
+					log.Printf("%+v", err)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+					return
+				}
+				return
+			}
+		}
+
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+	log.Printf("[SignInInputCheck] Валидация пройдена, сохраняем данные в сессию")
+
+	err = data.AuthSessionDataSet(w, r, user)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	err = data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter-1)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	err = data.CaptchaSessionDataSet(w, r, "captchaShow", captchaShow)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	log.Printf("[SignInInputCheck] Вызов SignInUserCheck")
+	SignInUserCheck(w, r)
+}
+
+func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
+	log.Printf("[SignInUserCheck] Начало выполнения")
+	user, err := data.SessionUserGet(r)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	captchaCounter, err := data.SessionCaptchaCounterGet(r)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	captchaShow, err := data.SessionCaptchaShowGet(r)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	log.Printf("[SignInUserCheck] Проверка пользователя в БД: %s", user.Login)
+	permanentUserID, err := data.UserCheck(user.Login, user.Password)
+	if err != nil {
+		log.Printf("[SignInUserCheck] Ошибка при проверке пользователя: %v", err)
+		// Если у пользователя нет пароля (вход через внешнего провайдера),
+		// отправляем на страницу установки пароля
+		if strings.Contains(err.Error(), "password hash is NULL") {
+			log.Printf("[SignInUserCheck] У пользователя NULL пароль, перенаправление на установку пароля")
+			// Разрешаем переход на /set-password через сессионный флаг
+			if session, sErr := data.LoginSessionGet(r); sErr == nil {
+				session.Values["allowSetPassword"] = true
+				_ = session.Save(r, w)
+			}
+			http.Redirect(w, r, consts.SetPasswordURL+"?msg=Please+set+your+password", http.StatusFound)
+			return
+		}
+		if errors.Is(err, sql.ErrNoRows) {
+			log.Printf("[SignInUserCheck] Пользователь не найден, отображение ошибки")
+			if captchaCounter-1 <= 0 {
+				captchaShow = true
+			}
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["notExist"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["notExist"].Regs})
+			if err != nil {
+				log.Printf("[SignInUserCheck] Ошибка рендера страницы входа для несуществующего пользователя: %+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+			return
+		}
+
+		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+			log.Printf("[SignInUserCheck] Неверный пароль для существующего пользователя, отображение ошибки")
+			if captchaCounter-1 <= 0 {
+				captchaShow = true
+			}
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["password"].Msg, ShowForgotPassword: true, CaptchaShow: captchaShow, Regs: tools.ErrMsg["password"].Regs})
+			if err != nil {
+				log.Printf("[SignInUserCheck] Ошибка рендера страницы входа для неверного пароля: %+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+			return
+		}
+
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+	log.Printf("[SignInUserCheck] Пользователь успешно аутентифицирован, создание сессии")
+
+	temporaryUserID := uuid.New().String()
+	data.TemporaryUserIDCookieSet(w, temporaryUserID)
+
+	rememberMe := r.FormValue("rememberMe") != ""
+	refreshToken, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	tx, err := data.DB.Begin()
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r)
+		}
+	}()
+	defer tx.Rollback()
+
+	err = data.TemporaryUserIDAddTx(tx, user.Login, temporaryUserID, false)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	tokenCancelled := false
+	err = data.RefreshTokenAddTx(tx, permanentUserID, refreshToken, r.UserAgent(), tokenCancelled)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	captchaCounter = 3
+	err = data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter-1)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	err = data.AuthSessionEnd(w, r)
+	if err != nil {
+		log.Printf("%v", errors.WithStack(err))
+		http.Redirect(w, r, consts.SignInURL, http.StatusFound)
+		return
+	}
+
+	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
+}
+package auth
+
+import (
+	"database/sql"
+	"log"
+	"net/http"
+	"strings"
+
+	"github.com/gimaevra94/auth/app/consts"
+	"github.com/gimaevra94/auth/app/data"
+	"github.com/gimaevra94/auth/app/structs"
+	"github.com/gimaevra94/auth/app/tools"
+	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
+
+	"github.com/pkg/errors"
+)
+
+type SignUpPageData struct {
+	Msg         string
+	CaptchaShow bool
+	Regs        []string
+}
+
+func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
+	var user structs.User
+	var captchaShow bool
+
+	login := r.FormValue("login")
+	email := r.FormValue("email")
+	password := r.FormValue("password")
+
+	user = structs.User{
+		Login:    login,
+		Email:    email,
+		Password: password,
+	}
+
+	captchaCounter, err := data.SessionCaptchaCounterGet(r)
+	if err != nil {
+		if strings.Contains(err.Error(), "exist") {
+			captchaCounter = 3
+		} else {
+			log.Printf("%+v", err)
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+	}
+
+	captchaShow, err = data.SessionCaptchaShowGet(r)
+	if err != nil {
+		if strings.Contains(err.Error(), "exist") {
+			captchaShow = false
+		} else {
+			log.Printf("%+v", err)
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+	}
+
+	if captchaShow {
+		err = tools.Captcha(r)
+		if err != nil {
+			if strings.Contains(err.Error(), "captchaToken not exist") {
+				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["captchaRequired"].Msg, CaptchaShow: captchaShow, Regs: nil})
+				if err != nil {
+					log.Printf("%+v", err)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+					return
+				}
+				return
+			} else {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+		}
+	}
+
+	err = tools.InputValidate(r, user.Login, user.Email, user.Password, false)
+	if err != nil {
+		if strings.Contains(err.Error(), "login") {
+			err := data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter-1)
+			if err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+
+			captchaCounter -= 1
+			if captchaCounter == 0 {
+				captchaShow = true
+
+				err = data.CaptchaSessionDataSet(w, r, "captchaShow", captchaShow)
+				if err != nil {
+					log.Printf("%+v", err)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+					return
+				}
+			}
+
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["login"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["login"].Regs})
+			if err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+
+			return
+
+		} else if strings.Contains(err.Error(), "email") {
+			err := data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter-1)
+			if err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+
+			captchaCounter -= 1
+			if captchaCounter == 0 {
+				captchaShow = true
+
+				err = data.CaptchaSessionDataSet(w, r, "captchaShow", captchaShow)
+				if err != nil {
+					log.Printf("%+v", err)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+					return
+				}
+			}
+
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["email"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["email"].Regs})
+			if err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+
+			return
+
+		} else if strings.Contains(err.Error(), "password") {
+			err := data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter-1)
+			if err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+
+			captchaCounter -= 1
+			if captchaCounter == 0 {
+				captchaShow = true
+
+				err = data.CaptchaSessionDataSet(w, r, "captchaShow", captchaShow)
+				if err != nil {
+					log.Printf("%+v", err)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+					return
+				}
+			}
+
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["password"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["password"].Regs})
+			if err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+
+			return
+		}
+
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	err = data.AuthSessionDataSet(w, r, user)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	captchaCounter = 3
+	err = data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	err = data.CaptchaSessionDataSet(w, r, "captchaShow", false)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	SignUpUserCheck(w, r)
+}
+
+func SignUpUserCheck(w http.ResponseWriter, r *http.Request) {
+	user, err := data.SessionUserGet(r)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	captchaCounter, err := data.SessionCaptchaCounterGet(r)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	} else {
+	}
+
+	captchaShow, err := data.SessionCaptchaShowGet(r)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	_, err = data.UserCheck(user.Login, user.Password)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			CodeSend(w, r)
+			return
+		}
+
+		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+			if captchaCounter == 0 {
+				captchaShow = true
+			}
+			captchaCounter -= 1
+
+			err = data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter)
+			if err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+			err = data.CaptchaSessionDataSet(w, r, "captchaShow", captchaShow)
+			if err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["password"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["password"].Regs})
+			if err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+			return
+		}
+
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	if captchaCounter == 0 {
+		captchaShow = true
+	}
+	captchaCounter -= 1
+
+	err = data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+	err = data.CaptchaSessionDataSet(w, r, "captchaShow", captchaShow)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["alreadyExist"].Msg, CaptchaShow: captchaShow})
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+}
+
+func CodeSend(w http.ResponseWriter, r *http.Request) {
+	user, err := data.SessionUserGet(r)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	// Если serverCode уже существует, не отправляем повторно
+	if user.ServerCode != "" {
+		log.Println("Verification code already sent for user:", user.Email)
+		http.Redirect(w, r, consts.CodeSendURL, http.StatusFound)
+		return
+	}
+
+	serverCode, err := tools.AuthCodeSend(user.Email)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+	user.ServerCode = serverCode
+
+	err = data.AuthSessionDataSet(w, r, user)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	if r.URL.Path != "/code-send" && r.URL.Path != "/password-reset" {
+		http.Redirect(w, r, consts.CodeSendURL, http.StatusFound)
+		return
+	}
+}
+
+func UserAdd(w http.ResponseWriter, r *http.Request) {
+	user, err := data.SessionUserGet(r)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	clientCode := r.FormValue("clientCode")
+	err = tools.CodeValidate(r, clientCode, user.ServerCode)
+	if err != nil {
+		if strings.Contains(err.Error(), "exist") {
+			log.Printf("%+v", err)
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+
+		err = tools.TmplsRenderer(w, tools.BaseTmpl, "CodeSend", tools.ErrMsg["serverCode"])
+		if err != nil {
+			log.Printf("%+v", err)
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+	}
+
+	rememberMe := r.FormValue("rememberMe") != ""
+	refreshToken, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	temporaryUserID := uuid.New().String()
+	data.TemporaryUserIDCookieSet(w, temporaryUserID)
+	permanentUserID := uuid.New().String()
+	temporaryCancelled := false
+
+	tx, err := data.DB.Begin()
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r)
+		}
+	}()
+	defer tx.Rollback()
+
+	err = data.UserAddTx(tx, user.Login, user.Email, user.Password, temporaryUserID, permanentUserID, temporaryCancelled)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	tokenCancelled := false
+	err = data.RefreshTokenAddTx(tx, permanentUserID, refreshToken, r.UserAgent(), tokenCancelled)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	captchaCounter := 3
+	err = data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter-1)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	err = data.CaptchaSessionDataSet(w, r, "captchaShow", false)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	err = data.AuthSessionEnd(w, r)
+	if err != nil {
+		log.Printf("%v", errors.WithStack(err))
+		http.Redirect(w, r, consts.SignInURL, http.StatusFound)
+		return
+	}
+
+	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
+}
+package auth
+
+import (
+	"database/sql"
+	"encoding/json"
+	"io"
+	"log"
+	"net/http"
+	"net/url"
+	"os"
+
+	"github.com/gimaevra94/auth/app/consts"
+	"github.com/gimaevra94/auth/app/data"
+	"github.com/gimaevra94/auth/app/structs"
+	"github.com/gimaevra94/auth/app/tools"
+	"github.com/google/uuid"
+	"github.com/pkg/errors"
+)
+
+const (
+	authURL     = "https://oauth.yandex.ru/authorize"
+	tokenURL    = "https://oauth.yandex.ru/token"
+	userInfoURL = "https://login.yandex.ru/info"
+)
+
+func YandexAuthHandler(w http.ResponseWriter, r *http.Request) {
+	authParams := url.Values{
+		"response_type": {"code"},
+		"client_id":     {os.Getenv("clientID")},
+		"redirect_uri":  {consts.YandexCallbackFullURL},
+		"scope":         {"login:email"},
+	}
+
+	authURLWithParams := authURL + "?" + authParams.Encode()
+	http.Redirect(w, r, authURLWithParams, http.StatusFound)
+}
+
+func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
+	yauthCode := r.URL.Query().Get("code")
+
+	if yauthCode == "" {
+		log.Printf("%+v", errors.WithStack(errors.New("yauthCode not exist")))
+		// прямой заход без кода — отправляем на регистрацию
+		http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+		return
+	}
+
+	yandexAccessToken, err := getAccessToken(yauthCode)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	yandexUser, err := getYandexUserInfo(yandexAccessToken)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	temporaryUserID := uuid.New().String()
+	permanentUserID := uuid.New().String()
+	temporaryCancelled := false
+
+	tx, err := data.DB.Begin()
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r)
+		}
+	}()
+	defer tx.Rollback()
+
+	pepermanentID, err := data.YauthUserCheck(yandexUser.Login)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			err = data.YauthUserAddTx(tx, yandexUser.Login, yandexUser.Email, temporaryUserID, permanentUserID, temporaryCancelled)
+			if err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+		} else {
+			log.Printf("%+v", err)
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+	}
+
+	if pepermanentID != "" {
+		permanentUserID = pepermanentID
+	}
+
+	// Всегда устанавливаем куки после определения permanentUserID
+	data.TemporaryUserIDCookieSet(w, temporaryUserID)
+	log.Printf("yauth: TemporaryUserID cookie set. temporaryUserID: %s", temporaryUserID)
+
+	log.Printf("yauth: Adding TemporaryUserID to database. login: %s, temporaryUserID: %s", yandexUser.Login, temporaryUserID)
+	err = data.TemporaryUserIDAddTx(tx, yandexUser.Login, temporaryUserID, false)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	rememberMe := r.FormValue("rememberMe") != ""
+	refreshToken, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	tokenCancelled := false
+	err = data.RefreshTokenAddTx(tx, permanentUserID, refreshToken, r.UserAgent(), tokenCancelled)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
+	// Логируем заголовки перед редиректом
+	log.Printf("yauth: Before redirect to HomeURL. Response Set-Cookie header: %v", w.Header().Get("Set-Cookie"))
+	log.Printf("yauth: Before redirect to HomeURL. Request cookies: %+v", r.Cookies())
+
+	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
+}
+
+func getAccessToken(yauthCode string) (string, error) {
+	tokenParams := url.Values{
+		"grant_type":    {"authorization_code"},
+		"code":          {yauthCode},
+		"client_id":     {os.Getenv("clientID")},
+		"client_secret": {os.Getenv("clientSecret")},
+		"redirect_uri":  {consts.YandexCallbackFullURL},
+	}
+
+	resp, err := http.PostForm(tokenURL, tokenParams)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	var result map[string]interface{}
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	accessToken, ok := result["access_token"].(string)
+	if !ok {
+		return "", errors.WithStack(errors.New("access_token: not exist"))
+	}
+
+	return accessToken, nil
+}
+
+func getYandexUserInfo(accessToken string) (structs.User, error) {
+	userInfoURLWithParams := userInfoURL + "?format=json&with_openid_identity=1&with_email=1"
+
+	req, err := http.NewRequest("GET", userInfoURLWithParams, nil)
+	if err != nil {
+		return structs.User{}, errors.WithStack(err)
+	}
+
+	req.Header.Set("Authorization", "OAuth "+accessToken)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return structs.User{}, errors.WithStack(err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return structs.User{}, errors.WithStack(err)
+	}
+
+	var user structs.User
+	err = json.Unmarshal(body, &user)
+	if err != nil {
+		return structs.User{}, errors.WithStack(err)
+	}
+
+	return user, nil
+}
+package consts
+
+const (
+	SignUpURL           = "/sign-up"
+	SignUpInputCheckURL = "/sign-up-input-check"
+	CodeSendURL         = "/code-send"
+	UserAddURL          = "/user-add"
+
+	SignInURL           = "/sign-in"
+	SignInInputCheckURL = "/sign-in-input-check"
+
+	HomeURL               = "/home"
+	LogoutURL             = "/logout"
+	SimpleLogoutURL       = "/simple-logout"
+	Err500URL             = "/500"
+	YandexCallbackURL     = "/ya_callback"
+	YandexCallbackFullURL = "http://localhost:8080/ya_callback"
+
+	PasswordResetURL      = "/password-reset"
+	PasswordResetEmailURL = "/password-reset-email"
+	SetNewPasswordURL     = "/set-new-password"
+	SetPasswordURL        = "/set-password"
+	SubmitPasswordURL     = "/submit-password"
+
+	TemporaryUserIDExp     = 30 * 24 * 60 * 60
+	RefreshTokenExp7Days   = 7 * 24 * 60 * 60
+	RefreshTokenExp24Hours = 24 * 60 * 60
+)
+
+const (
+	UserInsertQuery         = "insert into user (login,email,passwordHash,temporaryUserID,permanentUserID,temporaryCancelled) values(?,?,?,?,?,?)"
+	RefreshTokenInsertQuery = "insert into refresh_token (permanentUserID,refreshToken,deviceInfo,tokenCancelled) values (?,?,?,?)"
+	YauthInsertQuery        = "insert into user (login,email, temporaryUserID, permanentUserID, temporaryCancelled) values(?,?,?,?,?)"
+	ResetTokenInsertQuery   = "insert into reset_token  (token, cancelled) values (?, ?)"
+
+	UserSelectQuery               = "select passwordHash, permanentUserID from user where login = ? limit 1"
+	PasswordResetEmailSelectQuery = "select permanentUserID from user where email = ?"
+	RefreshTokenSelectQuery       = "select refreshToken,deviceInfo,tokenCancelled from refresh_token where permanentUserID =? and deviceInfo =? AND tokenCancelled = FALSE limit 1"
+	YauthSelectQuery              = "select permanentUserID from user where login = ? limit 1"
+	MWUserSelectQuery             = "select login, email, permanentUserID, temporaryCancelled from user where temporaryUserID = ? limit 1"
+	ResetTokenSelectQuery         = "select cancelled from reset_token where token = ?"
+
+	TemporaryIDUpdateQuery        = "update user set temporaryUserID = ?, temporaryCancelled = ? where login = ?"
+	TemporaryIDUpdateByEmailQuery = "update user set temporaryUserID = ?, temporaryCancelled = ? where email = ?"
+	RefreshtokenUpdateQuery       = "update refresh_token set tokenCancelled =? where refreshToken =? and deviceInfo =?"
+	TemporaryUserIDUpdateQuery    = "update user set temporaryCancelled =? where temporaryUserID =?"
+	PasswordUpdateQuery           = "update user set passwordHash = ? where email = ?"
+	ResetTokenUpdateQuery         = "update reset_token  set cancelled = TRUE where token = ?"
+
+	PasswordSetQuery = `
+	SELECT login, email, permanent_user_id 
+	FROM users 
+	WHERE temporary_user_id = ? AND password_hash IS NULL
+`
+
+	PasswordUpdateByPermanentIDQuery = `
+UPDATE users 
+SET password_hash = ? 
+WHERE permanent_user_id = ?
+`
+)
+package data
+
+import (
+	"net/http"
+
+	"github.com/gimaevra94/auth/app/consts"
+	"github.com/pkg/errors"
+)
+
+func TemporaryUserIDCookieSet(w http.ResponseWriter, v string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "temporaryUserID",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		Value:    v,
+		MaxAge:   consts.TemporaryUserIDExp,
+	})
+}
+
+func TemporaryUserIDCookiesClear(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "temporaryUserID",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
+}
+
+func TemporaryUserIDCookiesGet(r *http.Request) (*http.Cookie, error) {
+	cookie, err := r.Cookie("temporaryUserID")
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	if cookie.Value == "" {
+		return nil, errors.New("temporaryUserID not exist")
+	}
+
+	return cookie, nil
+}
+
+func ClearCookiesDev(w http.ResponseWriter, r *http.Request) {
+	TemporaryUserIDCookiesClear(w)
+	err := AuthSessionEnd(w, r)
+	if err != nil {
+		errors.WithStack(err)
+	}
+	err = CaptchaSessionEnd(w, r)
+	if err != nil {
+		errors.WithStack(err)
+	}
+	http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+}
+
+package data
+
+import (
+	"database/sql"
+	"os"
+
+	"github.com/go-sql-driver/mysql"
+	"github.com/pkg/errors"
+	"golang.org/x/crypto/bcrypt"
+
+	"github.com/gimaevra94/auth/app/consts"
+)
+
+var DB *sql.DB
+
+func DBConn() error {
+	dbPassword := []byte(os.Getenv("DB_PASSWORD"))
+
+	cfg := mysql.Config{
+		User:   "root",
+		Passwd: string(dbPassword),
+		Net:    "tcp",
+		Addr:   "localhost:3306",
+		DBName: "db",
+	}
+
+	var err error
+	DB, err = sql.Open("mysql", cfg.FormatDSN())
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	err = DB.Ping()
+	if err != nil {
+		DB.Close()
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+func DBClose() {
+	if DB != nil {
+		DB.Close()
+	}
+}
+
+func UserCheck(login, password string) (string, error) {
+	row := DB.QueryRow(consts.UserSelectQuery, login)
+	var passwordHash sql.NullString
+	var permanentUserID string
+	err := row.Scan(&passwordHash, &permanentUserID)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", errors.WithStack(err)
+		}
+		return "", errors.WithStack(err)
+	}
+
+	if !passwordHash.Valid {
+		return "", errors.WithStack(errors.New("password hash is NULL"))
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(passwordHash.String),
+		[]byte(password))
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	return permanentUserID, nil
+}
+
+func PasswordResetEmailCheck(email string) error {
+	row := DB.QueryRow(consts.PasswordResetEmailSelectQuery, email)
+	var permanentUserID string
+	err := row.Scan(&permanentUserID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return errors.WithStack(err)
+		}
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func RefreshTokenCheck(permanentUserID, userAgent string) (string, string, bool, error) {
+	row := DB.QueryRow(consts.RefreshTokenSelectQuery, permanentUserID, userAgent)
+	var refreshToken string
+	var deviceInfo string
+	var tokenCancelled bool
+
+	err := row.Scan(&refreshToken, &deviceInfo, &tokenCancelled)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", "", false, errors.WithStack(err)
+		}
+		return "", "", false, errors.WithStack(err)
+	}
+	return refreshToken, deviceInfo, tokenCancelled, nil
+}
+
+func YauthUserCheck(login string) (string, error) {
+	row := DB.QueryRow(consts.YauthSelectQuery, login)
+	var permanentUserID string
+	err := row.Scan(&permanentUserID)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", errors.WithStack(err)
+		}
+		return "", errors.WithStack(err)
+	}
+
+	return permanentUserID, nil
+}
+
+func MWUserCheck(key string) (string, string, string, bool, error) {
+	row := DB.QueryRow(consts.MWUserSelectQuery, key)
+	var login string
+	var email string
+	var permanentUserID string
+	var temporaryUserID bool
+	err := row.Scan(&login, &email, &permanentUserID, &temporaryUserID)
+	if err != nil {
+		return "", "", "", false, errors.WithStack(err)
+	}
+	return login, email, permanentUserID, temporaryUserID, nil
+}
+
+func ResetTokenCheck(signedToken string) (bool, error) {
+	row := DB.QueryRow(consts.ResetTokenSelectQuery, signedToken)
+	var cancelled bool
+	err := row.Scan(&cancelled)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, errors.New("reset token not found or invalid")
+		}
+		return false, errors.WithStack(err)
+	}
+	return cancelled, nil
+}
+
+func UserAddTx(tx *sql.Tx, login, email, password, temporaryUserID, permanentUserID string, temporaryCancelled bool) error {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password),
+		bcrypt.DefaultCost)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	_, err = tx.Exec(consts.UserInsertQuery, login, email, hashedPassword, temporaryUserID, permanentUserID, temporaryCancelled)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+func TemporaryUserIDAddTx(tx *sql.Tx, login, temporaryUserID string, temporaryCancelled bool) error {
+	_, err := tx.Exec(consts.TemporaryIDUpdateQuery, temporaryUserID, temporaryCancelled, login)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func TemporaryUserIDAddByEmailTx(tx *sql.Tx, email, temporaryUserID string, temporaryCancelled bool) error {
+	_, err := tx.Exec(consts.TemporaryIDUpdateByEmailQuery, temporaryUserID, temporaryCancelled, email)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func RefreshTokenAddTx(tx *sql.Tx, permanentUserID, refreshToken, deviceInfo string, tokenCancelled bool) error {
+	_, err := tx.Exec(consts.RefreshTokenInsertQuery, permanentUserID, refreshToken, deviceInfo, tokenCancelled)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func YauthUserAddTx(tx *sql.Tx, login, email, temporaryUserID, permanentUserID string, temporaryCancelled bool) error {
+	_, err := tx.Exec(consts.YauthInsertQuery, login, email, temporaryUserID, permanentUserID, temporaryCancelled)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func ResetTokenAddTx(tx *sql.Tx, resetToken string) error {
+	_, err := tx.Exec(consts.ResetTokenInsertQuery, resetToken, false)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func TokenCancelTx(tx *sql.Tx, refreshToken, deviceInfo string) error {
+	_, err := tx.Exec(consts.RefreshtokenUpdateQuery, true, refreshToken, deviceInfo)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return err
+}
+
+func TemporaryUserIDCancelTx(tx *sql.Tx, temporaryUserID string) error {
+	_, err := tx.Exec(consts.TemporaryUserIDUpdateQuery, true, temporaryUserID)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return err
+}
+
+func ResetTokenCancelTx(tx *sql.Tx, tokenString string) error {
+	_, err := tx.Exec(consts.ResetTokenUpdateQuery, tokenString)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func UpdatePasswordTx(tx *sql.Tx, email, newPassword string) error {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword),
+		bcrypt.DefaultCost)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	_, err = tx.Exec(consts.PasswordUpdateQuery, hashedPassword, email)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func UpdatePasswordByPermanentIDTx(tx *sql.Tx, permanentUserID, newPassword string) error {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	_, err = tx.Exec(consts.PasswordUpdateByPermanentIDQuery, hashedPassword, permanentUserID)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+package data
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+
+	"github.com/gimaevra94/auth/app/structs"
+	"github.com/gorilla/sessions"
+	"github.com/pkg/errors"
+)
+
+var loginStore *sessions.CookieStore
+var captchaStore *sessions.CookieStore
+
+func InitStore() *sessions.CookieStore {
+	authKey := []byte(os.Getenv("SESSION_AUTH_KEY"))
+	encryptionKey := []byte(os.Getenv("SESSION_ENCRYPTION_KEY"))
+
+	loginStore = sessions.NewCookieStore(authKey, encryptionKey)
+	thirtyMinutes := 30 * 60
+	loginStore.Options = &sessions.Options{
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   thirtyMinutes,
+		Secure:   false,
+	}
+
+	sessionSecret := []byte(os.Getenv("SESSION_SECRET"))
+	captchaStore = sessions.NewCookieStore(sessionSecret)
+	thirtyDays := 30 * 24 * 60 * 60
+	captchaStore.Options = &sessions.Options{
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   thirtyDays,
+		Secure:   false,
+	}
+	return nil
+}
+
+func AuthSessionEnd(w http.ResponseWriter, r *http.Request) error {
+	session, err := loginStore.Get(r, "auth")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	session.Options.MaxAge = -1
+	err = session.Save(r, w)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func CaptchaSessionEnd(w http.ResponseWriter, r *http.Request) error {
+	session, err := captchaStore.Get(r, "captcha")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	session.Options.MaxAge = -1
+	err = session.Save(r, w)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func AuthSessionDataSet(w http.ResponseWriter, r *http.Request, consts any) error {
+	session, err := loginStore.Get(r, "auth")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	jsonData, err := json.Marshal(consts)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	session.Values["user"] = jsonData
+
+	err = session.Save(r, w)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+// LoginSessionGet exposes the raw auth session (for internal flags)
+func LoginSessionGet(r *http.Request) (*sessions.Session, error) {
+	session, err := loginStore.Get(r, "auth")
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return session, nil
+}
+
+func CaptchaSessionDataSet(w http.ResponseWriter, r *http.Request, key string, consts any) error {
+	session, err := captchaStore.Get(r, "captcha")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	jsonData, err := json.Marshal(consts)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	session.Values[key] = jsonData
+
+	err = session.Save(r, w)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func SessionUserGet(r *http.Request) (structs.User, error) {
+	session, err := loginStore.Get(r, "auth")
+	if err != nil {
+		return structs.User{}, errors.WithStack(err)
+	}
+
+	byteData, ok := session.Values["user"].([]byte)
+	if !ok {
+		return structs.User{}, errors.WithStack(errors.New(fmt.Sprintf("%s not exist", "user")))
+	}
+
+	var userData structs.User
+	err = json.Unmarshal([]byte(byteData), &userData)
+	if err != nil {
+		return structs.User{}, errors.WithStack(err)
+	}
+
+	return userData, nil
+}
+
+func SessionCaptchaCounterGet(r *http.Request) (int64, error) {
+	session, err := captchaStore.Get(r, "captcha")
+	if err != nil {
+		return 0, errors.WithStack(err)
+	}
+
+	byteData, ok := session.Values["captchaCounter"].([]byte)
+	if !ok {
+		return 0, errors.WithStack(errors.New(fmt.Sprintf("%s not exist", "captchaCounter")))
+	}
+
+	var intData int64
+	err = json.Unmarshal([]byte(byteData), &intData)
+	if err != nil {
+		return 0, errors.WithStack(err)
+	}
+
+	return intData, nil
+}
+
+func SessionCaptchaShowGet(r *http.Request) (bool, error) {
+	session, err := captchaStore.Get(r, "captcha")
+	if err != nil {
+		return false, errors.WithStack(err)
+	}
+
+	byteData, ok := session.Values["captchaShow"].([]byte)
+	if !ok {
+		return false, errors.WithStack(errors.New(fmt.Sprintf("%s not exist", "captchaShow")))
+	}
+
+	var boolData bool
+	err = json.Unmarshal([]byte(byteData), &boolData)
+	if err != nil {
+		return false, errors.WithStack(err)
+	}
+
+	return boolData, nil
+}
+package structs
+
+type User struct {
+	UserID          string `sql:"userId"`
+	Login           string `sql:"login" json:"login"`
+	Email           string `sql:"email" json:"default_email"`
+	Password        string `sql:"passwordHash"`
+	ServerCode      string
+	TemporaryUserID string `sql:"temporaryUserID"`
+	PermanentUserID string `sql:"permanentUserID"`
+}
+
+type RevocatePreference struct {
+	RefreshToken    string
+	DeviceInfo      string
+	TemporaryUserID string
+}
+package htmls
+
+import (
+	"log"
+	"net/http"
+
+	"github.com/gimaevra94/auth/app/consts"
+	"github.com/gimaevra94/auth/app/tools"
+)
+
+const (
+	templatesPath = "../public"
+)
+
+func SignUp(w http.ResponseWriter, r *http.Request) {
+	err := tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", nil)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+}
+
+func SignIn(w http.ResponseWriter, r *http.Request) {
+	err := tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", nil)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+}
+
+func CodeSend(w http.ResponseWriter, r *http.Request) {
+	err := tools.TmplsRenderer(w, tools.BaseTmpl, "CodeSend", nil)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+}
+
+func Home(w http.ResponseWriter, r *http.Request) {
+	err := tools.TmplsRenderer(w, tools.BaseTmpl, "Home", nil)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+}
+
+func Logout(w http.ResponseWriter, r *http.Request) {
+	err := tools.TmplsRenderer(w, tools.BaseTmpl, "Logout", nil)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+}
+
+func PasswordReset(w http.ResponseWriter, r *http.Request) {
+	msg := r.URL.Query().Get("msg")
+	err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", struct{ Msg string }{Msg: msg})
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+}
+
+func SetNewPassword(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+	msg := r.URL.Query().Get("msg")
+	err := tools.TmplsRenderer(w, tools.BaseTmpl, "SetNewPassword", struct {
+		Msg   string
+		Token string
+	}{Msg: msg, Token: token})
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+}
+
+func SetPassword(w http.ResponseWriter, r *http.Request) {
+	msg := r.URL.Query().Get("msg")
+	data := struct {
+		Msg  string
+		Regs []string
+	}{
+		Msg:  msg,
+		Regs: tools.PswrdReqs,
+	}
+	err := tools.TmplsRenderer(w, tools.BaseTmpl, "SetPassword", data)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+}
+
+func Err500(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, templatesPath+"/500.html")
+}
+package tools
+
+import (
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
+
+	"github.com/pkg/errors"
+)
+
+func Captcha(r *http.Request) error {
+	captchaToken := r.FormValue("g-recaptcha-response")
+	if captchaToken == "" {
+		return errors.WithStack(errors.New("captchaToken not exist"))
+	}
+
+	captchaURL := "https://www.google.com/recaptcha/api/siteverify"
+	captchaParams := url.Values{
+		"secret":   {os.Getenv("GOOGLE_CAPTCHA_SECRET")},
+		"response": {captchaToken},
+	}
+
+	resp, err := http.PostForm(captchaURL, captchaParams)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	var result map[string]interface{}
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	success, ok := result["success"].(bool)
+	if !ok || !success {
+		return errors.New("reCAPTCHA verification failed")
+	}
+
+	return nil
+}
+package tools
+
+import (
+	"bytes"
+	"math/rand"
+	"net/smtp"
+	"os"
+
+	"strconv"
+	"time"
+
+	"github.com/pkg/errors"
+)
+
+var (
+	senderEmail            string
+	authCodeSubject        = "Auth code"
+	suspiciousLoginSubject = "Suspicious Login Alert!"
+	passwordResetSubject   = "Password Reset Request"
+)
+
+func codeGenerate() string {
+	random := rand.New(rand.NewSource(time.Now().UnixNano()))
+	msCodeItn := random.Intn(9000) + 1000
+	msCode := strconv.Itoa(msCodeItn)
+	return msCode
+}
+
+func smtpAuth(senderEmail string) smtp.Auth {
+	senderPassword := os.Getenv("MAIL_PASSWORD")
+	host := "smtp.yandex.ru"
+	auth := smtp.PlainAuth("", senderEmail, senderPassword, host)
+	return auth
+}
+
+func executeTmpl(senderEmail, email, subject string, data any) ([]byte, error) {
+	var body bytes.Buffer
+
+	switch subject {
+	case authCodeSubject:
+		err := BaseTmpl.ExecuteTemplate(&body, "mailCode", data)
+		if err != nil {
+			return []byte{}, errors.WithStack(err)
+		}
+	case suspiciousLoginSubject:
+		err := BaseTmpl.ExecuteTemplate(&body, "suspiciousLoginMail", data)
+		if err != nil {
+			return []byte{}, errors.WithStack(err)
+		}
+	case passwordResetSubject:
+		err := BaseTmpl.ExecuteTemplate(&body, "PasswordResetEmail", data)
+		if err != nil {
+			return []byte{}, errors.WithStack(err)
+		}
+	}
+
+	msg := []byte(
+		"From: " + senderEmail + "\r\n" +
+			"To: " + email + "\r\n" +
+			"Subject: " + subject + "\r\n" +
+			"MIME-Version: 1.0\r\n" +
+			"Content-Type: text/html; charset=\"UTF-8\"\r\n" +
+			"\r\n" +
+			body.String(),
+	)
+
+	return msg, nil
+}
+
+func mailSend(senderEmail, email string, auth smtp.Auth, msg []byte) error {
+	from := senderEmail
+	to := []string{email}
+	addr := "smtp.yandex.ru:587"
+
+	err := smtp.SendMail(addr, auth, from, to, msg)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+func AuthCodeSend(email string) (string, error) {
+	senderEmail = os.Getenv("MAIL_SENDER_EMAIL")
+	msCode := codeGenerate()
+	auth := smtpAuth(senderEmail)
+
+	data := struct{ Code string }{Code: msCode}
+	msg, err := executeTmpl(senderEmail, email, authCodeSubject, data)
+	if err != nil {
+		return "", err
+	}
+
+	err = mailSend(senderEmail, email, auth, msg)
+	if err != nil {
+		return "", err
+	}
+
+	return msCode, nil
+}
+
+func SendSuspiciousLoginEmail(email, login, deviceInfo string) error {
+	senderEmail = os.Getenv("MAIL_SENDER_EMAIL")
+	auth := smtpAuth(senderEmail)
+
+	data := struct {
+		Login      string
+		DeviceInfo string
+	}{Login: login, DeviceInfo: deviceInfo}
+	msg, err := executeTmpl(senderEmail, email, suspiciousLoginSubject, data)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	err = mailSend(senderEmail, email, auth, msg)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+func SendPasswordResetEmail(email, resetLink string) error {
+	senderEmail = os.Getenv("MAIL_SENDER_EMAIL")
+	auth := smtpAuth(senderEmail)
+
+	data := struct{ ResetLink string }{ResetLink: resetLink}
+	msg, err := executeTmpl(senderEmail, email, passwordResetSubject, data)
+	if err != nil {
+		return err
+	}
+
+	err = mailSend(senderEmail, email, auth, msg)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+package tools
+
+import (
+	"html/template"
+	"net/http"
+
+	"github.com/pkg/errors"
+)
+
+const (
+	LoginMsg             = "Login is invalid"
+	EmailMsg             = "Email is invalid"
+	PasswrdMsg           = "Password is invalid"
+	UserAlreadyExistMsg  = "User already exists"
+	UserNotExistMsg      = "User does not exist"
+	ServerCodeMsg        = "Wrong code"
+	MailSendingStatusMsg = "Sending is secsessful"
+)
+
+var (
+	LoginReqs = []string{
+		"3-30 characters long",
+		"Latin or Cyrillic letters",
+		"Numbers 0-9",
+	}
+	EmailReqs = []string{
+		"Must contain Latin letters, numbers and allowed special characters: . _ % + -",
+		"Must contain exactly one '@' symbol",
+		"Domain must be valid and end with .com, .org, etc.",
+	}
+	PswrdReqs = []string{
+		"8-30 characters long",
+		"Latin letters only",
+		"Numbers 0-9",
+		"Special symbols: !@#$%^&*",
+	}
+)
+
+func Must(t *template.Template, err error) *template.Template {
+	return template.Must(t, err)
+}
+
+var (
+	BaseTmpl = Must(template.New("base").Parse(BaseTMPL))
+	_        = Must(BaseTmpl.Parse(SignUpTMPL))
+	_        = Must(BaseTmpl.Parse(SignInTMPL))
+	_        = Must(BaseTmpl.Parse(HomeTMPL))
+	_        = Must(BaseTmpl.Parse(CodeSendTMPL))
+	_        = Must(BaseTmpl.Parse(mailCodeTMPL))
+	_        = Must(BaseTmpl.Parse(suspiciousLoginMailTMPL))
+	_        = Must(BaseTmpl.Parse(PasswordResetTMPL))
+	_        = Must(BaseTmpl.Parse(PasswordResetEmailTMPL))
+	_        = Must(BaseTmpl.Parse(SetNewPasswordTMPL))
+	_        = Must(BaseTmpl.Parse(SetPasswordTMPL))
+)
+
+type errMsg struct {
+	Msg  string
+	Regs []string
+}
+
+var ErrMsg = map[string]errMsg{
+	"login":             {LoginMsg, LoginReqs},
+	"email":             {EmailMsg, EmailReqs},
+	"password":          {PasswrdMsg, PswrdReqs},
+	"serverCode":        {ServerCodeMsg, nil},
+	"alreadyExist":      {UserAlreadyExistMsg, nil},
+	"notExist":          {UserNotExistMsg, nil},
+	"mailSendingStatus": {MailSendingStatusMsg, nil},
+	"captchaRequired":   {"Pass the verification reCAPTCHA.", nil},
+}
+
+func TmplsRenderer(w http.ResponseWriter, tmpl *template.Template, templateName string, data interface{}) error {
+	err := tmpl.ExecuteTemplate(w, templateName, data)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+const (
+	BaseTMPL = `
+{{ define "base" }}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+	<meta charset="UTF-8">
+	<title>{{ block "title" . }}Default Title{{ end }}</title>
+	<link rel="stylesheet" href="/public/styles.css">
+</head>
+<body>
+	<div class="container">
+		{{ template "content" . }}
+	</div>
+</body>
+</html>
+{{ end }}
+`
+
+	SignUpTMPL = `
+{{ define "SignUp" }}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+	<meta charset="UTF-8">
+	<title>Sign Up</title>
+	<link rel="stylesheet" href="/public/styles.css">
+</head>
+<body>
+	<div class="container">
+		<h1>Sign Up</h1>
+		{{if .Msg}}<div class="error-message">{{.Msg}}</div>{{end}}
+		{{if .Regs}}
+		<div class="requirements-list">
+			{{range .Regs}}
+			<div>{{.}}</div>
+			{{end}}
+		</div>
+		{{end}}
+		<form method="POST" action="/sign-up-input-check" id="signup-form">
+			<div class="form-group">
+				<label for="username">Username</label>
+				<input type="text" id="username" name="login">
+			</div>
+			<div class="form-group">
+				<label for="email">Email</label>
+				<input type="email" id="email" name="email">
+			</div>
+			<div class="form-group">
+				<label for="password">Password</label>
+				<input type="password" id="password" name="password">
+			</div>
+			<!-- Google reCAPTCHA -->
+			{{if .CaptchaShow}}
+			<div class="g-recaptcha g-recaptcha-centered" data-sitekey="6LfUPt4rAAAAAAEU_lnGN9DbW_QngiTObsj8ro0D"></div>
+			{{end}}
+			<button type="submit" class="btn" id="signup-button">Sign Up</button>
+		</form>
+		<div class="divider signin-gap-fix">
+			<span>or</span>
+		</div>
+		<form method="GET" action="/yauth">
+			<button type="submit" class="oauth-btn">Sign up with Yandex</button>
+		</form>
+		<div class="login-link">
+			Already have an account? <a href="/sign-in">Sign In</a>
+		</div>
+	</div>
+	<script>
+		document.getElementById('signup-form').addEventListener('submit', function() {
+			const button = document.getElementById('signup-button');
+			button.disabled = true;
+			button.textContent = 'Loading...';
+		});
+	</script>
+	{{if .CaptchaShow}}
+	<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+	{{end}}
+</body>
+</html>
+{{ end }}
+`
+
+	CodeSendTMPL = `
+{{ define "CodeSend" }}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+	<meta charset="UTF-8">
+	<title>Verification Code</title>
+	<link rel="stylesheet" href="/public/styles.css">
+</head>
+<body>
+	<div class="container">
+		<h1>Verification</h1>
+		{{if .Msg}}<div class="error-message">{{.Msg}}</div>{{end}}
+		<p class="message">We've sent a verification code to your email. Please enter it below.</p>
+		<form method="POST" action="/user-add">
+			<div class="form-group">
+				<label for="clientCode">Verification Code</label>
+				<input type="text" id="clientCode" name="clientCode" required maxlength="6" pattern="[0-9]*" inputmode="numeric">
+			</div>
+			<button type="submit" class="btn">Verify</button>
+		</form>
+		{{if .Msg}}
+		<div class="resend">
+			Didn't receive the code?
+			<form method="GET" action="/code-send">
+				<button type="submit" class="btn">Send again</button>
+			</form>
+		</div>
+		{{end}}
+	</div>
+</body>
+</html>
+{{ end }}
+`
+
+	SignInTMPL = `
+{{ define "SignIn" }}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+	<meta charset="UTF-8">
+	<title>Sign In</title>
+	<link rel="stylesheet" href="/public/styles.css">
+	<style>
+		.error-highlight {
+			color: #ff0000; /* Ярко-красный цвет */
+			font-weight: bold;
+		}
+	</style>
+</head>
+<body>
+	<div class="container">
+		<h1>Sign In</h1>
+		{{if .Msg}}
+			{{if eq .Msg "User does not exist"}}
+			<div class="error error-highlight">
+				User does not exist
+			</div>
+			{{else}}
+			<div class="error">{{.Msg}}</div>
+			{{end}}
+		{{end}}
+		{{if .Regs}}
+		<div class="requirements-list">
+			{{range .Regs}}
+			<div>{{.}}</div>
+			{{end}}
+		</div>
+		{{end}}
+		<form method="POST" action="/sign-in-input-check">
+			<div class="form-group">
+				<label for="login">Username</label>
+				<input type="text" id="login" name="login">
+			</div>
+			<div class="form-group">
+				<label for="password">Password</label>
+				<input type="password" id="password" name="password">
+			</div>
+			<!-- Google reCAPTCHA -->
+			{{if .CaptchaShow}}
+			<div class="g-recaptcha" data-sitekey="6LfUPt4rAAAAAAEU_lnGN9DbW_QngiTObsj8ro0D"></div>
+			{{end}}
+			<button type="submit" class="btn">Sign In</button>
+		</form>
+		<div class="divider">
+			<span>or</span>
+		</div>
+		<form method="GET" action="/yauth">
+			<button type="submit" class="oauth-btn">Sign in with Yandex</button>
+		</form>
+		{{if .ShowForgotPassword}}
+		<div class="error-message reset-hint">
+			Forgot your password? <a href="/password-reset">Reset Password</a>
+		</div>
+		{{end}}
+		<div class="login-link signin-gap-fix">
+			Don't have an account? <a href="/sign-up">Sign Up</a>
+		</div>
+	</div>
+	{{if .CaptchaShow}}
+	<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+	{{end}}
+</body>
+</html>
+{{ end }}
+`
+
+	HomeTMPL = `
+{{ define "Home" }}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+	<meta charset="UTF-8">
+	<title>Home</title>
+	<link rel="stylesheet" href="/public/styles.css">
+</head>
+<body>
+	<div class="container">
+		<div class="header">
+			<h1>Welcome</h1>
+			<div class="header-buttons">
+				<form method="GET" action="/logout">
+					<button type="submit" class="btn btn-danger">Sign Out</button>
+				</form>
+				<form method="GET" action="/simple-logout">
+					<button type="submit" class="btn btn-primary">Logout</button>
+				</form>
+			</div>
+		</div>
+		<div class="welcome">
+			<p>You have successfully signed in. You can now use all the features of the application.</p>
+		</div>
+	</div>
+</body>
+</html>
+{{ end }}
+`
+	PasswordResetTMPL = `
+{{ define "PasswordReset" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Password Reset</title>
+	<link rel="stylesheet" href="/public/styles.css">
+</head>
+<body>
+	<div class="container">
+		{{if not .Msg}}
+		<h1>Password Reset</h1>
+		<p class="message">Enter your email to reset your password.</p>
+		<form method="POST" action="/password-reset-email">
+			<div class="form-group">
+				<label for="email">Email</label>
+				<input type="email" id="email" name="email" required autocomplete="email">
+			</div>
+			<button type="submit" class="btn">Submit</button>
+		</form>
+        {{else}}
+        <div class="message success-message" style="text-align:center; padding: 1.5rem 0;">{{.Msg}}</div>
+		{{end}}
+	</div>
+</body>
+</html>
+{{ end }}
+`
+	SetPasswordTMPL = `
+{{ define "SetPassword" }}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Set Password</title>
+    <link rel="stylesheet" href="/public/styles.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    </head>
+<body>
+    <div class="container">
+        <h1>Set Account Password</h1>
+        <p class="message">Your account was created via Yandex. To enable password login, set a password below.</p>
+        {{if .Msg}}<div class="error-message">{{.Msg}}</div>{{end}}
+        {{if .Regs}}
+        <div class="requirements-list">
+            {{range .Regs}}
+            <div>{{.}}</div>
+            {{end}}
+        </div>
+        {{end}}
+        <form method="POST" action="/set-password">
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required autocomplete="new-password">
+            </div>
+            <div class="form-group">
+                <label for="confirmPassword">Confirm Password</label>
+                <input type="password" id="confirmPassword" name="confirmPassword" required autocomplete="new-password">
+            </div>
+            <button type="submit" class="btn">Set Password</button>
+        </form>
+    </div>
+</body>
+</html>
+{{ end }}
+`
+	mailCodeTMPL = `
+{{ define "mailCode" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Email Verification Code</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --text-color: #e5e7eb;
+            --bg-color: #1f2937;
+            --container-bg: #374151;
+            --border-color: #4b5563;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #1f2937; /* var(--bg-color); */
+            color: #e5e7eb; /* var(--text-color); */
+            line-height: 1.5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh; /* Changed from height to min-height */
+            margin: 0; /* Added */
+            padding: 20px; /* Added */
+        }
+        .container {
+            max-width: 400px;
+            margin: 2rem auto; /* Added for centering */
+            padding: 2rem;
+            background: #374151; /* var(--container-bg); */
+            border-radius: 8px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #2563eb; /* var(--primary-color); */
+        }
+        .code-box {
+            font-size: 2rem;
+            letter-spacing: 0.3em;
+            background: #2563eb; /* var(--primary-color); */
+            color: #fff;
+            padding: 0.5em 1em;
+            border-radius: 6px;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+            border: 0.5px solid #1d4ed8;
+            display: inline-block;
+            margin: 1.5rem 0;
+        }
+        p {
+            margin-bottom: 1.5rem;
+            color: #e5e7eb; /* var(--text-color); */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Email Verification</h1>
+        <p>Your verification code:</p>
+        <div class="code-box">{{.Code}}</div>
+        <p>Enter this code to continue.</p>
+    </div>
+</body>
+</html>
+{{ end }}
+`
+
+	suspiciousLoginMailTMPL = `
+{{ define "suspiciousLoginMail" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Suspicious Login Attempt</title>
+    <style>
+        :root {
+            --primary-color: #dc2626;
+            --text-color: #e5e7eb;
+            --bg-color: #1f2937;
+            --container-bg: #374151;
+            --border-color: #4b5563;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #1f2937;
+            color: #e5e7eb;
+            line-height: 1.5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 400px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: #374151;
+            border-radius: 8px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #dc2626; /* Red for warning */
+        }
+        p {
+            margin-bottom: 1.5rem;
+            color: #e5e7eb;
+        }
+        .warning-text {
+            color: #fca5a5; /* Lighter red */
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Suspicious Login Attempt Detected!</h1>
+        <p>Dear {{.Login}},</p>
+        <p>We detected a login attempt to your account from an unrecognized device or location.</p>
+        <p class="warning-text">Device Info: {{.DeviceInfo}}</p>
+        <p>If this was you, you can ignore this email. If you did not attempt to log in, please secure your account immediately by changing your password.</p>
+        <p>Thank you for your vigilance.</p>
+    </div>
+</body>
+</html>
+{{ end }}
+`
+	PasswordResetEmailTMPL = `
+{{ define "PasswordResetEmail" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Password Reset</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --text-color: #e5e7eb;
+            --bg-color: #1f2937;
+            --container-bg: #374151;
+            --border-color: #4b5563;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        .container {
+            max-width: 400px;
+            padding: 2rem;
+            background: var(--container-bg);
+            border-radius: 8px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+        p {
+            margin-bottom: 1.5rem;
+            color: var(--text-color);
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin-top: 1rem;
+            background-color: var(--primary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Password Reset</h1>
+        <p>You have requested a password reset. Please click the button below to reset your password:</p>
+        <p>
+            <a href="{{.ResetLink}}" target="_blank" rel="noopener" role="button" style="
+                display:inline-block;
+                background-color:#2563eb;
+                color:#ffffff;
+                text-decoration:none;
+                padding:10px 20px;
+                border-radius:6px;
+                font-weight:600;">
+                Reset Password
+            </a>
+        </p>
+        <p>If you don't see the button or it doesn't work, you can simply click this link, or copy and paste it into your browser:</p>
+        <p>{{.ResetLink}}</p>
+        <p>If you did not request a password reset, please ignore this email.</p>
+    </div>
+</body>
+</html>
+{{ end }}
+`
+	SetNewPasswordTMPL = `
+{{ define "SetNewPassword" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Set New Password</title>
+    <link rel="stylesheet" href="/public/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Set New Password</h1>
+        {{if .Msg}}<div class="error-message">{{.Msg}}</div>{{end}}
+        <form method="POST" action="/set-new-password">
+            <div class="form-group">
+                <label for="oldPassword">Old Password</label>
+                <input type="password" id="oldPassword" name="oldPassword" required autocomplete="current-password">
+            </div>
+            <div class="form-group">
+                <label for="newPassword">New Password</label>
+                <input type="password" id="newPassword" name="newPassword" required autocomplete="new-password">
+            </div>
+            <div class="form-group">
+                <label for="confirmPassword">Confirm New Password</label>
+                <input type="password" id="confirmPassword" name="confirmPassword" required autocomplete="new-password">
+            </div>
+            <input type="hidden" name="token" value="{{.Token}}">
+            <button type="submit" class="btn">Set Password</button>
+        </form>
+    </div>
+</body>
+</html>
+{{ end }}
+`
+)
+package tools
+
+import (
+	"os"
+	"time"
+
+	"github.com/gimaevra94/auth/app/consts"
+	"github.com/golang-jwt/jwt"
+	"github.com/pkg/errors"
+)
+
+type ResetClaims struct {
+	jwt.StandardClaims
+	Email string `json:"email"`
+}
+
+func GenerateRefreshToken(refreshTokenExp int, rememberMe bool) (string, error) {
+	if !rememberMe {
+		refreshTokenExp = consts.RefreshTokenExp24Hours
+	}
+
+	expiresAt := time.Duration(refreshTokenExp) * time.Second
+
+	standardClaims := jwt.StandardClaims{
+		ExpiresAt: time.Now().Add(expiresAt).Unix(),
+		IssuedAt:  time.Now().Unix(),
+	}
+
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, standardClaims)
+	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
+	signedRefreshToken, err := refreshToken.SignedString(jwtSecret)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	return signedRefreshToken, nil
+}
+
+func GenerateResetLink(email, baseURL string) (string, error) {
+	expirationTime := time.Now().Add(15 * time.Minute)
+
+	claims := ResetClaims{
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: expirationTime.Unix(),
+			IssuedAt:  time.Now().Unix(),
+		},
+		Email: email,
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
+	signedToken, err := token.SignedString(jwtSecret)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	resetLink := baseURL + "?token=" + signedToken
+	return resetLink, nil
+}
+
+func ValidateResetToken(signedToken string) (*ResetClaims, error) {
+	claims := &ResetClaims{}
+
+	tok, err := jwt.ParseWithClaims(signedToken, claims, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(os.Getenv("JWT_SECRET")), nil
+	})
+
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	if !tok.Valid {
+		return nil, errors.New("token is invalid")
+	}
+
+	return claims, nil
+}
+package tools
+
+import (
+	"net/http"
+	"os"
+	"regexp"
+
+	"github.com/golang-jwt/jwt"
+	"github.com/pkg/errors"
+)
+
+var (
+	loginRegex    = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ0-9]{3,30}$`)
+	emailRegex    = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$`)
+	passwordRegex = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ\d!@#$%^&*\-\)]{4,30}$`)
+)
+
+func RefreshTokenValidate(refreshToken string) error {
+	signedToken, err := jwt.ParseWithClaims(refreshToken, &jwt.StandardClaims{}, func(t *jwt.Token) (interface{}, error) {
+		if t.Method != jwt.SigningMethodHS256 {
+			err := errors.New("unexpected signing method")
+			return nil, errors.WithStack(err)
+		}
+		jwtSecret := []byte(os.Getenv("JWT_SECRET"))
+		return jwtSecret, nil
+	})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if !signedToken.Valid {
+		err := errors.New("Refresh token invalid")
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+func InputValidate(r *http.Request, login, email, password string, IsSignIn bool) error {
+
+	if login == "" || !loginRegex.MatchString(login) {
+		return errors.WithStack(errors.New("login invalid"))
+	}
+
+	if password == "" || !passwordRegex.MatchString(password) {
+		return errors.WithStack(errors.New("password invalid"))
+	}
+
+	if !IsSignIn {
+		if email == "" || !emailRegex.MatchString(email) {
+			return errors.WithStack(errors.New("email invalid"))
+		}
+	}
+
+	return nil
+}
+
+func CodeValidate(r *http.Request, clientCode, serverCode string) error {
+	if clientCode == "" {
+		return errors.WithStack(errors.New("clientCode not exist"))
+	}
+
+	if clientCode != serverCode {
+		return errors.WithStack(errors.New("codes not match"))
+	}
+	return nil
+}
+
+func EmailValidate(email string) error {
+	if email != "" && !emailRegex.MatchString(email) {
+		return errors.WithStack(errors.New("email invalid"))
+	}
+	return nil
+}
+
+func PasswordValidate(password string) error {
+	if password != "" && !passwordRegex.MatchString(password) {
+		return errors.WithStack(errors.New("password invalid"))
+	}
+	return nil
+}
+package main
+
+import (
+	"log"
+	"net/http"
+	"os"
+
+	"github.com/joho/godotenv"
+	"github.com/pkg/errors"
+
+	"github.com/gimaevra94/auth/app/auth"
+	"github.com/gimaevra94/auth/app/consts"
+	"github.com/gimaevra94/auth/app/data"
+	htmls "github.com/gimaevra94/auth/app/tmpls"
+	"github.com/go-chi/chi"
+)
+
+func main() {
+	initEnv()
+	initDB()
+	data.InitStore()
+	r := initRouter()
+	serverStart(r)
+	defer data.DBClose()
+}
+
+func initEnv() {
+	err := godotenv.Load("../public/.env")
+	if err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		return
+	}
+
+	envVars := []string{
+		"SESSION_SECRET",
+		"SESSION_AUTH_KEY",
+		"SESSION_ENCRYPTION_KEY",
+		"JWT_SECRET",
+		"DB_PASSWORD",
+		"MAIL_SENDER_EMAIL",
+		"MAIL_PASSWORD",
+		"GOOGLE_CAPTCHA_SECRET",
+		"clientID",
+		"clientSecret",
+	}
+
+	for _, v := range envVars {
+		if os.Getenv(v) == "" {
+			log.Printf("%+v", errors.WithStack(errors.New(v+" not exist")))
+			return
+		}
+	}
+}
+
+func initDB() {
+	err := data.DBConn()
+	if err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		return
+	}
+}
+
+func initRouter() *chi.Mux {
+	r := chi.NewRouter()
+
+	r.Handle("/public/*", http.StripPrefix("/public/", http.FileServer(http.Dir("../public"))))
+
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+	})
+
+	r.Get("/dev", func(w http.ResponseWriter, r *http.Request) {
+		data.ClearCookiesDev(w, r)
+		err := data.AuthSessionEnd(w, r)
+		if err != nil {
+			log.Printf("%+v", err)
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+	})
+
+	r.Get("/clear", data.ClearCookiesDev)
+
+	r.With(auth.AlreadyAuthedRedirectMW).Get(consts.SignUpURL, htmls.SignUp)
+	r.Post(consts.SignUpInputCheckURL, auth.SignUpInputCheck)
+	r.With(auth.SignUpFlowOnlyMW).Get(consts.CodeSendURL, htmls.CodeSend)
+	r.Post(consts.UserAddURL, auth.UserAdd)
+
+	r.With(auth.AlreadyAuthedRedirectMW).Get(consts.SignInURL, htmls.SignIn)
+	r.Post(consts.SignInInputCheckURL, auth.SignInInputCheck)
+
+	r.Get("/yauth", auth.YandexAuthHandler)
+	r.Get(consts.YandexCallbackURL, auth.YandexCallbackHandler)
+
+	r.Get(consts.PasswordResetURL, htmls.PasswordReset)
+	r.Post(consts.PasswordResetEmailURL, auth.PasswordResetEmailCheck)
+	r.With(auth.ResetTokenGuardMW).Get(consts.SetNewPasswordURL, htmls.SetNewPassword)
+	r.Post(consts.SetNewPasswordURL, auth.SetNewPassword)
+	r.Get(consts.SetPasswordURL, htmls.SetPassword)
+	r.Post(consts.SubmitPasswordURL, auth.SubmitPassword)
+
+	r.With(auth.IsExpiredTokenMW).Get(consts.HomeURL, htmls.Home)
+	r.With(auth.IsExpiredTokenMW).Get(consts.LogoutURL, auth.Logout)
+	r.With(auth.IsExpiredTokenMW).Get(consts.SimpleLogoutURL, auth.SimpleLogout)
+
+	r.Get(consts.Err500URL, htmls.Err500)
+
+	return r
+}
+
+func serverStart(r *chi.Mux) {
+	err := http.ListenAndServe(":8080", r)
+	if err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		return
+	}
+}
+

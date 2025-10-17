@@ -96,14 +96,14 @@ func initRouter() *chi.Mux {
 	r.Post(consts.PasswordResetEmailURL, auth.PasswordResetEmailCheck)
 	r.With(auth.ResetTokenGuardMW).Get(consts.SetNewPasswordURL, htmls.SetNewPassword)
 	r.Post(consts.SetNewPasswordURL, auth.SetNewPassword)
-	r.With(auth.SetPasswordFlowOnlyMW).Get(consts.SetPasswordURL, htmls.SetPassword)
+	r.Get(consts.SetPasswordURL, htmls.SetPassword)
 	r.Post(consts.SubmitPasswordURL, auth.SubmitPassword)
 
 	r.With(auth.IsExpiredTokenMW).Get(consts.HomeURL, htmls.Home)
 	r.With(auth.IsExpiredTokenMW).Get(consts.LogoutURL, auth.Logout)
 	r.With(auth.IsExpiredTokenMW).Get(consts.SimpleLogoutURL, auth.SimpleLogout)
 
-	r.With(auth.InternalOnly500MW).Get(consts.Err500URL, htmls.Err500)
+	r.Get(consts.Err500URL, htmls.Err500)
 
 	return r
 }
