@@ -67,14 +67,14 @@ func CodeValidate(r *http.Request, clientCode, serverCode string) error {
 }
 
 func EmailValidate(email string) error {
-	if email != "" && !emailRegex.MatchString(email) {
+	if email == "" || !emailRegex.MatchString(email) {
 		return errors.WithStack(errors.New("email invalid"))
 	}
 	return nil
 }
 
 func PasswordValidate(password string) error {
-	if password != "" && !passwordRegex.MatchString(password) {
+	if password == "" || !passwordRegex.MatchString(password) {
 		return errors.WithStack(errors.New("password invalid"))
 	}
 	return nil

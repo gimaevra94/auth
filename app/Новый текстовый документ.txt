@@ -1,3 +1,4 @@
+//logout.go
 package auth
 
 import (
@@ -94,6 +95,8 @@ func Revocate(w http.ResponseWriter, r *http.Request, cookieClear, idCancel, tok
 		return
 	}
 }
+
+//passwordResetter.go
 package auth
 
 import (
@@ -101,7 +104,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"strings"
 
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
@@ -359,12 +361,8 @@ func SubmitPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 5. Валидация пароля
-	err = tools.InputValidate(r, "", "", password, false) // login и email пустые, проверяем только пароль
+	err = tools.PasswordValidate(password) // login и email пустые, проверяем только пароль
 	if err != nil {
-		if strings.Contains(err.Error(), "password") {
-			http.Redirect(w, r, consts.SetPasswordURL+"?msg="+tools.ErrMsg["password"].Msg, http.StatusFound)
-			return
-		}
 		log.Printf("SetPasswordHandler: validation error: %+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
@@ -393,9 +391,11 @@ func SubmitPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 7. Успешно — редирект на Home
-	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
+	successMessage := "Password has been set successfully." // Сообщение на английском
+	http.Redirect(w, r, consts.HomeURL+"?msg="+url.QueryEscape(successMessage), http.StatusFound)
 }
+
+//routesProtector.go
 package auth
 
 import (
@@ -557,6 +557,8 @@ func ResetTokenGuardMW(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+//signin.go
 package auth
 
 import (
@@ -579,23 +581,20 @@ type SignInPageData struct {
 	ShowForgotPassword bool
 	CaptchaShow        bool
 	Regs               []string
+	NoPassword         bool // Новое поле для передачи флага
 }
 
 func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[SignInInputCheck] Начало выполнения")
 	var user structs.User
 	var captchaShow bool
-
 	captchaCounter := 3
-
 	login := r.FormValue("login")
 	password := r.FormValue("password")
-
 	user = structs.User{
 		Login:    login,
 		Password: password,
 	}
-
 	err := tools.InputValidate(r, user.Login, "", user.Password, true)
 	if err != nil {
 		log.Printf("[SignInInputCheck] Ошибка валидации: %v", err)
@@ -603,7 +602,6 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 			if captchaCounter-1 <= 0 {
 				captchaShow = true
 			}
-
 			log.Printf("[SignInInputCheck] Отображение ошибки валидации логина")
 			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["login"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["login"].Regs})
 			if err != nil {
@@ -612,13 +610,11 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			return
-
 		} else {
 			if strings.Contains(err.Error(), "password") {
 				if captchaCounter-1 <= 0 {
 					captchaShow = true
 				}
-
 				log.Printf("[SignInInputCheck] Отображение ошибки валидации пароля (на этапе ввода)")
 				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["password"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["password"].Regs})
 				if err != nil {
@@ -629,34 +625,29 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 	log.Printf("[SignInInputCheck] Валидация пройдена, сохраняем данные в сессию")
-
 	err = data.AuthSessionDataSet(w, r, user)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
 	err = data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter-1)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
 	err = data.CaptchaSessionDataSet(w, r, "captchaShow", captchaShow)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
 	log.Printf("[SignInInputCheck] Вызов SignInUserCheck")
 	SignInUserCheck(w, r)
 }
@@ -669,21 +660,18 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
 	captchaCounter, err := data.SessionCaptchaCounterGet(r)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
 	captchaShow, err := data.SessionCaptchaShowGet(r)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
 	log.Printf("[SignInUserCheck] Проверка пользователя в БД: %s", user.Login)
 	permanentUserID, err := data.UserCheck(user.Login, user.Password)
 	if err != nil {
@@ -691,13 +679,14 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		// Если у пользователя нет пароля (вход через внешнего провайдера),
 		// отправляем на страницу установки пароля
 		if strings.Contains(err.Error(), "password hash is NULL") {
-			log.Printf("[SignInUserCheck] У пользователя NULL пароль, перенаправление на установку пароля")
-			// Разрешаем переход на /set-password через сессионный флаг
-			if session, sErr := data.LoginSessionGet(r); sErr == nil {
-				session.Values["allowSetPassword"] = true
-				_ = session.Save(r, w)
+			log.Printf("[SignInUserCheck] У пользователя NULL пароль, отображение сообщения на странице входа")
+			// Передаем флаг NoPassword в шаблон SignIn
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{NoPassword: true})
+			if err != nil {
+				log.Printf("[SignInUserCheck] Ошибка рендера страницы входа с сообщением NoPassword: %+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
 			}
-			http.Redirect(w, r, consts.SetPasswordURL+"?msg=Please+set+your+password", http.StatusFound)
 			return
 		}
 		if errors.Is(err, sql.ErrNoRows) {
@@ -713,7 +702,6 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
-
 		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
 			log.Printf("[SignInUserCheck] Неверный пароль для существующего пользователя, отображение ошибки")
 			if captchaCounter-1 <= 0 {
@@ -727,16 +715,13 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
-
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 	log.Printf("[SignInUserCheck] Пользователь успешно аутентифицирован, создание сессии")
-
 	temporaryUserID := uuid.New().String()
 	data.TemporaryUserIDCookieSet(w, temporaryUserID)
-
 	rememberMe := r.FormValue("rememberMe") != ""
 	refreshToken, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe)
 	if err != nil {
@@ -744,7 +729,6 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
 	tx, err := data.DB.Begin()
 	if err != nil {
 		log.Printf("%+v", err)
@@ -758,14 +742,12 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 	defer tx.Rollback()
-
 	err = data.TemporaryUserIDAddTx(tx, user.Login, temporaryUserID, false)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
 	tokenCancelled := false
 	err = data.RefreshTokenAddTx(tx, permanentUserID, refreshToken, r.UserAgent(), tokenCancelled)
 	if err != nil {
@@ -773,14 +755,12 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
 	err = tx.Commit()
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
 	captchaCounter = 3
 	err = data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter-1)
 	if err != nil {
@@ -788,16 +768,18 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
 	err = data.AuthSessionEnd(w, r)
 	if err != nil {
 		log.Printf("%v", errors.WithStack(err))
 		http.Redirect(w, r, consts.SignInURL, http.StatusFound)
 		return
 	}
-
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }
+
+// ... (остальные функции остаются без изменений)
+
+//signup.go
 package auth
 
 import (
@@ -1220,6 +1202,8 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }
+
+//yauth.go
 package auth
 
 import (
@@ -1424,6 +1408,8 @@ func getYandexUserInfo(accessToken string) (structs.User, error) {
 
 	return user, nil
 }
+
+//consts.go
 package consts
 
 const (
@@ -1474,17 +1460,19 @@ const (
 	ResetTokenUpdateQuery         = "update reset_token  set cancelled = TRUE where token = ?"
 
 	PasswordSetQuery = `
-	SELECT login, email, permanent_user_id 
-	FROM users 
-	WHERE temporary_user_id = ? AND password_hash IS NULL
+	SELECT login, email, permanentUserID 
+	FROM user 
+	WHERE temporaryUserID = ? AND passwordHash IS NULL
 `
 
 	PasswordUpdateByPermanentIDQuery = `
-UPDATE users 
-SET password_hash = ? 
-WHERE permanent_user_id = ?
+UPDATE user 
+SET passwordHash = ? 
+WHERE permanentUserID = ?
 `
 )
+
+//cookies.go
 package data
 
 import (
@@ -1543,6 +1531,7 @@ func ClearCookiesDev(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 }
 
+//database.go
 package data
 
 import (
@@ -1791,6 +1780,8 @@ func UpdatePasswordByPermanentIDTx(tx *sql.Tx, permanentUserID, newPassword stri
 	}
 	return nil
 }
+
+//sessions.go
 package data
 
 import (
@@ -1969,6 +1960,8 @@ func SessionCaptchaShowGet(r *http.Request) (bool, error) {
 
 	return boolData, nil
 }
+
+//structs.go
 package structs
 
 type User struct {
@@ -1986,6 +1979,8 @@ type RevocatePreference struct {
 	DeviceInfo      string
 	TemporaryUserID string
 }
+
+//tmplsCaller.go
 package htmls
 
 import (
@@ -2089,6 +2084,8 @@ func SetPassword(w http.ResponseWriter, r *http.Request) {
 func Err500(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, templatesPath+"/500.html")
 }
+
+//captcha.go
 package tools
 
 import (
@@ -2137,6 +2134,8 @@ func Captcha(r *http.Request) error {
 
 	return nil
 }
+
+//mailsender.go
 package tools
 
 import (
@@ -2276,12 +2275,13 @@ func SendPasswordResetEmail(email, resetLink string) error {
 
 	return nil
 }
+
+//TmplsRenderer.go
 package tools
 
 import (
 	"html/template"
 	"net/http"
-
 	"github.com/pkg/errors"
 )
 
@@ -2374,7 +2374,6 @@ const (
 </html>
 {{ end }}
 `
-
 	SignUpTMPL = `
 {{ define "SignUp" }}
 <!DOCTYPE html>
@@ -2438,7 +2437,6 @@ const (
 </html>
 {{ end }}
 `
-
 	CodeSendTMPL = `
 {{ define "CodeSend" }}
 <!DOCTYPE html>
@@ -2473,7 +2471,6 @@ const (
 </html>
 {{ end }}
 `
-
 	SignInTMPL = `
 {{ define "SignIn" }}
 <!DOCTYPE html>
@@ -2500,6 +2497,11 @@ const (
 			{{else}}
 			<div class="error">{{.Msg}}</div>
 			{{end}}
+		{{end}}
+		{{if .NoPassword}}
+			<div class="error-message">
+				You signed up using Yandex. Please sign in with Yandex and set a password in your account settings.
+			</div>
 		{{end}}
 		{{if .Regs}}
 		<div class="requirements-list">
@@ -2545,7 +2547,6 @@ const (
 </html>
 {{ end }}
 `
-
 	HomeTMPL = `
 {{ define "Home" }}
 <!DOCTYPE html>
@@ -2560,6 +2561,9 @@ const (
 		<div class="header">
 			<h1>Welcome</h1>
 			<div class="header-buttons">
+				<form method="GET" action="/set-password">
+					<button type="submit" class="btn btn-primary">Set Password</button>
+				</form>
 				<form method="GET" action="/logout">
 					<button type="submit" class="btn btn-danger">Sign Out</button>
 				</form>
@@ -2627,7 +2631,7 @@ const (
             {{end}}
         </div>
         {{end}}
-        <form method="POST" action="/set-password">
+        <form method="POST" action="/submit-password">
             <div class="form-group">
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" required autocomplete="new-password">
@@ -2715,7 +2719,6 @@ const (
 </html>
 {{ end }}
 `
-
 	suspiciousLoginMailTMPL = `
 {{ define "suspiciousLoginMail" }}
 <!DOCTYPE html>
@@ -2895,6 +2898,10 @@ const (
 {{ end }}
 `
 )
+
+// ... (остальные функции InputValidate, CodeValidate и т.д. остаются без изменений)
+
+//tokenizer.go
 package tools
 
 import (
@@ -2976,6 +2983,8 @@ func ValidateResetToken(signedToken string) (*ResetClaims, error) {
 
 	return claims, nil
 }
+
+//validator.go
 package tools
 
 import (
@@ -3045,18 +3054,20 @@ func CodeValidate(r *http.Request, clientCode, serverCode string) error {
 }
 
 func EmailValidate(email string) error {
-	if email != "" && !emailRegex.MatchString(email) {
+	if email == "" || !emailRegex.MatchString(email) {
 		return errors.WithStack(errors.New("email invalid"))
 	}
 	return nil
 }
 
 func PasswordValidate(password string) error {
-	if password != "" && !passwordRegex.MatchString(password) {
+	if password == "" || !passwordRegex.MatchString(password) {
 		return errors.WithStack(errors.New("password invalid"))
 	}
 	return nil
 }
+
+//main.go
 package main
 
 import (
@@ -3064,14 +3075,13 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/joho/godotenv"
-	"github.com/pkg/errors"
-
 	"github.com/gimaevra94/auth/app/auth"
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
 	htmls "github.com/gimaevra94/auth/app/tmpls"
 	"github.com/go-chi/chi"
+	"github.com/joho/godotenv"
+	"github.com/pkg/errors"
 )
 
 func main() {
@@ -3089,7 +3099,6 @@ func initEnv() {
 		log.Printf("%+v", errors.WithStack(err))
 		return
 	}
-
 	envVars := []string{
 		"SESSION_SECRET",
 		"SESSION_AUTH_KEY",
@@ -3102,7 +3111,6 @@ func initEnv() {
 		"clientID",
 		"clientSecret",
 	}
-
 	for _, v := range envVars {
 		if os.Getenv(v) == "" {
 			log.Printf("%+v", errors.WithStack(errors.New(v+" not exist")))
@@ -3122,12 +3130,15 @@ func initDB() {
 func initRouter() *chi.Mux {
 	r := chi.NewRouter()
 
+	// Serve static files
 	r.Handle("/public/*", http.StripPrefix("/public/", http.FileServer(http.Dir("../public"))))
 
+	// Default route
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 	})
 
+	// Dev routes
 	r.Get("/dev", func(w http.ResponseWriter, r *http.Request) {
 		data.ClearCookiesDev(w, r)
 		err := data.AuthSessionEnd(w, r)
@@ -3137,31 +3148,37 @@ func initRouter() *chi.Mux {
 			return
 		}
 	})
-
 	r.Get("/clear", data.ClearCookiesDev)
 
+	// Public routes (redirect if already logged in)
 	r.With(auth.AlreadyAuthedRedirectMW).Get(consts.SignUpURL, htmls.SignUp)
 	r.Post(consts.SignUpInputCheckURL, auth.SignUpInputCheck)
 	r.With(auth.SignUpFlowOnlyMW).Get(consts.CodeSendURL, htmls.CodeSend)
 	r.Post(consts.UserAddURL, auth.UserAdd)
-
 	r.With(auth.AlreadyAuthedRedirectMW).Get(consts.SignInURL, htmls.SignIn)
 	r.Post(consts.SignInInputCheckURL, auth.SignInInputCheck)
 
+	// OAuth routes
 	r.Get("/yauth", auth.YandexAuthHandler)
 	r.Get(consts.YandexCallbackURL, auth.YandexCallbackHandler)
 
+	// Password reset routes
 	r.Get(consts.PasswordResetURL, htmls.PasswordReset)
 	r.Post(consts.PasswordResetEmailURL, auth.PasswordResetEmailCheck)
 	r.With(auth.ResetTokenGuardMW).Get(consts.SetNewPasswordURL, htmls.SetNewPassword)
 	r.Post(consts.SetNewPasswordURL, auth.SetNewPassword)
-	r.Get(consts.SetPasswordURL, htmls.SetPassword)
+
+	// Protected routes (require valid token session)
+	r.With(auth.IsExpiredTokenMW).Get(consts.HomeURL, htmls.Home)
+	// Apply MW to set-password route
+	r.With(auth.IsExpiredTokenMW).Get(consts.SetPasswordURL, htmls.SetPassword)
 	r.Post(consts.SubmitPasswordURL, auth.SubmitPassword)
 
-	r.With(auth.IsExpiredTokenMW).Get(consts.HomeURL, htmls.Home)
+	// Logout routes
 	r.With(auth.IsExpiredTokenMW).Get(consts.LogoutURL, auth.Logout)
 	r.With(auth.IsExpiredTokenMW).Get(consts.SimpleLogoutURL, auth.SimpleLogout)
 
+	// Error page
 	r.Get(consts.Err500URL, htmls.Err500)
 
 	return r
@@ -3175,3 +3192,417 @@ func serverStart(r *chi.Mux) {
 	}
 }
 
+//500.html
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Internal Server Error</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --error-color: #dc2626;
+            --text-color: #e5e7eb;
+            --bg-color: #1f2937;
+            --container-bg: #374151;
+            --border-color: #4b5563;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.5;
+            display: flex;
+            align-items: flex-start;
+            min-height: 100vh;
+            justify-content: center;
+        }
+
+        .container {
+            margin-top: 10vh;
+            max-width: 400px;
+            padding: 2rem;
+            background: var(--container-bg);
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--error-color);
+        }
+
+        p {
+            margin-bottom: 1.5rem;
+            color: var(--text-color);
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 0.6rem 1.2rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 0.2s;
+        }
+
+        .btn:hover {
+            background-color: #1d4ed8;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Internal Server Error</h1>
+        <p>We're sorry, something went wrong on our end. Please try again later.</p>
+        <a href="/sign-up" class="btn">Go to Sign-up Page</a>
+    </div>
+</body>
+
+</html>
+
+//auth-db.sql
+CREATE TABLE user (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    login VARCHAR(64) NOT NULL UNIQUE,
+    email VARCHAR(128) NOT NULL UNIQUE,
+    passwordHash VARCHAR(255) NULL,
+    temporaryUserID VARCHAR(255) NOT NULL UNIQUE,
+    permanentUserID VARCHAR(255) NOT NULL UNIQUE,
+    temporaryCancelled BOOLEAN DEFAULT FALSE
+);
+
+CREATE TABLE refresh_token (
+    FOREIGN KEY (permanentUserID) REFERENCES user(permanentUserID),
+    refreshToken VARCHAR(255) PRIMARY KEY,
+    permanentUserID VARCHAR(255) NOT NULL,
+    deviceInfo VARCHAR(255),
+    tokenCancelled BOOLEAN DEFAULT FALSE
+);
+
+CREATE TABLE reset_token (
+    token VARCHAR(255) PRIMARY KEY,
+    cancelled BOOLEAN DEFAULT FALSE
+);
+
+//styles.css
+:root {
+    --primary-color: #2563eb;
+    --error-color: #dc2626;
+    --success-color: #16a34a;
+    --text-color: #e5e7eb;
+    --bg-color: #1f2937;
+    --container-bg: #374151;
+    --border-color: #4b5563;
+    --input-bg: #4b5563;
+    --hover-bg: #4b5563;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.5;
+}
+
+.container {
+    max-width: 400px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: var(--container-bg);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    text-align: center;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    gap: 10px;
+}
+
+.header h1 {
+    margin-right: 1.5rem;
+    margin-bottom: 0;
+}
+
+.header-buttons {
+    display: flex;
+    gap: 10px;
+    flex: 1;
+}
+
+.header-buttons form {
+    flex: 1;
+}
+
+h1 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    color: var(--text-color);
+}
+
+h1.error {
+    color: var(--error-color);
+}
+
+.message {
+    margin-bottom: 1.5rem;
+    color: #9ca3af;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+    text-align: left;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+input[type="text"],
+input[type="password"],
+input[type="email"] {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+    background-color: var(--input-bg);
+    color: var(--text-color);
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.2);
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    margin: 1rem 0;
+}
+
+.checkbox-group input[type="checkbox"] {
+    margin-right: 0.5rem;
+}
+
+.checkbox-group label {
+    margin-bottom: 0;
+}
+
+.btn {
+    display: block;
+    padding: 0.5rem;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    text-decoration: none;
+    width: 100%;
+}
+
+.btn:hover {
+    background-color: #1d4ed8;
+}
+
+.btn-danger {
+    background-color: var(--error-color);
+}
+
+.btn-danger:hover {
+    background-color: #b91c1c;
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    margin-left: 1rem;
+}
+
+.btn-secondary:hover {
+    background-color: var(--hover-bg);
+}
+
+.success-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 1rem;
+    color: var(--success-color);
+}
+
+.error-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 1rem;
+    color: var(--error-color);
+}
+
+.divider {
+    margin: 1.5rem 0;
+    text-align: center;
+    position: relative;
+}
+
+.divider::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background-color: var(--border-color);
+}
+
+.divider span {
+    background-color: var(--container-bg);
+    padding: 0 1rem;
+    color: #9ca3af;
+    position: relative;
+}
+
+.oauth-btn {
+    display: block;
+    width: 100%;
+    padding: 0.75rem;
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-color);
+    font-size: 1rem;
+    text-align: center;
+    text-decoration: none;
+    transition: background-color 0.2s;
+}
+
+.oauth-btn:hover {
+    background-color: var(--hover-bg);
+}
+
+.requirements {
+    text-align: left;
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: var(--input-bg);
+    border-radius: 4px;
+}
+
+.requirements h2 {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-color);
+}
+
+.requirements ul {
+    list-style: none;
+    padding-left: 1rem;
+}
+
+.requirements li {
+    color: #9ca3af;
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+}
+
+.welcome {
+    margin-bottom: 2rem;
+    color: #9ca3af;
+}
+
+.resend {
+    margin-top: 1rem;
+    text-align: center;
+    font-size: 0.875rem;
+    color: #9ca3af;
+}
+
+.resend a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.resend a:hover {
+    text-decoration: underline;
+}
+
+.login-link {
+    margin-top: 1rem;
+    text-align: center;
+    color: #9ca3af;
+}
+
+.login-link a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.login-link a:hover {
+    text-decoration: underline;
+}
+
+.error-message {
+    color: var(--error-color);
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+}
+
+.reset-hint {
+    margin-top: 1rem;
+}
+
+/* Helper to normalize spacing after reset hint on Sign In page */
+.signin-gap-fix {
+    margin-top: 0;
+}
+
+.success-message {
+    color: var(--success-color);
+    font-weight: 600;
+    font-size: 1.05rem;
+    margin: 0;
+}
+
+.g-recaptcha-centered {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1rem;
+} 

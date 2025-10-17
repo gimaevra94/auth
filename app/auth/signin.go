@@ -20,23 +20,20 @@ type SignInPageData struct {
 	ShowForgotPassword bool
 	CaptchaShow        bool
 	Regs               []string
+	NoPassword         bool // Новое поле для передачи флага
 }
 
 func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[SignInInputCheck] Начало выполнения")
 	var user structs.User
 	var captchaShow bool
-
 	captchaCounter := 3
-
 	login := r.FormValue("login")
 	password := r.FormValue("password")
-
 	user = structs.User{
 		Login:    login,
 		Password: password,
 	}
-
 	err := tools.InputValidate(r, user.Login, "", user.Password, true)
 	if err != nil {
 		log.Printf("[SignInInputCheck] Ошибка валидации: %v", err)
@@ -44,7 +41,6 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 			if captchaCounter-1 <= 0 {
 				captchaShow = true
 			}
-
 			log.Printf("[SignInInputCheck] Отображение ошибки валидации логина")
 			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["login"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["login"].Regs})
 			if err != nil {
@@ -53,13 +49,11 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			return
-
 		} else {
 			if strings.Contains(err.Error(), "password") {
 				if captchaCounter-1 <= 0 {
 					captchaShow = true
 				}
-
 				log.Printf("[SignInInputCheck] Отображение ошибки валидации пароля (на этапе ввода)")
 				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["password"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["password"].Regs})
 				if err != nil {
@@ -70,34 +64,29 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 	log.Printf("[SignInInputCheck] Валидация пройдена, сохраняем данные в сессию")
-
 	err = data.AuthSessionDataSet(w, r, user)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
 	err = data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter-1)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
 	err = data.CaptchaSessionDataSet(w, r, "captchaShow", captchaShow)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
 	log.Printf("[SignInInputCheck] Вызов SignInUserCheck")
 	SignInUserCheck(w, r)
 }
@@ -110,21 +99,18 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
 	captchaCounter, err := data.SessionCaptchaCounterGet(r)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
 	captchaShow, err := data.SessionCaptchaShowGet(r)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
 	log.Printf("[SignInUserCheck] Проверка пользователя в БД: %s", user.Login)
 	permanentUserID, err := data.UserCheck(user.Login, user.Password)
 	if err != nil {
@@ -132,13 +118,14 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		// Если у пользователя нет пароля (вход через внешнего провайдера),
 		// отправляем на страницу установки пароля
 		if strings.Contains(err.Error(), "password hash is NULL") {
-			log.Printf("[SignInUserCheck] У пользователя NULL пароль, перенаправление на установку пароля")
-			// Разрешаем переход на /set-password через сессионный флаг
-			if session, sErr := data.LoginSessionGet(r); sErr == nil {
-				session.Values["allowSetPassword"] = true
-				_ = session.Save(r, w)
+			log.Printf("[SignInUserCheck] У пользователя NULL пароль, отображение сообщения на странице входа")
+			// Передаем флаг NoPassword в шаблон SignIn
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{NoPassword: true})
+			if err != nil {
+				log.Printf("[SignInUserCheck] Ошибка рендера страницы входа с сообщением NoPassword: %+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
 			}
-			http.Redirect(w, r, consts.SetPasswordURL+"?msg=Please+set+your+password", http.StatusFound)
 			return
 		}
 		if errors.Is(err, sql.ErrNoRows) {
@@ -154,7 +141,6 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
-
 		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
 			log.Printf("[SignInUserCheck] Неверный пароль для существующего пользователя, отображение ошибки")
 			if captchaCounter-1 <= 0 {
@@ -168,16 +154,13 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
-
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 	log.Printf("[SignInUserCheck] Пользователь успешно аутентифицирован, создание сессии")
-
 	temporaryUserID := uuid.New().String()
 	data.TemporaryUserIDCookieSet(w, temporaryUserID)
-
 	rememberMe := r.FormValue("rememberMe") != ""
 	refreshToken, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe)
 	if err != nil {
@@ -185,7 +168,6 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
 	tx, err := data.DB.Begin()
 	if err != nil {
 		log.Printf("%+v", err)
@@ -199,14 +181,12 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 	defer tx.Rollback()
-
 	err = data.TemporaryUserIDAddTx(tx, user.Login, temporaryUserID, false)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
 	tokenCancelled := false
 	err = data.RefreshTokenAddTx(tx, permanentUserID, refreshToken, r.UserAgent(), tokenCancelled)
 	if err != nil {
@@ -214,14 +194,12 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
 	err = tx.Commit()
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
 	captchaCounter = 3
 	err = data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter-1)
 	if err != nil {
@@ -229,13 +207,13 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-
 	err = data.AuthSessionEnd(w, r)
 	if err != nil {
 		log.Printf("%v", errors.WithStack(err))
 		http.Redirect(w, r, consts.SignInURL, http.StatusFound)
 		return
 	}
-
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }
+
+// ... (остальные функции остаются без изменений)

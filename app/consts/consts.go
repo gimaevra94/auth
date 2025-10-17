@@ -48,14 +48,14 @@ const (
 	ResetTokenUpdateQuery         = "update reset_token  set cancelled = TRUE where token = ?"
 
 	PasswordSetQuery = `
-	SELECT login, email, permanent_user_id 
-	FROM users 
-	WHERE temporary_user_id = ? AND password_hash IS NULL
+	SELECT login, email, permanentUserID 
+	FROM user 
+	WHERE temporaryUserID = ? AND passwordHash IS NULL
 `
 
 	PasswordUpdateByPermanentIDQuery = `
-UPDATE users 
-SET password_hash = ? 
-WHERE permanent_user_id = ?
+UPDATE user 
+SET passwordHash = ? 
+WHERE permanentUserID = ?
 `
 )

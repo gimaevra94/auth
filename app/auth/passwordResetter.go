@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"strings"
 
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
@@ -263,12 +262,8 @@ func SubmitPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 5. Валидация пароля
-	err = tools.InputValidate(r, "", "", password, false) // login и email пустые, проверяем только пароль
+	err = tools.PasswordValidate(password) // login и email пустые, проверяем только пароль
 	if err != nil {
-		if strings.Contains(err.Error(), "password") {
-			http.Redirect(w, r, consts.SetPasswordURL+"?msg="+tools.ErrMsg["password"].Msg, http.StatusFound)
-			return
-		}
 		log.Printf("SetPasswordHandler: validation error: %+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
@@ -297,6 +292,6 @@ func SubmitPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 7. Успешно — редирект на Home
-	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
+	successMessage := "Password has been set successfully." // Сообщение на английском
+	http.Redirect(w, r, consts.HomeURL+"?msg="+url.QueryEscape(successMessage), http.StatusFound)
 }

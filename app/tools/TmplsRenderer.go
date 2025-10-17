@@ -3,7 +3,6 @@ package tools
 import (
 	"html/template"
 	"net/http"
-
 	"github.com/pkg/errors"
 )
 
@@ -96,7 +95,6 @@ const (
 </html>
 {{ end }}
 `
-
 	SignUpTMPL = `
 {{ define "SignUp" }}
 <!DOCTYPE html>
@@ -160,7 +158,6 @@ const (
 </html>
 {{ end }}
 `
-
 	CodeSendTMPL = `
 {{ define "CodeSend" }}
 <!DOCTYPE html>
@@ -195,7 +192,6 @@ const (
 </html>
 {{ end }}
 `
-
 	SignInTMPL = `
 {{ define "SignIn" }}
 <!DOCTYPE html>
@@ -222,6 +218,11 @@ const (
 			{{else}}
 			<div class="error">{{.Msg}}</div>
 			{{end}}
+		{{end}}
+		{{if .NoPassword}}
+			<div class="error-message">
+				You signed up using Yandex. Please sign in with Yandex and set a password in your account settings.
+			</div>
 		{{end}}
 		{{if .Regs}}
 		<div class="requirements-list">
@@ -267,7 +268,6 @@ const (
 </html>
 {{ end }}
 `
-
 	HomeTMPL = `
 {{ define "Home" }}
 <!DOCTYPE html>
@@ -282,6 +282,9 @@ const (
 		<div class="header">
 			<h1>Welcome</h1>
 			<div class="header-buttons">
+				<form method="GET" action="/set-password">
+					<button type="submit" class="btn btn-primary">Set Password</button>
+				</form>
 				<form method="GET" action="/logout">
 					<button type="submit" class="btn btn-danger">Sign Out</button>
 				</form>
@@ -349,7 +352,7 @@ const (
             {{end}}
         </div>
         {{end}}
-        <form method="POST" action="/set-password">
+        <form method="POST" action="/submit-password">
             <div class="form-group">
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" required autocomplete="new-password">
@@ -437,7 +440,6 @@ const (
 </html>
 {{ end }}
 `
-
 	suspiciousLoginMailTMPL = `
 {{ define "suspiciousLoginMail" }}
 <!DOCTYPE html>
@@ -617,3 +619,5 @@ const (
 {{ end }}
 `
 )
+
+// ... (остальные функции InputValidate, CodeValidate и т.д. остаются без изменений)
