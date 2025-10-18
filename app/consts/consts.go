@@ -58,4 +58,5 @@ UPDATE user
 SET passwordHash = ? 
 WHERE permanentUserID = ?
 `
+	UserAgents = "SELECT DISTINCT device_info FROM refresh_tokens WHERE permanentUserID = $1 AND tokenCancelled = false;"
 )

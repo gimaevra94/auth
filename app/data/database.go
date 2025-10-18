@@ -13,6 +13,36 @@ import (
 
 var DB *sql.DB
 
+// GetAllUserAgentsForUser возвращает список уникальных User-Agent'ов,
+// связанных с активными refresh-токенами для данного пользователя.
+func GetAllUserAgentsForUser(permanentUserID string) ([]string, error) {
+    // Запрос выбирает уникальные device_info (User-Agent) для активных токенов пользователя
+    query := `SELECT DISTINCT device_info FROM refresh_tokens WHERE permanent_user_id = $1 AND token_cancelled = false;`
+    rows, err := DB.Query(query, permanentUserID)
+    if err != nil {
+        // Оберните ошибку для лучшей отладки, если используете pkg/errors
+        return nil, err // или errors.WithStack(err)
+    }
+    defer rows.Close()
+
+    var userAgents []string
+    for rows.Next() {
+        var ua string
+        if err := rows.Scan(&ua); err != nil {
+            // Оберните ошибку
+            return nil, err // или errors.WithStack(err)
+        }
+        userAgents = append(userAgents, ua)
+    }
+
+    // Проверьте, были ли ошибки при итерации rows
+    if err = rows.Err(); err != nil {
+        return nil, err // или errors.WithStack(err)
+    }
+
+    return userAgents, nil
+}
+
 func DBConn() error {
 	dbPassword := []byte(os.Getenv("DB_PASSWORD"))
 
