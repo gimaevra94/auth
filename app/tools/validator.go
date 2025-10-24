@@ -17,9 +17,8 @@ var (
 
 func RefreshTokenValidate(refreshToken string) error {
 	signedToken, err := jwt.ParseWithClaims(refreshToken, &jwt.StandardClaims{}, func(t *jwt.Token) (interface{}, error) {
-		if t.Method != jwt.SigningMethodHS256 {
-			err := errors.New("unexpected signing method")
-			return nil, errors.WithStack(err)
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok || t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
+			return nil, errors.WithStack(errors.New("unexpected signing method"))
 		}
 		jwtSecret := []byte(os.Getenv("JWT_SECRET"))
 		return jwtSecret, nil

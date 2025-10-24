@@ -16,6 +16,7 @@ var (
 	senderEmail            string
 	authCodeSubject        = "Auth code"
 	suspiciousLoginSubject = "Suspicious Login Alert!"
+	newDeviceLoginSubject  = "New Device Login"
 	passwordResetSubject   = "Password Reset Request"
 )
 
@@ -24,6 +25,27 @@ func codeGenerate() string {
 	msCodeItn := random.Intn(9000) + 1000
 	msCode := strconv.Itoa(msCodeItn)
 	return msCode
+}
+
+func SendNewDeviceLoginEmail(email, login, deviceInfo string) error {
+	senderEmail = os.Getenv("MAIL_SENDER_EMAIL")
+	auth := smtpAuth(senderEmail)
+
+	data := struct {
+		Login      string
+		DeviceInfo string
+	}{Login: login, DeviceInfo: deviceInfo}
+	msg, err := executeTmpl(senderEmail, email, newDeviceLoginSubject, data)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	err = mailSend(senderEmail, email, auth, msg)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
 }
 
 func smtpAuth(senderEmail string) smtp.Auth {
@@ -44,6 +66,11 @@ func executeTmpl(senderEmail, email, subject string, data any) ([]byte, error) {
 		}
 	case suspiciousLoginSubject:
 		err := BaseTmpl.ExecuteTemplate(&body, "suspiciousLoginMail", data)
+		if err != nil {
+			return []byte{}, errors.WithStack(err)
+		}
+	case newDeviceLoginSubject:
+		err := BaseTmpl.ExecuteTemplate(&body, "newDeviceLoginMail", data)
 		if err != nil {
 			return []byte{}, errors.WithStack(err)
 		}

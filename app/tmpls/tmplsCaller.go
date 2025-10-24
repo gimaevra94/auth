@@ -40,7 +40,12 @@ func CodeSend(w http.ResponseWriter, r *http.Request) {
 }
 
 func Home(w http.ResponseWriter, r *http.Request) {
-	err := tools.TmplsRenderer(w, tools.BaseTmpl, "Home", nil)
+	show := false
+	if c, err := r.Cookie("yauth"); err == nil && c != nil && c.Value == "1" {
+		show = true
+	}
+	data := struct{ ShowSetPassword bool }{ShowSetPassword: show}
+	err := tools.TmplsRenderer(w, tools.BaseTmpl, "Home", data)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)

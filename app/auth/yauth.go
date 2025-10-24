@@ -1,4 +1,4 @@
-package auth
+ 	package auth
 
 import (
 	"database/sql"
@@ -135,6 +135,16 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	// Логируем заголовки перед редиректом
 	log.Printf("yauth: Before redirect to HomeURL. Response Set-Cookie header: %v", w.Header().Get("Set-Cookie"))
 	log.Printf("yauth: Before redirect to HomeURL. Request cookies: %+v", r.Cookies())
+	// Помечаем вход через Яндекс кукой
+	http.SetCookie(w, &http.Cookie{
+		Name:     "yauth",
+		Value:    "1",
+		Path:     "/",
+		HttpOnly: false,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   consts.TemporaryUserIDExp,
+	})
 
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }

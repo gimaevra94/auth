@@ -3,6 +3,7 @@ package tools
 import (
 	"html/template"
 	"net/http"
+
 	"github.com/pkg/errors"
 )
 
@@ -109,11 +110,19 @@ const (
 		<h1>Sign Up</h1>
 		{{if .Msg}}<div class="error-message">{{.Msg}}</div>{{end}}
 		{{if .Regs}}
-		<div class="requirements-list">
-			{{range .Regs}}
-			<div>{{.}}</div>
+			{{if eq .Msg "Password is invalid"}}
+			<div class="error-message">
+				{{range .Regs}}
+				<div>{{.}}</div>
+				{{end}}
+			</div>
+			{{else}}
+			<div class="requirements-list">
+				{{range .Regs}}
+				<div>{{.}}</div>
+				{{end}}
+			</div>
 			{{end}}
-		</div>
 		{{end}}
 		<form method="POST" action="/sign-up-input-check" id="signup-form">
 			<div class="form-group">
@@ -215,6 +224,10 @@ const (
 			<div class="error error-highlight">
 				User does not exist
 			</div>
+			{{else if eq .Msg "Password is invalid"}}
+			<div class="error-message">{{.Msg}}</div>
+			{{else if eq .Msg "Pass the verification reCAPTCHA."}}
+			<div class="error-message">{{.Msg}}</div>
 			{{else}}
 			<div class="error">{{.Msg}}</div>
 			{{end}}
@@ -282,9 +295,11 @@ const (
 		<div class="header">
 			<h1>Welcome</h1>
 			<div class="header-buttons">
+				{{if .ShowSetPassword}}
 				<form method="GET" action="/set-password">
 					<button type="submit" class="btn btn-primary">Set Password</button>
 				</form>
+				{{end}}
 				<form method="GET" action="/logout">
 					<button type="submit" class="btn btn-danger">Sign Out</button>
 				</form>
@@ -322,8 +337,12 @@ const (
 			</div>
 			<button type="submit" class="btn">Submit</button>
 		</form>
-        {{else}}
-        <div class="message success-message" style="text-align:center; padding: 1.5rem 0;">{{.Msg}}</div>
+		{{else}}
+			{{if eq .Msg "Password reset link has been sent to your email."}}
+				<div class="message success-message" style="text-align:center; padding: 1.5rem 0;">{{.Msg}}</div>
+			{{else}}
+				<div class="error-message" style="text-align:center; padding: 1.5rem 0;">{{.Msg}}</div>
+			{{end}}
 		{{end}}
 	</div>
 </body>
@@ -618,6 +637,69 @@ const (
 </html>
 {{ end }}
 `
+	newDeviceLoginMailTMPL = `
+{{ define "newDeviceLoginMail" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>New Device Login</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --text-color: #e5e7eb;
+            --bg-color: #1f2937;
+            --container-bg: #374151;
+            --border-color: #4b5563;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #1f2937; /* var(--bg-color); */
+            color: #e5e7eb; /* var(--text-color); */
+            line-height: 1.5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh; /* Changed from height to min-height */
+            margin: 0; /* Added */
+            padding: 20px; /* Added */
+        }
+        .container {
+            max-width: 400px;
+            margin: 2rem auto; /* Added for centering */
+            padding: 2rem;
+            background: #374151; /* var(--container-bg); */
+            border-radius: 8px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #2563eb; /* var(--primary-color); */
+        }
+        p {
+            margin-bottom: 1.5rem;
+            color: #e5e7eb; /* var(--text-color); */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>New Device Login</h1>
+        <p>Dear {{.Login}},</p>
+        <p>We detected a login attempt to your account from a new device.</p>
+        <p>Device Info: {{.DeviceInfo}}</p>
+        <p>If this was you, you can ignore this email. If you did not attempt to log in, please secure your account immediately by changing your password.</p>
+        <p>Thank you for your vigilance.</p>
+    </div>
+</body>
+</html>
+{{ end }}
+`
 )
 
-// ... (остальные функции InputValidate, CodeValidate и т.д. остаются без изменений)
+func init() {
+	_ = Must(BaseTmpl.Parse(newDeviceLoginMailTMPL))
+}

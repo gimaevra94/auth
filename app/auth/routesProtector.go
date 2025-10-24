@@ -41,9 +41,14 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 		refreshToken, deviceInfo, tokenCancelled, err := data.RefreshTokenCheck(permanentUserID, r.UserAgent())
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				log.Println("routesProtector: Redirecting to SignInURL because RefreshToken not found for permanentUserID or UserAgent.")
-				Revocate(w, r, true, true, false)
-				http.Redirect(w, r, consts.SignInURL, http.StatusFound)
+				log.Println("routesProtector: RefreshToken not found for permanentUserID or UserAgent. Sending new device login alert and allowing request.")
+				if mailErr := tools.SendNewDeviceLoginEmail(email, login, r.UserAgent()); mailErr != nil {
+					log.Printf("%v", errors.WithStack(mailErr))
+					log.Println("routesProtector: Redirecting to Err500URL because SendNewDeviceLoginEmail failed.")
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+					return
+				}
+				next.ServeHTTP(w, r)
 				return
 			}
 
@@ -54,9 +59,14 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 		}
 
 		if deviceInfo != r.UserAgent() {
-			log.Println("routesProtector: Redirecting to SignInURL because UserAgent mismatch.")
-			Revocate(w, r, true, true, true)
-			http.Redirect(w, r, consts.SignInURL, http.StatusFound)
+			log.Println("routesProtector: UserAgent mismatch. Sending suspicious login alert and allowing request.")
+			if mailErr := tools.SendSuspiciousLoginEmail(email, login, r.UserAgent()); mailErr != nil {
+				log.Printf("%v", errors.WithStack(mailErr))
+				log.Println("routesProtector: Redirecting to Err500URL because SendSuspiciousLoginEmail failed.")
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+			next.ServeHTTP(w, r)
 			return
 		}
 
@@ -71,7 +81,7 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 		if tokenCancelled {
 			log.Println("routesProtector: Redirecting to SignInURL because RefreshToken is cancelled.")
 			Revocate(w, r, true, true, false)
-			err := tools.SendSuspiciousLoginEmail(login, email, deviceInfo)
+			err := tools.SendSuspiciousLoginEmail(email, login, deviceInfo)
 			if err != nil {
 				log.Printf("%v", errors.WithStack(err))
 				log.Println("routesProtector: Redirecting to Err500URL because SendSuspiciousLoginEmail failed.")
@@ -159,5 +169,3 @@ func ResetTokenGuardMW(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
-
-
