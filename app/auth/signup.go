@@ -360,6 +360,40 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 	permanentUserID := uuid.New().String()
 	temporaryCancelled := false
 
+	storedUserAgents, err := data.GetAllUserAgentsForUser(permanentUserID) // Нужно реализовать эту функцию
+	if err != nil {
+		log.Printf("SignInUserCheck: Error fetching stored UserAgents: %+v", err)
+		// Продолжаем, не будем блокировать вход из-за этой ошибки, но можно логировать
+		// или установить флаг для отправки алерта только если не было ошибки
+	} else {
+		// 2. Проверить, есть ли текущий User-Agent среди сохраненных
+		isNewDevice := true
+		for _, ua := range storedUserAgents {
+			if ua == r.UserAgent() { // Сравниваем с текущим User-Agent запроса
+				isNewDevice = false
+				break
+			}
+		}
+
+		// 3. Если это новое устройство, отправить алерт
+		if isNewDevice {
+			login, email, _, _, errGetUser := data.MWUserCheck(temporaryUserID) // Получить login/email для письма
+			if errGetUser == nil {                                              // Если получилось получить данные пользователя
+				// Отправляем письмо "Suspicious Login Alert" (хотя это может быть легитимный вход)
+				// Возможно, стоит изменить текст письма или использовать отдельную функцию для "New Device Login"
+				errAlert := tools.SendNewDeviceLoginEmail(login, email, r.UserAgent()) // Используем текущий UA как "подозрительное" устройство
+				if errAlert != nil {
+					log.Printf("SignInUserCheck: Error sending new device alert email: %+v", errAlert)
+					// Не перенаправляем на ошибку 500 из-за сбоя отправки письма
+				} else {
+					log.Printf("SignInUserCheck: New device alert email sent for user %s (%s) from %s", login, email, r.UserAgent())
+				}
+			} else {
+				log.Printf("SignInUserCheck: Could not fetch user details to send new device alert: %+v", errGetUser)
+			}
+		}
+	}
+
 	tx, err := data.DB.Begin()
 	if err != nil {
 		log.Printf("%+v", err)

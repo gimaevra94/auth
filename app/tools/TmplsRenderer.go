@@ -96,6 +96,77 @@ const (
 </html>
 {{ end }}
 `
+	SuspiciousLoginMailTMPL = `
+{{ define "suspiciousLoginMail" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>New Device Login Alert</title>
+    <style>
+        :root {
+            --primary-color: #dc2626; /* Используем красный для алертов */
+            --text-color: #e5e7eb;
+            --bg-color: #1f2937;
+            --container-bg: #374151;
+            --border-color: #4b5563;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 400px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: var(--container-bg);
+            border-radius: 8px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--primary-color); /* Красный заголовок для алерта */
+        }
+        p {
+            margin-bottom: 1.5rem;
+            color: var(--text-color);
+        }
+        .device-info {
+            font-weight: bold;
+            color: #fca5a5; /* Светло-красный для важной информации */
+        }
+        .warning-text {
+            color: #fca5a5; /* Светло-красный */
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>New Device Login Detected!</h1>
+        <p>Dear {{.Login}},</p>
+        <p>A sign-in to your account was detected from a new device:</p>
+        <p class="device-info">User-Agent: {{.DeviceInfo}}</p>
+        <p>If this was you, you can safely ignore this email.</p>
+        <p class="warning-text">If you did not sign in from this device, your account may be compromised.</p>
+        <p>Please secure your account immediately by changing your password.</p>
+        <p>Best regards,<br>Your App Team</p>
+    </div>
+</body>
+</html>
+{{ end }}
+`
 	SignUpTMPL = `
 {{ define "SignUp" }}
 <!DOCTYPE html>
@@ -700,6 +771,4 @@ const (
 `
 )
 
-func init() {
-	_ = Must(BaseTmpl.Parse(newDeviceLoginMailTMPL))
-}
+// ... (остальные функции InputValidate, CodeValidate и т.д. остаются без изменений)

@@ -2,6 +2,8 @@ package tools
 
 import (
 	"bytes"
+	"fmt"
+	"log"
 	"math/rand"
 	"net/smtp"
 	"os"
@@ -19,6 +21,53 @@ var (
 	newDeviceLoginSubject  = "New Device Login"
 	passwordResetSubject   = "Password Reset Request"
 )
+
+type NewDeviceLoginData struct {
+	Login      string
+	Email      string // Хотя в шаблоне не используется напрямую, передаём для логики отправки
+	DeviceInfo string
+	Subject    string // Удобно передавать тему как параметр
+}
+
+// SendNewDeviceLoginEmail отправляет уведомление о входе с нового устройства.
+func SendNewDeviceLoginEmail(login, email, deviceInfo string) error {
+	senderEmail := os.Getenv("MAIL_SENDER_EMAIL")
+	if senderEmail == "" {
+		log.Println("MAIL_SENDER_EMAIL is not set, cannot send new device login email")
+		return fmt.Errorf("MAIL_SENDER_EMAIL not configured")
+	}
+
+	subject := "New Device Login Alert"
+	data := NewDeviceLoginData{
+		Login:      login,
+		Email:      email, // Используется в smtp.SendMail как recipient
+		DeviceInfo: deviceInfo,
+		Subject:    subject,
+	}
+
+	// Используем существующий шаблон (предполагая, что он обновлён как указано выше)
+	tmpl := BaseTmpl.Lookup("suspiciousLoginMail")
+	if tmpl == nil {
+		return fmt.Errorf("template 'suspiciousLoginMail' not found")
+	}
+
+	var body bytes.Buffer
+	if err := tmpl.Execute(&body, data); err != nil {
+		return err // или errors.WithStack(err)
+	}
+
+	header := "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n"
+	fullMessage := fmt.Sprintf("To: %s\r\nSubject: %s\r\n%s\r\n%s", email, subject, header, body.String())
+
+	auth := smtpAuth(senderEmail)
+	err := smtp.SendMail("smtp.yandex.ru:587", auth, senderEmail, []string{email}, []byte(fullMessage))
+	if err != nil {
+		log.Printf("SendNewDeviceLoginEmail: Error sending email to %s: %v", email, err)
+		return err // или errors.WithStack(err)
+	}
+	log.Printf("SendNewDeviceLoginEmail: Alert email sent successfully to %s for login from %s", email, deviceInfo)
+	return nil
+}
 
 func codeGenerate() string {
 	random := rand.New(rand.NewSource(time.Now().UnixNano()))

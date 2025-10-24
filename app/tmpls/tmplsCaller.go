@@ -1,4 +1,4 @@
-package htmls
+package tmpls
 
 import (
 	"log"

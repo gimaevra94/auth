@@ -8,7 +8,7 @@ import (
 	"github.com/gimaevra94/auth/app/auth"
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
-	htmls "github.com/gimaevra94/auth/app/tmpls"
+	"github.com/gimaevra94/auth/app/tmpls"
 	"github.com/go-chi/chi"
 	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
@@ -81,11 +81,11 @@ func initRouter() *chi.Mux {
 	r.Get("/clear", data.ClearCookiesDev)
 
 	// Public routes (redirect if already logged in)
-	r.With(auth.AlreadyAuthedRedirectMW).Get(consts.SignUpURL, htmls.SignUp)
+	r.With(auth.AlreadyAuthedRedirectMW).Get(consts.SignUpURL, tmpls.SignUp)
 	r.Post(consts.SignUpInputCheckURL, auth.SignUpInputCheck)
-	r.With(auth.SignUpFlowOnlyMW).Get(consts.CodeSendURL, htmls.CodeSend)
+	r.With(auth.SignUpFlowOnlyMW).Get(consts.CodeSendURL, tmpls.CodeSend)
 	r.Post(consts.UserAddURL, auth.UserAdd)
-	r.With(auth.AlreadyAuthedRedirectMW).Get(consts.SignInURL, htmls.SignIn)
+	r.With(auth.AlreadyAuthedRedirectMW).Get(consts.SignInURL, tmpls.SignIn)
 	r.Post(consts.SignInInputCheckURL, auth.SignInInputCheck)
 
 	// OAuth routes
@@ -93,15 +93,15 @@ func initRouter() *chi.Mux {
 	r.Get(consts.YandexCallbackURL, auth.YandexCallbackHandler)
 
 	// Password reset routes
-	r.Get(consts.PasswordResetURL, htmls.PasswordReset)
+	r.Get(consts.PasswordResetURL, tmpls.PasswordReset)
 	r.Post(consts.PasswordResetEmailURL, auth.PasswordResetEmailCheck)
-	r.With(auth.ResetTokenGuardMW).Get(consts.SetNewPasswordURL, htmls.SetNewPassword)
+	r.With(auth.ResetTokenGuardMW).Get(consts.SetNewPasswordURL, tmpls.SetNewPassword)
 	r.Post(consts.SetNewPasswordURL, auth.SetNewPassword)
 
 	// Protected routes (require valid token session)
-	r.With(auth.IsExpiredTokenMW).Get(consts.HomeURL, htmls.Home)
+	r.With(auth.IsExpiredTokenMW).Get(consts.HomeURL, tmpls.Home)
 	// Apply MW to set-password route
-	r.With(auth.IsExpiredTokenMW).Get(consts.SetPasswordURL, htmls.SetPassword)
+	r.With(auth.IsExpiredTokenMW).Get(consts.SetPasswordURL, tmpls.SetPassword)
 	r.Post(consts.SubmitPasswordURL, auth.SubmitPassword)
 
 	// Logout routes
@@ -109,7 +109,7 @@ func initRouter() *chi.Mux {
 	r.With(auth.IsExpiredTokenMW).Get(consts.SimpleLogoutURL, auth.SimpleLogout)
 
 	// Error page
-	r.Get(consts.Err500URL, htmls.Err500)
+	r.Get(consts.Err500URL, tmpls.Err500)
 
 	return r
 }
