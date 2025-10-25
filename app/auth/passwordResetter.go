@@ -292,6 +292,17 @@ func SubmitPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Обновляем маркер входа: после установки пароля считаем, что вход больше не только через Яндекс
+	http.SetCookie(w, &http.Cookie{
+		Name:     "yauth",
+		Value:    "0",
+		Path:     "/",
+		HttpOnly: false,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   consts.TemporaryUserIDExp,
+	})
+
 	successMessage := "Password has been set successfully." // Сообщение на английском
 	http.Redirect(w, r, consts.HomeURL+"?msg="+url.QueryEscape(successMessage), http.StatusFound)
 }

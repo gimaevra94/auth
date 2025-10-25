@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"net/url"
 
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
@@ -38,9 +39,68 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 			return
 		}
 
+		// UA контроль: сравнение текущего UA с тем, что был при логине (храним в куке 'ua')
+		uaCookie, _ := r.Cookie("ua")
+		sessionUA := ""
+		if uaCookie != nil {
+			// cookie хранит UA в url-escaped виде
+			if dec, err := url.QueryUnescape(uaCookie.Value); err == nil {
+				sessionUA = dec
+			} else {
+				sessionUA = uaCookie.Value
+			}
+		}
+		currentUA := r.UserAgent()
+
+		// Маркер первого запроса новой сессии
+		newSessCookie, _ := r.Cookie("new_session")
+		isNewSession := newSessCookie != nil && newSessCookie.Value == "1"
+
+		// Если первый запрос после логина и UA отличается — блокируем и шлём подозрительное письмо
+		if isNewSession && sessionUA != "" && sessionUA != currentUA {
+			if mailErr := tools.SendSuspiciousLoginEmail(email, login, currentUA); mailErr != nil {
+				log.Printf("%v", errors.WithStack(mailErr))
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+			// Сбрасываем маркер новой сессии
+			http.SetCookie(w, &http.Cookie{Name: "new_session", Path: "/", MaxAge: -1})
+			log.Println("routesProtector: Blocking access due to UA mismatch on first request after login.")
+			Revocate(w, r, true, true, true)
+			http.Redirect(w, r, consts.SignInURL, http.StatusFound)
+			return
+		}
+
+		// Если это первый запрос и UA совпал с сохранённым — сразу снимаем маркер new_session,
+		// чтобы дальнейшие проверки не трактовали ситуацию как первую попытку
+		if isNewSession && sessionUA != "" && sessionUA == currentUA {
+			http.SetCookie(w, &http.Cookie{Name: "new_session", Path: "/", MaxAge: -1})
+			isNewSession = false
+		}
+
+		// Если не первый запрос и UA отличается — не шлём письма и пропускаем (по требованию)
+		if !isNewSession && sessionUA != "" && sessionUA != currentUA {
+			log.Println("routesProtector: UA changed mid-session; allowing request without notifications.")
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		refreshToken, deviceInfo, tokenCancelled, err := data.RefreshTokenCheck(permanentUserID, r.UserAgent())
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
+				if isNewSession {
+					// Первый запрос новой сессии и ещё нет токена для этого UA — считаем это новым устройством
+					log.Println("routesProtector: No refresh token for this UA on first request; treating as new device and allowing.")
+					if mailErr := tools.SendNewDeviceLoginEmail(email, login, currentUA); mailErr != nil {
+						log.Printf("%v", errors.WithStack(mailErr))
+						http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+						return
+					}
+					// Сбрасываем маркер новой сессии и пропускаем запрос
+					http.SetCookie(w, &http.Cookie{Name: "new_session", Path: "/", MaxAge: -1})
+					next.ServeHTTP(w, r)
+					return
+				}
 				log.Println("routesProtector: RefreshToken not found for permanentUserID or UserAgent. Sending new device login alert and allowing request.")
 				if mailErr := tools.SendNewDeviceLoginEmail(email, login, r.UserAgent()); mailErr != nil {
 					log.Printf("%v", errors.WithStack(mailErr))
@@ -59,13 +119,20 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 		}
 
 		if deviceInfo != r.UserAgent() {
-			log.Println("routesProtector: UserAgent mismatch. Sending suspicious login alert and allowing request.")
-			if mailErr := tools.SendSuspiciousLoginEmail(email, login, r.UserAgent()); mailErr != nil {
-				log.Printf("%v", errors.WithStack(mailErr))
-				log.Println("routesProtector: Redirecting to Err500URL because SendSuspiciousLoginEmail failed.")
-				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			if isNewSession {
+				log.Println("routesProtector: UserAgent mismatch on first request. Treating as suspicious.")
+				if mailErr := tools.SendSuspiciousLoginEmail(email, login, r.UserAgent()); mailErr != nil {
+					log.Printf("%v", errors.WithStack(mailErr))
+					log.Println("routesProtector: Redirecting to Err500URL because SendSuspiciousLoginEmail failed.")
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+					return
+				}
+				http.SetCookie(w, &http.Cookie{Name: "new_session", Path: "/", MaxAge: -1})
+				Revocate(w, r, true, true, true)
+				http.Redirect(w, r, consts.SignInURL, http.StatusFound)
 				return
 			}
+			log.Println("routesProtector: UserAgent mismatch mid-session; allowing without notifications.")
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -92,6 +159,10 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 			return
 		}
 
+		// Успешная проверка — если это первый запрос новой сессии, сбрасываем маркер
+		if isNewSession {
+			http.SetCookie(w, &http.Cookie{Name: "new_session", Path: "/", MaxAge: -1})
+		}
 		next.ServeHTTP(w, r)
 	})
 }

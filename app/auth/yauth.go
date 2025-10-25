@@ -1,4 +1,4 @@
- 	package auth
+ package auth
 
 import (
 	"database/sql"
@@ -173,6 +173,25 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	// Помечаем вход через Яндекс кукой
 	http.SetCookie(w, &http.Cookie{
 		Name:     "yauth",
+		Value:    "1",
+		Path:     "/",
+		HttpOnly: false,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   consts.TemporaryUserIDExp,
+	})
+	// Сохраняем UA и помечаем первый запрос новой сессии
+	http.SetCookie(w, &http.Cookie{
+		Name:     "ua",
+		Value:    url.QueryEscape(r.UserAgent()),
+		Path:     "/",
+		HttpOnly: false,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   consts.TemporaryUserIDExp,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "new_session",
 		Value:    "1",
 		Path:     "/",
 		HttpOnly: false,

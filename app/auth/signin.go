@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/gimaevra94/auth/app/consts"
@@ -59,6 +60,57 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		captchaShow = show
+	}
+
+    // Если капча уже должна показываться — проверяем её перед ранней проверкой NoPassword,
+    // чтобы нельзя было обходить капчу множественными запросами без пароля
+    if captchaShow {
+        if err := tools.Captcha(r); err != nil {
+            if strings.Contains(err.Error(), "captchaToken not exist") {
+                err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["captchaRequired"].Msg, CaptchaShow: captchaShow, Regs: nil})
+                if err != nil {
+                    log.Printf("%+v", err)
+                    http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+                    return
+                }
+                return
+            }
+            log.Printf("%+v", err)
+            http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+            return
+        }
+    }
+
+    // Ранняя проверка: если у пользователя пароль в БД отсутствует (NULL), показываем подсказку про вход через Яндекс и установку пароля
+	if user.Login != "" {
+		row := data.DB.QueryRow(consts.UserSelectQuery, user.Login)
+		var passwordHash sql.NullString
+		var permanentUserID string
+		if err := row.Scan(&passwordHash, &permanentUserID); err == nil {
+			if !passwordHash.Valid {
+				log.Printf("[SignInInputCheck] У пользователя NULL пароль (ранняя проверка), показываем NoPassword")
+				// уменьшаем счетчик попыток и при необходимости включаем капчу
+				if err2 := data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter-1); err2 != nil {
+					log.Printf("%+v", err2)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+					return
+				}
+				captchaCounter -= 1
+				if captchaCounter == 0 {
+					captchaShow = true
+					if err2 := data.CaptchaSessionDataSet(w, r, "captchaShow", captchaShow); err2 != nil {
+						log.Printf("%+v", err2)
+						http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+						return
+					}
+				}
+				if rerr := tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{NoPassword: true, CaptchaShow: captchaShow}); rerr != nil {
+					log.Printf("%+v", rerr)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				}
+				return
+			}
+		}
 	}
 
 	// Если капча уже должна показываться — проверяем её до валидации инпутов
@@ -244,6 +296,25 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "yauth",
 		Value:    "0",
+		Path:     "/",
+		HttpOnly: false,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   consts.TemporaryUserIDExp,
+	})
+	// Сохраняем текущий User-Agent сессии и помечаем первый запрос новой сессии
+	http.SetCookie(w, &http.Cookie{
+		Name:     "ua",
+		Value:    url.QueryEscape(r.UserAgent()),
+		Path:     "/",
+		HttpOnly: false,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   consts.TemporaryUserIDExp,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "new_session",
+		Value:    "1",
 		Path:     "/",
 		HttpOnly: false,
 		Secure:   false,

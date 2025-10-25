@@ -5,13 +5,13 @@ import (
 	"log"
 	"net/http"
 	"strings"
+    "net/url"
 
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/structs"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 
 	"github.com/pkg/errors"
 )
@@ -40,6 +40,11 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if strings.Contains(err.Error(), "exist") {
 			captchaCounter = 3
+			if err2 := data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter); err2 != nil {
+				log.Printf("%+v", err2)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
 		} else {
 			log.Printf("%+v", err)
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -51,6 +56,11 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if strings.Contains(err.Error(), "exist") {
 			captchaShow = false
+			if err2 := data.CaptchaSessionDataSet(w, r, "captchaShow", captchaShow); err2 != nil {
+				log.Printf("%+v", err2)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
 		} else {
 			log.Printf("%+v", err)
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -179,21 +189,6 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	captchaCounter = 3
-	err = data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter)
-	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
-	}
-
-	err = data.CaptchaSessionDataSet(w, r, "captchaShow", false)
-	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
-	}
-
 	SignUpUserCheck(w, r)
 }
 
@@ -220,70 +215,73 @@ func SignUpUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = data.UserCheck(user.Login, user.Password)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			CodeSend(w, r)
-			return
-		}
-
-		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+	// 1) Проверка существования логина
+	if row := data.DB.QueryRow(consts.YauthSelectQuery, user.Login); row != nil {
+		var tmp string
+		if err := row.Scan(&tmp); err == nil {
+			// Логин уже существует -> показать alreadyExist
+			captchaCounter -= 1
 			if captchaCounter == 0 {
 				captchaShow = true
 			}
-			captchaCounter -= 1
-
-			err = data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter)
-			if err != nil {
+			if err := data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter); err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
-			err = data.CaptchaSessionDataSet(w, r, "captchaShow", captchaShow)
-			if err != nil {
+			if err := data.CaptchaSessionDataSet(w, r, "captchaShow", captchaShow); err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
-
-			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["password"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["password"].Regs})
-			if err != nil {
+			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["alreadyExist"].Msg, CaptchaShow: captchaShow}); err != nil {
 				log.Printf("%+v", err)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
 			return
+		} else if !errors.Is(err, sql.ErrNoRows) {
+			log.Printf("%+v", err)
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
 		}
-
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
 	}
 
-	if captchaCounter == 0 {
-		captchaShow = true
+	// 2) Проверка существования email
+	if row := data.DB.QueryRow(consts.PasswordResetEmailSelectQuery, user.Email); row != nil {
+		var tmp string
+		if err := row.Scan(&tmp); err == nil {
+			// Email уже существует -> показать alreadyExist
+			captchaCounter -= 1
+			if captchaCounter == 0 {
+				captchaShow = true
+			}
+			if err := data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter); err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+			if err := data.CaptchaSessionDataSet(w, r, "captchaShow", captchaShow); err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["alreadyExist"].Msg, CaptchaShow: captchaShow}); err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+			return
+		} else if !errors.Is(err, sql.ErrNoRows) {
+			log.Printf("%+v", err)
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
 	}
-	captchaCounter -= 1
 
-	err = data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter)
-	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
-	}
-	err = data.CaptchaSessionDataSet(w, r, "captchaShow", captchaShow)
-	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
-	}
-
-	err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["alreadyExist"].Msg, CaptchaShow: captchaShow})
-	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-		return
-	}
+	// 3) Если ни логин ни почта не существуют — запускаем отправку кода
+	CodeSend(w, r)
+	return
 }
 
 func CodeSend(w http.ResponseWriter, r *http.Request) {
@@ -357,42 +355,39 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 
 	temporaryUserID := uuid.New().String()
 	data.TemporaryUserIDCookieSet(w, temporaryUserID)
+	// Маркируем тип логина и сохраняем параметры для UA-контроля, как в SignIn
+	http.SetCookie(w, &http.Cookie{
+		Name:     "yauth",
+		Value:    "0",
+		Path:     "/",
+		HttpOnly: false,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   consts.TemporaryUserIDExp,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "ua",
+		Value:    url.QueryEscape(r.UserAgent()),
+		Path:     "/",
+		HttpOnly: false,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   consts.TemporaryUserIDExp,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "new_session",
+		Value:    "1",
+		Path:     "/",
+		HttpOnly: false,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   consts.TemporaryUserIDExp,
+	})
 	permanentUserID := uuid.New().String()
 	temporaryCancelled := false
 
-	storedUserAgents, err := data.GetAllUserAgentsForUser(permanentUserID) // Нужно реализовать эту функцию
-	if err != nil {
-		log.Printf("SignInUserCheck: Error fetching stored UserAgents: %+v", err)
-		// Продолжаем, не будем блокировать вход из-за этой ошибки, но можно логировать
-		// или установить флаг для отправки алерта только если не было ошибки
-	} else {
-		// 2. Проверить, есть ли текущий User-Agent среди сохраненных
-		isNewDevice := true
-		for _, ua := range storedUserAgents {
-			if ua == r.UserAgent() { // Сравниваем с текущим User-Agent запроса
-				isNewDevice = false
-				break
-			}
-		}
-
-		// 3. Если это новое устройство, отправить алерт
-		if isNewDevice {
-			login, email, _, _, errGetUser := data.MWUserCheck(temporaryUserID) // Получить login/email для письма
-			if errGetUser == nil {                                              // Если получилось получить данные пользователя
-				// Отправляем письмо "Suspicious Login Alert" (хотя это может быть легитимный вход)
-				// Возможно, стоит изменить текст письма или использовать отдельную функцию для "New Device Login"
-				errAlert := tools.SendNewDeviceLoginEmail(login, email, r.UserAgent()) // Используем текущий UA как "подозрительное" устройство
-				if errAlert != nil {
-					log.Printf("SignInUserCheck: Error sending new device alert email: %+v", errAlert)
-					// Не перенаправляем на ошибку 500 из-за сбоя отправки письма
-				} else {
-					log.Printf("SignInUserCheck: New device alert email sent for user %s (%s) from %s", login, email, r.UserAgent())
-				}
-			} else {
-				log.Printf("SignInUserCheck: Could not fetch user details to send new device alert: %+v", errGetUser)
-			}
-		}
-	}
+	// Уведомление о первом входе с нового устройства выполняем после коммита ниже,
+    // используя данные пользователя из сессии.
 
 	tx, err := data.DB.Begin()
 	if err != nil {
@@ -430,8 +425,16 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Отправляем письмо о входе с нового устройства для только что созданного пользователя
+	if mailErr := tools.SendNewDeviceLoginEmail(user.Email, user.Login, r.UserAgent()); mailErr != nil {
+		log.Printf("UserAdd: Error sending new device login email: %+v", mailErr)
+		// Не блокируем пользователя из-за сбоя отправки письма
+	} else {
+		log.Printf("UserAdd: New device login email sent to %s for login %s", user.Email, user.Login)
+	}
+
 	captchaCounter := 3
-	err = data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter-1)
+	err = data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
