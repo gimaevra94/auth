@@ -2,7 +2,6 @@ package data
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
 
@@ -17,9 +16,9 @@ var captchaStore *sessions.CookieStore
 func InitStore() *sessions.CookieStore {
 	authKey := []byte(os.Getenv("SESSION_AUTH_KEY"))
 	encryptionKey := []byte(os.Getenv("SESSION_ENCRYPTION_KEY"))
-
 	loginStore = sessions.NewCookieStore(authKey, encryptionKey)
 	thirtyMinutes := 30 * 60
+
 	loginStore.Options = &sessions.Options{
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
@@ -31,6 +30,7 @@ func InitStore() *sessions.CookieStore {
 	sessionSecret := []byte(os.Getenv("SESSION_SECRET"))
 	captchaStore = sessions.NewCookieStore(sessionSecret)
 	thirtyDays := 30 * 24 * 60 * 60
+
 	captchaStore.Options = &sessions.Options{
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
@@ -38,10 +38,19 @@ func InitStore() *sessions.CookieStore {
 		MaxAge:   thirtyDays,
 		Secure:   false,
 	}
+
 	return nil
 }
 
-func CaptchaSessionDataSet(w http.ResponseWriter, r *http.Request, key string, consts any) error {
+func LoginSessionGet(r *http.Request) (*sessions.Session, error) {
+	session, err := loginStore.Get(r, "auth")
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return session, nil
+}
+
+func SessionCaptchaDataSet(w http.ResponseWriter, r *http.Request, key string, consts any) error {
 	session, err := captchaStore.Get(r, "captcha")
 	if err != nil {
 		return errors.WithStack(err)
@@ -53,11 +62,11 @@ func CaptchaSessionDataSet(w http.ResponseWriter, r *http.Request, key string, c
 	}
 
 	session.Values[key] = jsonData
-
 	err = session.Save(r, w)
 	if err != nil {
 		return errors.WithStack(err)
 	}
+
 	return nil
 }
 
@@ -71,12 +80,13 @@ func AuthSessionDataSet(w http.ResponseWriter, r *http.Request, consts any) erro
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	session.Values["user"] = jsonData
 
+	session.Values["user"] = jsonData
 	err = session.Save(r, w)
 	if err != nil {
 		return errors.WithStack(err)
 	}
+
 	return nil
 }
 
@@ -88,7 +98,8 @@ func SessionCaptchaCounterGet(r *http.Request) (int64, error) {
 
 	byteData, ok := session.Values["captchaCounter"].([]byte)
 	if !ok {
-		return 0, errors.WithStack(errors.New(fmt.Sprintf("%s not exist", "captchaCounter")))
+		err := errors.New("captchaCounter not exist")
+		return 0, errors.WithStack(err)
 	}
 
 	var intData int64
@@ -108,7 +119,8 @@ func SessionCaptchaShowGet(r *http.Request) (bool, error) {
 
 	byteData, ok := session.Values["captchaShow"].([]byte)
 	if !ok {
-		return false, errors.WithStack(errors.New(fmt.Sprintf("%s not exist", "captchaShow")))
+		err := errors.New("captchaShow not exist")
+		return false, errors.WithStack(err)
 	}
 
 	var boolData bool
@@ -128,7 +140,8 @@ func SessionUserGet(r *http.Request) (structs.User, error) {
 
 	byteData, ok := session.Values["user"].([]byte)
 	if !ok {
-		return structs.User{}, errors.WithStack(errors.New(fmt.Sprintf("%s not exist", "user")))
+		err := errors.New("user not exist")
+		return structs.User{}, errors.WithStack(err)
 	}
 
 	var userData structs.User
@@ -151,6 +164,7 @@ func AuthSessionEnd(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
+
 	return nil
 }
 
@@ -165,14 +179,6 @@ func CaptchaSessionEnd(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	return nil
-}
 
-// LoginSessionGet exposes the raw auth session (for internal flags)
-func LoginSessionGet(r *http.Request) (*sessions.Session, error) {
-	session, err := loginStore.Get(r, "auth")
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	return session, nil
+	return nil
 }
