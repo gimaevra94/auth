@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
-    "net/url"
 
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
@@ -15,12 +15,6 @@ import (
 
 	"github.com/pkg/errors"
 )
-
-type SignUpPageData struct {
-	Msg         string
-	CaptchaShow bool
-	Regs        []string
-}
 
 func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 	var user structs.User
@@ -69,10 +63,10 @@ func SignUpInputCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if captchaShow {
-		err = tools.Captcha(r)
+		err = tools.CaptchaShow(r)
 		if err != nil {
 			if strings.Contains(err.Error(), "captchaToken not exist") {
-				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["captchaRequired"].Msg, CaptchaShow: captchaShow, Regs: nil})
+				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", tools.SignUpPageData{Msg: tools.ErrMsg["captchaRequired"].Msg, CaptchaShow: captchaShow, Regs: nil})
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -387,7 +381,7 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 	temporaryCancelled := false
 
 	// Уведомление о первом входе с нового устройства выполняем после коммита ниже,
-    // используя данные пользователя из сессии.
+	// используя данные пользователя из сессии.
 
 	tx, err := data.DB.Begin()
 	if err != nil {

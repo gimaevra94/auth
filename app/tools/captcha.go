@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func Captcha(r *http.Request) error {
+func CaptchaShow(r *http.Request) error {
 	captchaToken := r.FormValue("g-recaptcha-response")
 	if captchaToken == "" {
 		return errors.WithStack(errors.New("captchaToken not exist"))

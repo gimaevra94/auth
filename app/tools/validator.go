@@ -15,6 +15,24 @@ var (
 	passwordRegex = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ\d!@#$%^&*\-\)]{4,30}$`)
 )
 
+func InputValidate(r *http.Request, login, email, password string, IsSignIn bool) error {
+	if login == "" || !loginRegex.MatchString(login) {
+		return errors.WithStack(errors.New("login invalid"))
+	}
+
+	if password == "" || !passwordRegex.MatchString(password) {
+		return errors.WithStack(errors.New("password invalid"))
+	}
+
+	if !IsSignIn {
+		if email == "" || !emailRegex.MatchString(email) {
+			return errors.WithStack(errors.New("email invalid"))
+		}
+	}
+
+	return nil
+}
+
 func RefreshTokenValidate(refreshToken string) error {
 	signedToken, err := jwt.ParseWithClaims(refreshToken, &jwt.StandardClaims{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok || t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
@@ -30,25 +48,6 @@ func RefreshTokenValidate(refreshToken string) error {
 	if !signedToken.Valid {
 		err := errors.New("Refresh token invalid")
 		return errors.WithStack(err)
-	}
-
-	return nil
-}
-
-func InputValidate(r *http.Request, login, email, password string, IsSignIn bool) error {
-
-	if login == "" || !loginRegex.MatchString(login) {
-		return errors.WithStack(errors.New("login invalid"))
-	}
-
-	if password == "" || !passwordRegex.MatchString(password) {
-		return errors.WithStack(errors.New("password invalid"))
-	}
-
-	if !IsSignIn {
-		if email == "" || !emailRegex.MatchString(email) {
-			return errors.WithStack(errors.New("email invalid"))
-		}
 	}
 
 	return nil

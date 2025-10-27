@@ -15,6 +15,7 @@ const (
 	UserNotExistMsg      = "User does not exist"
 	ServerCodeMsg        = "Wrong code"
 	MailSendingStatusMsg = "Sending is secsessful"
+    CaptchaRequiredMsg   = "Pass the verification reCAPTCHA."
 )
 
 var (
@@ -60,15 +61,20 @@ type errMsg struct {
 	Regs []string
 }
 
+type SignUpPageData struct {
+	Msg         string
+	CaptchaShow bool
+	Regs        []string
+}
+
 var ErrMsg = map[string]errMsg{
 	"login":             {LoginMsg, LoginReqs},
-	"email":             {EmailMsg, EmailReqs},
+	"captchaRequired":   {CaptchaRequiredMsg, nil},
 	"password":          {PasswrdMsg, PswrdReqs},
 	"serverCode":        {ServerCodeMsg, nil},
 	"alreadyExist":      {UserAlreadyExistMsg, nil},
 	"notExist":          {UserNotExistMsg, nil},
 	"mailSendingStatus": {MailSendingStatusMsg, nil},
-	"captchaRequired":   {"Pass the verification reCAPTCHA.", nil},
 }
 
 func TmplsRenderer(w http.ResponseWriter, tmpl *template.Template, templateName string, data interface{}) error {
