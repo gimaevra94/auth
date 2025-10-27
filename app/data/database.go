@@ -75,30 +75,25 @@ func DBClose() {
 	}
 }
 
-func UserCheck(login, password string) (string, error) {
-	row := DB.QueryRow(consts.UserSelectQuery, login)
-	var passwordHash sql.NullString
-	var permanentUserID string
-	err := row.Scan(&passwordHash, &permanentUserID)
+func SignUpUserCheck(login, password string) error {
+	row := DB.QueryRow(consts.SignUpUserSelectQuery, login)
+	var DbLogin string
+	var DbEmail string
 
+	err := row.Scan(&DbLogin, &DbEmail)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "", errors.WithStack(err)
+			return errors.WithStack(err)
 		}
-		return "", errors.WithStack(err)
+		return errors.WithStack(err)
 	}
 
-	if !passwordHash.Valid {
-		return "", errors.WithStack(errors.New("password hash is NULL"))
+	if DbLogin != "" || DbEmail != "" {
+		err = errors.New("user already exist")
+		return errors.WithStack(err)
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(passwordHash.String),
-		[]byte(password))
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-
-	return permanentUserID, nil
+	return nil
 }
 
 func PasswordResetEmailCheck(email string) error {

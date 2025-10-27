@@ -48,6 +48,19 @@ func SendNewDeviceLoginEmail(email, login, deviceInfo string) error {
 	return nil
 }
 
+func mailSend(senderEmail, email string, auth smtp.Auth, msg []byte) error {
+	from := senderEmail
+	to := []string{email}
+	addr := "smtp.yandex.ru:587"
+
+	err := smtp.SendMail(addr, auth, from, to, msg)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
 func smtpAuth(senderEmail string) smtp.Auth {
 	senderPassword := os.Getenv("MAIL_PASSWORD")
 	host := "smtp.yandex.ru"
@@ -94,25 +107,12 @@ func executeTmpl(senderEmail, email, subject string, data any) ([]byte, error) {
 	return msg, nil
 }
 
-func mailSend(senderEmail, email string, auth smtp.Auth, msg []byte) error {
-	from := senderEmail
-	to := []string{email}
-	addr := "smtp.yandex.ru:587"
-
-	err := smtp.SendMail(addr, auth, from, to, msg)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	return nil
-}
-
 func AuthCodeSend(email string) (string, error) {
 	senderEmail = os.Getenv("MAIL_SENDER_EMAIL")
-	msCode := codeGenerate()
+	serverCode := codeGenerate()
 	auth := smtpAuth(senderEmail)
 
-	data := struct{ Code string }{Code: msCode}
+	data := struct{ Code string }{Code: serverCode}
 	msg, err := executeTmpl(senderEmail, email, authCodeSubject, data)
 	if err != nil {
 		return "", err
@@ -123,7 +123,7 @@ func AuthCodeSend(email string) (string, error) {
 		return "", err
 	}
 
-	return msCode, nil
+	return serverCode, nil
 }
 
 func SendSuspiciousLoginEmail(email, login, deviceInfo string) error {

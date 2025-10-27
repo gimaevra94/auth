@@ -14,8 +14,9 @@ const (
 	UserAlreadyExistMsg  = "User already exists"
 	UserNotExistMsg      = "User does not exist"
 	ServerCodeMsg        = "Wrong code"
+	UserCodeMsg          = "User code is empty"
 	MailSendingStatusMsg = "Sending is secsessful"
-    CaptchaRequiredMsg   = "Pass the verification reCAPTCHA."
+	CaptchaRequiredMsg   = "Pass the verification reCAPTCHA."
 )
 
 var (
@@ -72,6 +73,7 @@ var ErrMsg = map[string]errMsg{
 	"captchaRequired":   {CaptchaRequiredMsg, nil},
 	"password":          {PasswrdMsg, PswrdReqs},
 	"serverCode":        {ServerCodeMsg, nil},
+	"userCode":          {UserCodeMsg, nil},
 	"alreadyExist":      {UserAlreadyExistMsg, nil},
 	"notExist":          {UserNotExistMsg, nil},
 	"mailSendingStatus": {MailSendingStatusMsg, nil},
@@ -695,4 +697,3 @@ const (
 {{ end }}
 `
 )
-

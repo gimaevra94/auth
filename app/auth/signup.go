@@ -205,7 +205,6 @@ func SignUpUserCheck(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
-	} else {
 	}
 
 	captchaShow, err := data.SessionCaptchaShowGet(r)
@@ -215,73 +214,42 @@ func SignUpUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 1) Проверка существования логина
-	if row := data.DB.QueryRow(consts.YauthSelectQuery, user.Login); row != nil {
-		var tmp string
-		if err := row.Scan(&tmp); err == nil {
-			// Логин уже существует -> показать alreadyExist
-			captchaCounter -= 1
-			if captchaCounter == 0 {
-				captchaShow = true
-			}
-			if err := data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter); err != nil {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-				return
-			}
-			if err := data.CaptchaSessionDataSet(w, r, "captchaShow", captchaShow); err != nil {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-				return
-			}
-			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["alreadyExist"].Msg, CaptchaShow: captchaShow}); err != nil {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-				return
-			}
-			return
-		} else if !errors.Is(err, sql.ErrNoRows) {
-			log.Printf("%+v", err)
-			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+	err = data.SignUpUserCheck(user.Login, user.Email)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			CodeSend(w, r)
 			return
 		}
+
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
 	}
 
-	// 2) Проверка существования email
-	if row := data.DB.QueryRow(consts.PasswordResetEmailSelectQuery, user.Email); row != nil {
-		var tmp string
-		if err := row.Scan(&tmp); err == nil {
-			// Email уже существует -> показать alreadyExist
-			captchaCounter -= 1
-			if captchaCounter == 0 {
-				captchaShow = true
-			}
-			if err := data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter); err != nil {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-				return
-			}
-			if err := data.CaptchaSessionDataSet(w, r, "captchaShow", captchaShow); err != nil {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-				return
-			}
-			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", SignUpPageData{Msg: tools.ErrMsg["alreadyExist"].Msg, CaptchaShow: captchaShow}); err != nil {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-				return
-			}
-			return
-		} else if !errors.Is(err, sql.ErrNoRows) {
-			log.Printf("%+v", err)
-			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-			return
-		}
+	if captchaCounter == 0 {
+		captchaShow = true
+	}
+	captchaCounter -= 1
+
+	err = data.SessionCaptchaDataSet(w, r, "captchaCounter", captchaCounter)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+	err = data.SessionCaptchaDataSet(w, r, "captchaShow", captchaShow)
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
 	}
 
-	// 3) Если ни логин ни почта не существуют — запускаем отправку кода
-	CodeSend(w, r)
-	return
+	err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", tools.SignUpPageData{Msg: tools.ErrMsg["alreadyExist"].Msg, CaptchaShow: captchaShow})
+	if err != nil {
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
 }
 
 func CodeSend(w http.ResponseWriter, r *http.Request) {
@@ -292,9 +260,8 @@ func CodeSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Если serverCode уже существует, не отправляем повторно
 	if user.ServerCode != "" {
-		log.Println("Verification code already sent for user:", user.Email)
+		log.Println("Code already sent")
 		http.Redirect(w, r, consts.CodeSendURL, http.StatusFound)
 		return
 	}
@@ -332,15 +299,21 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 	err = tools.CodeValidate(r, clientCode, user.ServerCode)
 	if err != nil {
 		if strings.Contains(err.Error(), "exist") {
-			log.Printf("%+v", err)
-			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "CodeSend", tools.ErrMsg["userCode"])
+			if err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
 			return
-		}
 
-		err = tools.TmplsRenderer(w, tools.BaseTmpl, "CodeSend", tools.ErrMsg["serverCode"])
-		if err != nil {
-			log.Printf("%+v", err)
-			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		} else if strings.Contains(err.Error(), "match") {
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "CodeSend", tools.ErrMsg["serverCode"])
+			if err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
 			return
 		}
 	}
@@ -396,12 +369,12 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() {
-		if r := recover(); r != nil {
+		r := recover()
+		if r != nil {
 			tx.Rollback()
 			panic(r)
 		}
 	}()
-	defer tx.Rollback()
 
 	err = data.UserAddTx(tx, user.Login, user.Email, user.Password, temporaryUserID, permanentUserID, temporaryCancelled)
 	if err != nil {
@@ -426,7 +399,8 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Отправляем письмо о входе с нового устройства для только что созданного пользователя
-	if mailErr := tools.SendNewDeviceLoginEmail(user.Email, user.Login, r.UserAgent()); mailErr != nil {
+	mailErr := tools.SendNewDeviceLoginEmail(user.Email, user.Login, r.UserAgent())
+	if mailErr != nil {
 		log.Printf("UserAdd: Error sending new device login email: %+v", mailErr)
 		// Не блокируем пользователя из-за сбоя отправки письма
 	} else {
@@ -434,14 +408,14 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	captchaCounter := 3
-	err = data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter)
+	err = data.SessionCaptchaDataSet(w, r, "captchaCounter", captchaCounter)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
 
-	err = data.CaptchaSessionDataSet(w, r, "captchaShow", false)
+	err = data.SessionCaptchaDataSet(w, r, "captchaShow", false)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
