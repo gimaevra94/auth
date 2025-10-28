@@ -96,6 +96,26 @@ func SignUpUserCheck(login, password string) error {
 	return nil
 }
 
+func SignInUserCheck(login string) error {
+	row := DB.QueryRow(consts.SignInUserSelectQuery, login)
+	var passwordHash sql.NullString
+
+	err := row.Scan(&passwordHash)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return errors.WithStack(err)
+		}
+		return errors.WithStack(err)
+	}
+
+	if !passwordHash.Valid {
+		err = errors.New("password not found")
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
 func PasswordResetEmailCheck(email string) error {
 	row := DB.QueryRow(consts.PasswordResetEmailSelectQuery, email)
 	var permanentUserID string

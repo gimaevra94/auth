@@ -167,10 +167,8 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 	})
 }
 
-// AlreadyAuthedRedirectMW redirects authenticated users away from public pages (e.g., sign-in/sign-up)
 func AlreadyAuthedRedirectMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Try to read auth cookie; if missing, user is not authed -> show public page
 		cookie, err := data.TemporaryUserIDCookiesGet(r)
 		if err != nil {
 			next.ServeHTTP(w, r)
@@ -180,29 +178,26 @@ func AlreadyAuthedRedirectMW(next http.Handler) http.Handler {
 		temporaryUserID := cookie.Value
 		_, _, permanentUserID, temporaryCancelled, err := data.MWUserCheck(temporaryUserID)
 		if err != nil || temporaryCancelled {
-			// Not a valid temporary session -> continue to public page
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		refreshToken, deviceInfo, tokenCancelled, err := data.RefreshTokenCheck(permanentUserID, r.UserAgent())
-		if err != nil || tokenCancelled || deviceInfo != r.UserAgent() {
+		refreshToken, _, tokenCancelled, err := data.RefreshTokenCheck(permanentUserID, r.UserAgent())
+		if err != nil || tokenCancelled {
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		if err := tools.RefreshTokenValidate(refreshToken); err != nil {
+		err = tools.RefreshTokenValidate(refreshToken)
+		if err != nil {
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		// User is authenticated -> redirect to Home
 		http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 	})
 }
 
-// SignUpFlowOnlyMW allows access only when signup flow is in progress
-// (session user exists and server code is generated). Otherwise redirects to SignUp.
 func SignUpFlowOnlyMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user, err := data.SessionUserGet(r)
@@ -210,15 +205,17 @@ func SignUpFlowOnlyMW(next http.Handler) http.Handler {
 			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 			return
 		}
+
 		if user.ServerCode == "" {
 			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 			return
 		}
+
 		next.ServeHTTP(w, r)
 	})
 }
 
-// ResetTokenGuardMW ensures set-new-password is accessible only via a valid reset link
+// ResetTokenGuardMW обеспечивает доступ к установке нового пароля только через действительную ссылку сброса
 func ResetTokenGuardMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := r.URL.Query().Get("token")
@@ -226,12 +223,12 @@ func ResetTokenGuardMW(next http.Handler) http.Handler {
 			http.Redirect(w, r, consts.PasswordResetURL, http.StatusFound)
 			return
 		}
-		// Validate JWT structure and expiry
+		// Проверяем структуру JWT и срок действия
 		if _, err := tools.ValidateResetToken(token); err != nil {
 			http.Redirect(w, r, consts.PasswordResetURL, http.StatusFound)
 			return
 		}
-		// Check token presence and not cancelled in DB
+		// Проверяем наличие токена и отсутствие отмены в БД
 		cancelled, err := data.ResetTokenCheck(token)
 		if err != nil || cancelled {
 			http.Redirect(w, r, consts.PasswordResetURL, http.StatusFound)

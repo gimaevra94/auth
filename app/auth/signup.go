@@ -398,13 +398,9 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Отправляем письмо о входе с нового устройства для только что созданного пользователя
-	mailErr := tools.SendNewDeviceLoginEmail(user.Email, user.Login, r.UserAgent())
-	if mailErr != nil {
-		log.Printf("UserAdd: Error sending new device login email: %+v", mailErr)
-		// Не блокируем пользователя из-за сбоя отправки письма
-	} else {
-		log.Printf("UserAdd: New device login email sent to %s for login %s", user.Email, user.Login)
+	err = tools.SendNewDeviceLoginEmail(user.Email, user.Login, r.UserAgent())
+	if err != nil {
+		log.Printf("%+v", err)
 	}
 
 	captchaCounter := 3

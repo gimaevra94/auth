@@ -35,6 +35,7 @@ func SendNewDeviceLoginEmail(email, login, deviceInfo string) error {
 		Login      string
 		DeviceInfo string
 	}{Login: login, DeviceInfo: deviceInfo}
+	
 	msg, err := executeTmpl(senderEmail, email, newDeviceLoginSubject, data)
 	if err != nil {
 		return errors.WithStack(err)

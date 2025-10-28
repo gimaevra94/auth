@@ -68,6 +68,14 @@ type SignUpPageData struct {
 	Regs        []string
 }
 
+type SignInPageData struct {
+	Msg                string
+	ShowForgotPassword bool
+	CaptchaShow        bool
+	Regs               []string
+	NoPassword         bool
+}
+
 var ErrMsg = map[string]errMsg{
 	"login":             {LoginMsg, LoginReqs},
 	"captchaRequired":   {CaptchaRequiredMsg, nil},

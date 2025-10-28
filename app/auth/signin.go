@@ -16,166 +16,185 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type SignInPageData struct {
-	Msg                string
-	ShowForgotPassword bool
-	CaptchaShow        bool
-	Regs               []string
-	NoPassword         bool // Новое поле для передачи флага
-}
-
 func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
-	log.Printf("[SignInInputCheck] Начало выполнения")
 	var user structs.User
 	var captchaShow bool
 	captchaCounter := int64(3)
+
 	login := r.FormValue("login")
 	password := r.FormValue("password")
+
 	user = structs.User{
 		Login:    login,
 		Password: password,
 	}
-	// Инициализация/чтение состояния капчи из сессии
-	if cnt, err := data.SessionCaptchaCounterGet(r); err != nil {
+
+	captchaCounter, err := data.SessionCaptchaCounterGet(r)
+	if err != nil {
 		if strings.Contains(err.Error(), "exist") {
 			captchaCounter = 3
-			_ = data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter)
-		} else {
-			log.Printf("%+v", err)
-			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-			return
-		}
-	} else {
-		captchaCounter = cnt
-	}
 
-	if show, err := data.SessionCaptchaShowGet(r); err != nil {
-		if strings.Contains(err.Error(), "exist") {
-			captchaShow = false
-			_ = data.CaptchaSessionDataSet(w, r, "captchaShow", captchaShow)
-		} else {
-			log.Printf("%+v", err)
-			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-			return
-		}
-	} else {
-		captchaShow = show
-	}
-
-    // Если капча уже должна показываться — проверяем её перед ранней проверкой NoPassword,
-    // чтобы нельзя было обходить капчу множественными запросами без пароля
-    if captchaShow {
-        if err := tools.Captcha(r); err != nil {
-            if strings.Contains(err.Error(), "captchaToken not exist") {
-                err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["captchaRequired"].Msg, CaptchaShow: captchaShow, Regs: nil})
-                if err != nil {
-                    log.Printf("%+v", err)
-                    http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-                    return
-                }
-                return
-            }
-            log.Printf("%+v", err)
-            http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-            return
-        }
-    }
-
-    // Ранняя проверка: если у пользователя пароль в БД отсутствует (NULL), показываем подсказку про вход через Яндекс и установку пароля
-	if user.Login != "" {
-		row := data.DB.QueryRow(consts.UserSelectQuery, user.Login)
-		var passwordHash sql.NullString
-		var permanentUserID string
-		if err := row.Scan(&passwordHash, &permanentUserID); err == nil {
-			if !passwordHash.Valid {
-				log.Printf("[SignInInputCheck] У пользователя NULL пароль (ранняя проверка), показываем NoPassword")
-				// уменьшаем счетчик попыток и при необходимости включаем капчу
-				if err2 := data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter-1); err2 != nil {
-					log.Printf("%+v", err2)
-					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-					return
-				}
-				captchaCounter -= 1
-				if captchaCounter == 0 {
-					captchaShow = true
-					if err2 := data.CaptchaSessionDataSet(w, r, "captchaShow", captchaShow); err2 != nil {
-						log.Printf("%+v", err2)
-						http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-						return
-					}
-				}
-				if rerr := tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{NoPassword: true, CaptchaShow: captchaShow}); rerr != nil {
-					log.Printf("%+v", rerr)
-					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-				}
-				return
-			}
-		}
-	}
-
-	// Если капча уже должна показываться — проверяем её до валидации инпутов
-	if captchaShow {
-		if err := tools.Captcha(r); err != nil {
-			if strings.Contains(err.Error(), "captchaToken not exist") {
-				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["captchaRequired"].Msg, CaptchaShow: captchaShow, Regs: nil})
-				if err != nil {
-					log.Printf("%+v", err)
-					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-					return
-				}
-				return
-			}
-			log.Printf("%+v", err)
-			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-			return
-		}
-	}
-	err := tools.InputValidate(r, user.Login, "", user.Password, true)
-	if err != nil {
-		log.Printf("[SignInInputCheck] Ошибка валидации: %v", err)
-		if strings.Contains(err.Error(), "login") {
-			// уменьшаем счетчик и сохраняем
-			if err2 := data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter-1); err2 != nil {
+			err2 := data.SessionCaptchaDataSet(w, r, "captchaCounter", captchaCounter)
+			if err2 != nil {
 				log.Printf("%+v", err2)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
-			captchaCounter -= 1
-			if captchaCounter == 0 {
-				captchaShow = true
-				if err2 := data.CaptchaSessionDataSet(w, r, "captchaShow", captchaShow); err2 != nil {
-					log.Printf("%+v", err2)
-					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-					return
-				}
-			}
-			log.Printf("[SignInInputCheck] Отображение ошибки валидации логина")
-			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["login"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["login"].Regs})
-			if err != nil {
-				log.Printf("[SignInInputCheck] Ошибка рендера страницы входа после невалидного логина: %+v", err)
+
+		} else {
+			log.Printf("%+v", err)
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+	}
+
+	captchaShow, err = data.SessionCaptchaShowGet(r)
+	if err != nil {
+		if strings.Contains(err.Error(), "exist") {
+			captchaShow = false
+
+			err2 := data.SessionCaptchaDataSet(w, r, "captchaShow", captchaShow)
+			if err2 != nil {
+				log.Printf("%+v", err2)
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
-			return
+
 		} else {
-			if strings.Contains(err.Error(), "password") {
-				// уменьшаем счетчик и сохраняем
-				if err2 := data.CaptchaSessionDataSet(w, r, "captchaCounter", captchaCounter-1); err2 != nil {
-					log.Printf("%+v", err2)
+			log.Printf("%+v", err)
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+	}
+
+	if captchaShow {
+		err = tools.CaptchaShow(r)
+		if err != nil {
+			if strings.Contains(err.Error(), "captchaToken not exist") {
+				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", tools.SignUpPageData{Msg: tools.ErrMsg["captchaRequired"].Msg, CaptchaShow: captchaShow, Regs: nil})
+				if err != nil {
+					log.Printf("%+v", err)
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 					return
 				}
+				return
+
+			} else {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+		}
+	}
+
+	if user.Login != "" {
+		err := data.SignInUserCheck(user.Login)
+		if err != nil {
+			if strings.Contains(err.Error(), "password not found") {
+				err := data.SessionCaptchaDataSet(w, r, "captchaCounter", captchaCounter-1)
+				if err != nil {
+					log.Printf("%+v", err)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+					return
+				}
+
 				captchaCounter -= 1
 				if captchaCounter == 0 {
 					captchaShow = true
-					if err2 := data.CaptchaSessionDataSet(w, r, "captchaShow", captchaShow); err2 != nil {
-						log.Printf("%+v", err2)
+
+					err := data.SessionCaptchaDataSet(w, r, "captchaShow", captchaShow)
+					if err != nil {
+						log.Printf("%+v", err)
 						http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 						return
 					}
 				}
-				log.Printf("[SignInInputCheck] Отображение ошибки валидации пароля (на этапе ввода)")
-				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", SignInPageData{Msg: tools.ErrMsg["password"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["password"].Regs})
+
+				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", tools.SignInPageData{NoPassword: true, CaptchaShow: captchaShow})
+				if err != nil {
+					log.Printf("%+v", err)
+				}
+				return
+			}
+
+			log.Printf("%+v", err)
+			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+			return
+		}
+	}
+
+	if captchaShow {
+		err = tools.CaptchaShow(r)
+		if err != nil {
+			if strings.Contains(err.Error(), "captchaToken not exist") {
+				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", tools.SignUpPageData{Msg: tools.ErrMsg["captchaRequired"].Msg, CaptchaShow: captchaShow, Regs: nil})
+				if err != nil {
+					log.Printf("%+v", err)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+					return
+				}
+				return
+
+			} else {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+		}
+	}
+
+	err = tools.InputValidate(r, user.Login, "", user.Password, true)
+	if err != nil {
+		if strings.Contains(err.Error(), "login") {
+			err := data.SessionCaptchaDataSet(w, r, "captchaCounter", captchaCounter-1)
+			if err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+
+			captchaCounter -= 1
+			if captchaCounter == 0 {
+				captchaShow = true
+
+				err := data.SessionCaptchaDataSet(w, r, "captchaShow", captchaShow)
+				if err != nil {
+					log.Printf("%+v", err)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+					return
+				}
+			}
+
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", tools.SignInPageData{Msg: tools.ErrMsg["login"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["login"].Regs})
+			if err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+			return
+
+		} else {
+			if strings.Contains(err.Error(), "password") {
+				err := data.SessionCaptchaDataSet(w, r, "captchaCounter", captchaCounter-1)
+				if err != nil {
+					log.Printf("%+v", err)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+					return
+				}
+
+				captchaCounter -= 1
+				if captchaCounter == 0 {
+					captchaShow = true
+
+					err := data.SessionCaptchaDataSet(w, r, "captchaShow", captchaShow)
+					if err != nil {
+						log.Printf("%+v", err)
+						http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+						return
+					}
+				}
+
+				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", tools.SignInPageData{Msg: tools.ErrMsg["password"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["password"].Regs})
 				if err != nil {
 					log.Printf("%+v", err)
 					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -184,24 +203,23 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
+
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-	log.Printf("[SignInInputCheck] Валидация пройдена, сохраняем данные в сессию")
+
 	err = data.AuthSessionDataSet(w, r, user)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-	// На этом этапе не трогаем счетчик — он уже актуален в сессии
-	log.Printf("[SignInInputCheck] Вызов SignInUserCheck")
+
 	SignInUserCheck(w, r)
 }
 
 func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
-	log.Printf("[SignInUserCheck] Начало выполнения")
 	user, err := data.SessionUserGet(r)
 	if err != nil {
 		log.Printf("%+v", err)
@@ -220,7 +238,6 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
-	log.Printf("[SignInUserCheck] Проверка пользователя в БД: %s", user.Login)
 	permanentUserID, err := data.UserCheck(user.Login, user.Password)
 	if err != nil {
 		log.Printf("[SignInUserCheck] Ошибка при проверке пользователя: %v", err)
