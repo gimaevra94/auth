@@ -4,6 +4,7 @@ import (
 	"html/template"
 	"net/http"
 
+	"github.com/gimaevra94/auth/app/structs"
 	"github.com/pkg/errors"
 )
 
@@ -57,34 +58,15 @@ var (
 	_        = Must(BaseTmpl.Parse(newDeviceLoginMailTMPL))
 )
 
-type errMsg struct {
-	Msg  string
-	Regs []string
-}
-
-type SignUpPageData struct {
-	Msg         string
-	CaptchaShow bool
-	Regs        []string
-}
-
-type SignInPageData struct {
-	Msg                string
-	ShowForgotPassword bool
-	CaptchaShow        bool
-	Regs               []string
-	NoPassword         bool
-}
-
-var ErrMsg = map[string]errMsg{
-	"login":             {LoginMsg, LoginReqs},
-	"captchaRequired":   {CaptchaRequiredMsg, nil},
-	"password":          {PasswrdMsg, PswrdReqs},
-	"serverCode":        {ServerCodeMsg, nil},
-	"userCode":          {UserCodeMsg, nil},
-	"alreadyExist":      {UserAlreadyExistMsg, nil},
-	"notExist":          {UserNotExistMsg, nil},
-	"mailSendingStatus": {MailSendingStatusMsg, nil},
+var ErrMsg = map[string]structs.ErrMsg{
+	"login":             {Msg: LoginMsg, Regs: LoginReqs},
+	"captchaRequired":   {Msg: CaptchaRequiredMsg, Regs: nil},
+	"password":          {Msg: PasswrdMsg, Regs: PswrdReqs},
+	"serverCode":        {Msg: ServerCodeMsg, Regs: nil},
+	"userCode":          {Msg: UserCodeMsg, Regs: nil},
+	"alreadyExist":      {Msg: UserAlreadyExistMsg, Regs: nil},
+	"notExist":          {Msg: UserNotExistMsg, Regs: nil},
+	"mailSendingStatus": {Msg: MailSendingStatusMsg, Regs: nil},
 }
 
 func TmplsRenderer(w http.ResponseWriter, tmpl *template.Template, templateName string, data interface{}) error {

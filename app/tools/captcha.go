@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/gimaevra94/auth/app/data"
+	"github.com/gimaevra94/auth/app/structs"
 	"github.com/pkg/errors"
 )
 
@@ -44,5 +46,28 @@ func CaptchaShow(r *http.Request) error {
 		return errors.New("reCAPTCHA verification failed")
 	}
 
+	return nil
+}
+
+func UpdateAndRenderCapthaShowState(w http.ResponseWriter, r *http.Request, captchaCounter int64, captchaShow bool) error {
+	if captchaCounter == 0 {
+		captchaShow = true
+	}
+	captchaCounter -= 1
+
+	err := data.SessionCaptchaDataSet(w, r, "captchaCounter", captchaCounter)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	err = data.SessionCaptchaDataSet(w, r, "captchaShow", captchaShow)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	err = TmplsRenderer(w, BaseTmpl, "SignUp", structs.SignUpPageData{Msg: ErrMsg["alreadyExist"].Msg, CaptchaShow: captchaShow})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	
 	return nil
 }

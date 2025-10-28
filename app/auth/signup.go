@@ -214,7 +214,7 @@ func SignUpUserCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = data.SignUpUserCheck(user.Login, user.Email)
+	err = data.SignUpUserCheck(user.Login)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			CodeSend(w, r)

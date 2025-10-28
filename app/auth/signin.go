@@ -87,62 +87,6 @@ func SignInInputCheck(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if user.Login != "" {
-		err := data.SignInUserCheck(user.Login)
-		if err != nil {
-			if strings.Contains(err.Error(), "password not found") {
-				err := data.SessionCaptchaDataSet(w, r, "captchaCounter", captchaCounter-1)
-				if err != nil {
-					log.Printf("%+v", err)
-					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-					return
-				}
-
-				captchaCounter -= 1
-				if captchaCounter == 0 {
-					captchaShow = true
-
-					err := data.SessionCaptchaDataSet(w, r, "captchaShow", captchaShow)
-					if err != nil {
-						log.Printf("%+v", err)
-						http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-						return
-					}
-				}
-
-				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", tools.SignInPageData{NoPassword: true, CaptchaShow: captchaShow})
-				if err != nil {
-					log.Printf("%+v", err)
-				}
-				return
-			}
-
-			log.Printf("%+v", err)
-			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-			return
-		}
-	}
-
-	if captchaShow {
-		err = tools.CaptchaShow(r)
-		if err != nil {
-			if strings.Contains(err.Error(), "captchaToken not exist") {
-				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", tools.SignUpPageData{Msg: tools.ErrMsg["captchaRequired"].Msg, CaptchaShow: captchaShow, Regs: nil})
-				if err != nil {
-					log.Printf("%+v", err)
-					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-					return
-				}
-				return
-
-			} else {
-				log.Printf("%+v", err)
-				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-				return
-			}
-		}
-	}
-
 	err = tools.InputValidate(r, user.Login, "", user.Password, true)
 	if err != nil {
 		if strings.Contains(err.Error(), "login") {
@@ -238,6 +182,94 @@ func SignInUserCheck(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
+
+	err = data.SignInUserCheck(user.Login, user.Password)
+	if err != nil {
+		if strings.Contains(err.Error(), "password not found") {
+			err = data.SessionCaptchaDataSet(w, r, "captchaCounter", captchaCounter-1)
+			if err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+
+			captchaCounter -= 1
+			if captchaCounter == 0 {
+				captchaShow = true
+
+				err := data.SessionCaptchaDataSet(w, r, "captchaShow", captchaShow)
+				if err != nil {
+					log.Printf("%+v", err)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+					return
+				}
+			}
+
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", tools.SignInPageData{NoPassword: true, CaptchaShow: captchaShow})
+			if err != nil {
+				log.Printf("%+v", err)
+			}
+			return
+
+		} else if errors.Is(err, sql.ErrNoRows) {
+			err = data.SessionCaptchaDataSet(w, r, "captchaCounter", captchaCounter-1)
+			if err != nil {
+				log.Printf("%+v", err)
+				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+				return
+			}
+
+			captchaCounter -= 1
+			if captchaCounter == 0 {
+				captchaShow = true
+
+				err := data.SessionCaptchaDataSet(w, r, "captchaShow", captchaShow)
+				if err != nil {
+					log.Printf("%+v", err)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+					return
+				}
+			}
+
+			err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", tools.SignInPageData{Msg: tools.ErrMsg["notExist"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["notExist"].Regs})
+			if err != nil {
+				log.Printf("%+v", err)
+			}
+			return
+		} else {
+			if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+				err = data.SessionCaptchaDataSet(w, r, "captchaCounter", captchaCounter-1)
+				if err != nil {
+					log.Printf("%+v", err)
+					http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+					return
+				}
+
+				captchaCounter -= 1
+				if captchaCounter == 0 {
+					captchaShow = true
+
+					err := data.SessionCaptchaDataSet(w, r, "captchaShow", captchaShow)
+					if err != nil {
+						log.Printf("%+v", err)
+						http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+						return
+					}
+				}
+
+				err = tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", tools.SignInPageData{Msg: tools.ErrMsg["password"].Msg, CaptchaShow: captchaShow, Regs: tools.ErrMsg["password"].Regs})
+				if err != nil {
+					log.Printf("%+v", err)
+				}
+				return
+			}
+		}
+
+		log.Printf("%+v", err)
+		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+		return
+	}
+
 	permanentUserID, err := data.UserCheck(user.Login, user.Password)
 	if err != nil {
 		log.Printf("[SignInUserCheck] Ошибка при проверке пользователя: %v", err)

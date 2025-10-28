@@ -15,3 +15,22 @@ type RevocatePreference struct {
 	DeviceInfo      string
 	TemporaryUserID string
 }
+
+type ErrMsg struct {
+	Msg  string
+	Regs []string
+}
+
+type SignUpPageData struct {
+	Msg         string
+	CaptchaShow bool
+	Regs        []string
+}
+
+type SignInPageData struct {
+	Msg                string
+	ShowForgotPassword bool
+	CaptchaShow        bool
+	Regs               []string
+	NoPassword         bool
+}

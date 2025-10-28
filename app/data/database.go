@@ -75,12 +75,11 @@ func DBClose() {
 	}
 }
 
-func SignUpUserCheck(login, password string) error {
+func SignUpUserCheck(login string) error {
 	row := DB.QueryRow(consts.SignUpUserSelectQuery, login)
-	var DbLogin string
 	var DbEmail string
 
-	err := row.Scan(&DbLogin, &DbEmail)
+	err := row.Scan(&DbEmail)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return errors.WithStack(err)
@@ -88,19 +87,17 @@ func SignUpUserCheck(login, password string) error {
 		return errors.WithStack(err)
 	}
 
-	if DbLogin != "" || DbEmail != "" {
-		err = errors.New("user already exist")
-		return errors.WithStack(err)
-	}
-
 	return nil
 }
 
-func SignInUserCheck(login string) error {
+func SignInUserCheck(login, password string) (error) {
 	row := DB.QueryRow(consts.SignInUserSelectQuery, login)
 	var passwordHash sql.NullString
+	var temporaryUserID string
+	var permanentUserID string
+	var temporaryCancelled bool
 
-	err := row.Scan(&passwordHash)
+	err := row.Scan(&passwordHash, &temporaryUserID, &permanentUserID, &temporaryCancelled)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return errors.WithStack(err)
@@ -109,7 +106,11 @@ func SignInUserCheck(login string) error {
 	}
 
 	if !passwordHash.Valid {
-		err = errors.New("password not found")
+		return errors.New("password not found")
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(passwordHash.String), []byte(password))
+	if err != nil {
 		return errors.WithStack(err)
 	}
 

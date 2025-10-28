@@ -5,18 +5,18 @@ CREATE TABLE user (
     passwordHash VARCHAR(255) NULL,
     temporaryUserID VARCHAR(255) NOT NULL UNIQUE,
     permanentUserID VARCHAR(255) NOT NULL UNIQUE,
-    temporaryCancelled BOOLEAN DEFAULT FALSE
+    temporaryCancelled BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE refresh_token (
-    FOREIGN KEY (permanentUserID) REFERENCES user(permanentUserID),
     refreshToken VARCHAR(255) PRIMARY KEY,
     permanentUserID VARCHAR(255) NOT NULL,
-    deviceInfo VARCHAR(255),
-    tokenCancelled BOOLEAN DEFAULT FALSE
+    deviceInfo VARCHAR(255) NOT NULL DEFAULT '',
+    tokenCancelled BOOLEAN NOT NULL DEFAULT FALSE,
+    FOREIGN KEY (permanentUserID) REFERENCES user(permanentUserID)
 );
 
 CREATE TABLE reset_token (
     token VARCHAR(255) PRIMARY KEY,
-    cancelled BOOLEAN DEFAULT FALSE
+    cancelled BOOLEAN NOT NULL DEFAULT FALSE
 );
