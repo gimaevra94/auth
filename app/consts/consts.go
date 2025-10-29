@@ -34,7 +34,7 @@ const (
 	ResetTokenInsertQuery   = "insert into reset_token  (token, cancelled) values (?, ?)"
 
 	SignUpUserSelectQuery         = "select email from user where login = ? limit 1"
-	SignInUserSelectQuery         = "select login, passwordHash, temporaryUserID, permanentUserID, temporaryCancelled from user where login = ? limit 1"
+	SignInUserSelectQuery         = "select passwordHash, permanentUserID from user where login = ? limit 1"
 	PasswordResetEmailSelectQuery = "select permanentUserID from user where email = ?"
 	RefreshTokenSelectQuery       = "select refreshToken,deviceInfo,tokenCancelled from refresh_token where permanentUserID =? and deviceInfo =? AND tokenCancelled = FALSE limit 1"
 	YauthSelectQuery              = "select permanentUserID from user where login = ? limit 1"

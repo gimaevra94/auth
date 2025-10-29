@@ -1,4 +1,4 @@
- package auth
+package auth
 
 import (
 	"database/sql"
@@ -39,8 +39,8 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	yauthCode := r.URL.Query().Get("code")
 
 	if yauthCode == "" {
-		log.Printf("%+v", errors.WithStack(errors.New("yauthCode not exist")))
-		// прямой заход без кода — отправляем на регистрацию
+		err := errors.New("yauthCode not exist")
+		log.Printf("%+v", errors.WithStack(err))
 		http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 		return
 	}
@@ -86,6 +86,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 				return
 			}
+			
 		} else {
 			log.Printf("%+v", err)
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -97,12 +98,9 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		permanentUserID = pepermanentID
 	}
 
-	// Всегда устанавливаем куки после определения permanentUserID
 	data.TemporaryUserIDCookieSet(w, temporaryUserID)
-	log.Printf("yauth: TemporaryUserID cookie set. temporaryUserID: %s", temporaryUserID)
 
-	log.Printf("yauth: Adding TemporaryUserID to database. login: %s, temporaryUserID: %s", yandexUser.Login, temporaryUserID)
-	err = data.TemporaryUserIDAddTx(tx, yandexUser.Login, temporaryUserID, false)
+	err = data.TemporaryUserIDUpdateTx(tx, yandexUser.Login, temporaryUserID, false)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -153,7 +151,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tokenCancelled := false
-	err = data.RefreshTokenAddTx(tx, permanentUserID, refreshToken, r.UserAgent(), tokenCancelled)
+	err = data.RefreshTokenUpdateTx(tx, permanentUserID, refreshToken, r.UserAgent(), tokenCancelled)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -167,9 +165,6 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Логируем заголовки перед редиректом
-	log.Printf("yauth: Before redirect to HomeURL. Response Set-Cookie header: %v", w.Header().Get("Set-Cookie"))
-	log.Printf("yauth: Before redirect to HomeURL. Request cookies: %+v", r.Cookies())
 	// Помечаем вход через Яндекс кукой
 	http.SetCookie(w, &http.Cookie{
 		Name:     "yauth",

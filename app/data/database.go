@@ -90,31 +90,29 @@ func SignUpUserCheck(login string) error {
 	return nil
 }
 
-func SignInUserCheck(login, password string) (error) {
+func SignInUserCheck(login, password string) (string, error) {
 	row := DB.QueryRow(consts.SignInUserSelectQuery, login)
 	var passwordHash sql.NullString
-	var temporaryUserID string
 	var permanentUserID string
-	var temporaryCancelled bool
 
-	err := row.Scan(&passwordHash, &temporaryUserID, &permanentUserID, &temporaryCancelled)
+	err := row.Scan(&passwordHash, &permanentUserID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return errors.WithStack(err)
+			return "", errors.WithStack(err)
 		}
-		return errors.WithStack(err)
+		return "", errors.WithStack(err)
 	}
 
 	if !passwordHash.Valid {
-		return errors.New("password not found")
+		return "", errors.New("password not found")
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(passwordHash.String), []byte(password))
 	if err != nil {
-		return errors.WithStack(err)
+		return "", errors.WithStack(err)
 	}
 
-	return nil
+	return permanentUserID, nil
 }
 
 func PasswordResetEmailCheck(email string) error {
@@ -149,8 +147,8 @@ func RefreshTokenCheck(permanentUserID, userAgent string) (string, string, bool,
 func YauthUserCheck(login string) (string, error) {
 	row := DB.QueryRow(consts.YauthSelectQuery, login)
 	var permanentUserID string
-	err := row.Scan(&permanentUserID)
 
+	err := row.Scan(&permanentUserID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return "", errors.WithStack(err)
@@ -202,7 +200,7 @@ func UserAddTx(tx *sql.Tx, login, email, password, temporaryUserID, permanentUse
 	return nil
 }
 
-func TemporaryUserIDAddTx(tx *sql.Tx, login, temporaryUserID string, temporaryCancelled bool) error {
+func TemporaryUserIDUpdateTx(tx *sql.Tx, login, temporaryUserID string, temporaryCancelled bool) error {
 	_, err := tx.Exec(consts.TemporaryIDUpdateQuery, temporaryUserID, temporaryCancelled, login)
 	if err != nil {
 		return errors.WithStack(err)
@@ -218,7 +216,7 @@ func TemporaryUserIDAddByEmailTx(tx *sql.Tx, email, temporaryUserID string, temp
 	return nil
 }
 
-func RefreshTokenAddTx(tx *sql.Tx, permanentUserID, refreshToken, deviceInfo string, tokenCancelled bool) error {
+func RefreshTokenUpdateTx(tx *sql.Tx, permanentUserID, refreshToken, deviceInfo string, tokenCancelled bool) error {
 	_, err := tx.Exec(consts.RefreshTokenInsertQuery, permanentUserID, refreshToken, deviceInfo, tokenCancelled)
 	if err != nil {
 		return errors.WithStack(err)

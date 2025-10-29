@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
-	"net/url"
 
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
@@ -14,12 +13,10 @@ import (
 
 func IsExpiredTokenMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("routesProtector: Request URL: %s", r.URL.Path)
-		log.Printf("routesProtector: Received cookies: %+v", r.Cookies())
 		cookie, err := data.TemporaryUserIDCookiesGet(r)
 		if err != nil {
-			log.Println("routesProtector: Redirecting to SignInURL because TemporaryUserID cookie not found or expired.")
-			http.Redirect(w, r, consts.SignInURL, http.StatusFound)
+			log.Printf("%v", errors.WithStack(err))
+			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 			return
 		}
 
@@ -27,61 +24,13 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 		login, email, permanentUserID, temporaryCancelled, err := data.MWUserCheck(temporaryUserID)
 		if err != nil {
 			log.Printf("%v", errors.WithStack(err))
-			log.Println("routesProtector: Redirecting to Err500URL because MWUserCheck failed.")
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 			return
 		}
 
 		if temporaryCancelled {
-			log.Println("routesProtector: Redirecting to SignInURL because temporaryUserID is cancelled.")
 			Revocate(w, r, true, false, false)
-			http.Redirect(w, r, consts.SignInURL, http.StatusFound)
-			return
-		}
-
-		// UA контроль: сравнение текущего UA с тем, что был при логине (храним в куке 'ua')
-		uaCookie, _ := r.Cookie("ua")
-		sessionUA := ""
-		if uaCookie != nil {
-			// cookie хранит UA в url-escaped виде
-			if dec, err := url.QueryUnescape(uaCookie.Value); err == nil {
-				sessionUA = dec
-			} else {
-				sessionUA = uaCookie.Value
-			}
-		}
-		currentUA := r.UserAgent()
-
-		// Маркер первого запроса новой сессии
-		newSessCookie, _ := r.Cookie("new_session")
-		isNewSession := newSessCookie != nil && newSessCookie.Value == "1"
-
-		// Если первый запрос после логина и UA отличается — блокируем и шлём подозрительное письмо
-		if isNewSession && sessionUA != "" && sessionUA != currentUA {
-			if mailErr := tools.SendSuspiciousLoginEmail(email, login, currentUA); mailErr != nil {
-				log.Printf("%v", errors.WithStack(mailErr))
-				http.Redirect(w, r, consts.Err500URL, http.StatusFound)
-				return
-			}
-			// Сбрасываем маркер новой сессии
-			http.SetCookie(w, &http.Cookie{Name: "new_session", Path: "/", MaxAge: -1})
-			log.Println("routesProtector: Blocking access due to UA mismatch on first request after login.")
-			Revocate(w, r, true, true, true)
-			http.Redirect(w, r, consts.SignInURL, http.StatusFound)
-			return
-		}
-
-		// Если это первый запрос и UA совпал с сохранённым — сразу снимаем маркер new_session,
-		// чтобы дальнейшие проверки не трактовали ситуацию как первую попытку
-		if isNewSession && sessionUA != "" && sessionUA == currentUA {
-			http.SetCookie(w, &http.Cookie{Name: "new_session", Path: "/", MaxAge: -1})
-			isNewSession = false
-		}
-
-		// Если не первый запрос и UA отличается — не шлём письма и пропускаем (по требованию)
-		if !isNewSession && sessionUA != "" && sessionUA != currentUA {
-			log.Println("routesProtector: UA changed mid-session; allowing request without notifications.")
-			next.ServeHTTP(w, r)
+			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 			return
 		}
 
@@ -182,14 +131,8 @@ func AlreadyAuthedRedirectMW(next http.Handler) http.Handler {
 			return
 		}
 
-		refreshToken, _, tokenCancelled, err := data.RefreshTokenCheck(permanentUserID, r.UserAgent())
+		_, _, tokenCancelled, err := data.RefreshTokenCheck(permanentUserID, r.UserAgent())
 		if err != nil || tokenCancelled {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		err = tools.RefreshTokenValidate(refreshToken)
-		if err != nil {
 			next.ServeHTTP(w, r)
 			return
 		}

@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/gimaevra94/auth/app/consts"
@@ -230,34 +229,6 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "yauth",
-		Value:    "0",
-		Path:     "/",
-		HttpOnly: false,
-		Secure:   false,
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   consts.TemporaryUserIDExp,
-	})
-	http.SetCookie(w, &http.Cookie{
-		Name:     "ua",
-		Value:    url.QueryEscape(r.UserAgent()),
-		Path:     "/",
-		HttpOnly: false,
-		Secure:   false,
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   consts.TemporaryUserIDExp,
-	})
-	http.SetCookie(w, &http.Cookie{
-		Name:     "new_session",
-		Value:    "1",
-		Path:     "/",
-		HttpOnly: false,
-		Secure:   false,
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   consts.TemporaryUserIDExp,
-	})
-
 	temporaryUserID := uuid.New().String()
 	data.TemporaryUserIDCookieSet(w, temporaryUserID)
 	permanentUserID := uuid.New().String()
@@ -285,7 +256,7 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tokenCancelled := false
-	err = data.RefreshTokenAddTx(tx, permanentUserID, refreshToken, r.UserAgent(), tokenCancelled)
+	err = data.RefreshTokenUpdateTx(tx, permanentUserID, refreshToken, r.UserAgent(), tokenCancelled)
 	if err != nil {
 		log.Printf("%+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
