@@ -49,16 +49,17 @@ func CaptchaShow(r *http.Request) error {
 	return nil
 }
 
-func UpdateAndRenderCapthaShowState(w http.ResponseWriter, r *http.Request, captchaCounter int64, captchaShow bool) error {
-	if captchaCounter == 0 {
-		captchaShow = true
-	}
-	captchaCounter -= 1
-
+func CaptchaStateUpdateAndRender(w http.ResponseWriter, r *http.Request, captchaCounter int64, captchaShow bool) error {
 	err := data.SessionCaptchaDataSet(w, r, "captchaCounter", captchaCounter)
 	if err != nil {
 		return errors.WithStack(err)
 	}
+
+	captchaCounter -= 1
+	if captchaCounter == 0 {
+		captchaShow = true
+	}
+
 	err = data.SessionCaptchaDataSet(w, r, "captchaShow", captchaShow)
 	if err != nil {
 		return errors.WithStack(err)
@@ -68,6 +69,6 @@ func UpdateAndRenderCapthaShowState(w http.ResponseWriter, r *http.Request, capt
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	
+
 	return nil
 }
