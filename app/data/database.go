@@ -13,15 +13,10 @@ import (
 
 var DB *sql.DB
 
-// GetAllUserAgentsForUser возвращает список уникальных User-Agent'ов,
-// связанных с активными refresh-токенами для данного пользователя.
-func GetAllUserAgentsForUser(permanentUserID string) ([]string, error) {
-	// Запрос выбирает уникальные deviceInfo (User-Agent) для активных токенов пользователя
-	query := `SELECT DISTINCT deviceInfo FROM refresh_token WHERE permanentUserID = ? AND tokenCancelled = FALSE;`
-	rows, err := DB.Query(query, permanentUserID)
+func GetUniqueUserAgents(permanentUserID string) ([]string, error) {
+	rows, err := DB.Query(consts.UserAgentsSelectQuery, permanentUserID)
 	if err != nil {
-		// Оберните ошибку для лучшей отладки, если используете pkg/errors
-		return nil, err // или errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 	defer rows.Close()
 
@@ -29,15 +24,13 @@ func GetAllUserAgentsForUser(permanentUserID string) ([]string, error) {
 	for rows.Next() {
 		var ua string
 		if err := rows.Scan(&ua); err != nil {
-			// Оберните ошибку
-			return nil, err // или errors.WithStack(err)
+			return nil, errors.WithStack(err)
 		}
 		userAgents = append(userAgents, ua)
 	}
 
-	// Проверьте, были ли ошибки при итерации rows
 	if err = rows.Err(); err != nil {
-		return nil, err // или errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
 	return userAgents, nil

@@ -239,7 +239,7 @@ const (
 			{{end}}
 		</div>
 		{{end}}
-		<form method="POST" action="/sign-in-input-check">
+		<form method="POST" action="/sign-in-input-validate">
 			<div class="form-group">
 				<label for="login">Username</label>
 				<input type="text" id="login" name="login">

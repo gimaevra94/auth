@@ -7,7 +7,7 @@ const (
 	UserAddURL          = "/user-add"
 
 	SignInURL           = "/sign-in"
-	SignInInputCheckURL = "/sign-in-input-check"
+	SignInInputCheckURL = "/sign-in-input-validate"
 
 	HomeURL               = "/home"
 	LogoutURL             = "/logout"
@@ -28,6 +28,7 @@ const (
 )
 
 const (
+	UserAgentsSelectQuery = "select DISTINCT deviceInfo FROM refresh_token WHERE permanentUserID = ?"
 	UserInsertQuery         = "insert into user (login,email,passwordHash,temporaryUserID,permanentUserID,temporaryCancelled) values(?,?,?,?,?,?)"
 	RefreshTokenInsertQuery = "insert into refresh_token (permanentUserID,refreshToken,deviceInfo,tokenCancelled) values (?,?,?,?)"
 	YauthInsertQuery        = "insert into user (login,email, temporaryUserID, permanentUserID, temporaryCancelled) values(?,?,?,?,?)"

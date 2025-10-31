@@ -75,7 +75,7 @@ func initRouter() *chi.Mux {
 	r.Post(consts.UserAddURL, auth.UserAdd)
 
 	r.With(auth.AlreadyAuthedRedirectMW).Get(consts.SignInURL, tmpls.SignIn)
-	r.Post(consts.SignInInputCheckURL, auth.SignInInputCheck)
+	r.Post(consts.SignInInputCheckURL, auth.SignInInputValidate)
 
 	r.Get("/yauth", auth.YandexAuthHandler)
 	r.Get(consts.YandexCallbackURL, auth.YandexCallbackHandler)
