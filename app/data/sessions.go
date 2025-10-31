@@ -50,7 +50,7 @@ func LoginSessionGet(r *http.Request) (*sessions.Session, error) {
 	return session, nil
 }
 
-func SessionCaptchaDataSet(w http.ResponseWriter, r *http.Request, key string, consts any) error {
+func SetCaptchaDataInSession(w http.ResponseWriter, r *http.Request, key string, consts any) error {
 	session, err := captchaStore.Get(r, "captcha")
 	if err != nil {
 		return errors.WithStack(err)
@@ -70,7 +70,7 @@ func SessionCaptchaDataSet(w http.ResponseWriter, r *http.Request, key string, c
 	return nil
 }
 
-func AuthSessionDataSet(w http.ResponseWriter, r *http.Request, consts any) error {
+func SetAuthSessionData(w http.ResponseWriter, r *http.Request, consts any) error {
 	session, err := loginStore.Get(r, "auth")
 	if err != nil {
 		return errors.WithStack(err)
@@ -90,7 +90,7 @@ func AuthSessionDataSet(w http.ResponseWriter, r *http.Request, consts any) erro
 	return nil
 }
 
-func SessionCaptchaCounterGet(r *http.Request) (int64, error) {
+func GetCaptchaCounterFromSession(r *http.Request) (int64, error) {
 	session, err := captchaStore.Get(r, "captcha")
 	if err != nil {
 		return 0, errors.WithStack(err)
@@ -111,15 +111,15 @@ func SessionCaptchaCounterGet(r *http.Request) (int64, error) {
 	return intData, nil
 }
 
-func SessionCaptchaShowGet(r *http.Request) (bool, error) {
+func GetShowCaptchaFromSession(r *http.Request) (bool, error) {
 	session, err := captchaStore.Get(r, "captcha")
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
 
-	byteData, ok := session.Values["captchaShow"].([]byte)
+	byteData, ok := session.Values["ShowCaptcha"].([]byte)
 	if !ok {
-		err := errors.New("captchaShow not exist")
+		err := errors.New("ShowCaptcha not exist")
 		return false, errors.WithStack(err)
 	}
 
@@ -132,7 +132,7 @@ func SessionCaptchaShowGet(r *http.Request) (bool, error) {
 	return boolData, nil
 }
 
-func SessionUserGet(r *http.Request) (structs.User, error) {
+func GetUserFromSession(r *http.Request) (structs.User, error) {
 	session, err := loginStore.Get(r, "auth")
 	if err != nil {
 		return structs.User{}, errors.WithStack(err)
@@ -153,7 +153,7 @@ func SessionUserGet(r *http.Request) (structs.User, error) {
 	return userData, nil
 }
 
-func AuthSessionEnd(w http.ResponseWriter, r *http.Request) error {
+func EndAuthSession(w http.ResponseWriter, r *http.Request) error {
 	session, err := loginStore.Get(r, "auth")
 	if err != nil {
 		return errors.WithStack(err)

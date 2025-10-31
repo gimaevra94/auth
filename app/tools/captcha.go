@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func CaptchaShow(r *http.Request) error {
+func ShowCaptcha(r *http.Request) error {
 	captchaToken := r.FormValue("g-recaptcha-response")
 	if captchaToken == "" {
 		return errors.WithStack(errors.New("captchaToken not exist"))
@@ -49,23 +49,23 @@ func CaptchaShow(r *http.Request) error {
 	return nil
 }
 
-func CaptchaStateUpdateAndRender(w http.ResponseWriter, r *http.Request, captchaCounter int64, captchaShow bool) error {
-	err := data.SessionCaptchaDataSet(w, r, "captchaCounter", captchaCounter)
+func UpdateAndRenderCaptchaState(w http.ResponseWriter, r *http.Request, captchaCounter int64, ShowCaptcha bool) error {
+	err := data.SetCaptchaDataInSession(w, r, "captchaCounter", captchaCounter)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
 	captchaCounter -= 1
 	if captchaCounter == 0 {
-		captchaShow = true
+		ShowCaptcha = true
 	}
 
-	err = data.SessionCaptchaDataSet(w, r, "captchaShow", captchaShow)
+	err = data.SetCaptchaDataInSession(w, r, "ShowCaptcha", ShowCaptcha)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	err = TmplsRenderer(w, BaseTmpl, "SignUp", structs.SignUpPageData{Msg: ErrMsg["alreadyExist"].Msg, CaptchaShow: captchaShow})
+	err = TmplsRenderer(w, BaseTmpl, "SignUp", structs.SignUpPageData{Msg: ErrMsg["alreadyExist"].Msg, ShowCaptcha: ShowCaptcha})
 	if err != nil {
 		return errors.WithStack(err)
 	}

@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	LoginMsg             = "Login is invalid"
-	EmailMsg             = "Email is invalid"
-	PasswrdMsg           = "Password is invalid"
+	LoginMsg             = "Login is invalId"
+	EmailMsg             = "Email is invalId"
+	PasswrdMsg           = "Password is invalId"
 	UserAlreadyExistMsg  = "User already exists"
 	UserNotExistMsg      = "User does not exist"
 	ServerCodeMsg        = "Wrong code"
@@ -29,7 +29,7 @@ var (
 	EmailReqs = []string{
 		"Must contain Latin letters, numbers and allowed special characters: . _ % + -",
 		"Must contain exactly one '@' symbol",
-		"Domain must be valid and end with .com, .org, etc.",
+		"Domain must be valId and end with .com, .org, etc.",
 	}
 	PswrdReqs = []string{
 		"8-30 characters long",
@@ -91,7 +91,7 @@ const (
 	<div class="container">
 		{{ template "content" . }}
 	</div>
-	{{if .CaptchaShow}}
+	{{if .ShowCaptcha}}
 	<script src="https://www.google.com/recaptcha/api.js" async defer></script>
 	{{end}}
 </body>
@@ -112,31 +112,31 @@ const (
 		<h1>Sign Up</h1>
 		{{if .Msg}}<div class="error-message">{{.Msg}}</div>{{end}}
 		{{if .Regs}}
-		<div class="requirements-list {{if eq .Msg "Login is invalid"}}error-highlight{{end}}">
+		<div class="requirements-list {{if eq .Msg "Login is invalId"}}error-highlight{{end}}">
 			{{range .Regs}}
 			<div>{{.}}</div>
 			{{end}}
 		</div>
 		{{end}}
-		<form method="POST" action="/sign-up-input-check" id="signup-form">
+		<form method="POST" action="/sign-up-input-check" Id="signup-form">
 			<div class="form-group">
 				<label for="username">Username</label>
-				<input type="text" id="username" name="login">
+				<input type="text" Id="username" name="login">
 			</div>
 			<div class="form-group">
 				<label for="email">Email</label>
-				<input type="email" id="email" name="email">
+				<input type="email" Id="email" name="email">
 			</div>
 			<div class="form-group">
 				<label for="password">Password</label>
-				<input type="password" id="password" name="password">
+				<input type="password" Id="password" name="password">
 			</div>
-			{{if .CaptchaShow}}
+			{{if .ShowCaptcha}}
 			<div class="g-recaptcha g-recaptcha-centered" data-sitekey="6LfUPt4rAAAAAAEU_lnGN9DbW_QngiTObsj8ro0D"></div>
 			{{end}}
-			<button type="submit" class="btn" id="signup-button">Sign Up</button>
+			<button type="submit" class="btn" Id="signup-button">Sign Up</button>
 		</form>
-		<div class="divider signin-gap-fix">
+		<div class="divIder signin-gap-fix">
 			<span>or</span>
 		</div>
 		<form method="GET" action="/yauth">
@@ -154,7 +154,7 @@ const (
 		});
 	</script>
 
-	{{if .CaptchaShow}}
+	{{if .ShowCaptcha}}
 	<script src="https://www.google.com/recaptcha/api.js" async defer></script>
 	{{end}}
 
@@ -179,13 +179,13 @@ const (
 		<form method="POST" action="/user-add">
 			<div class="form-group">
 				<label for="clientCode">Verification Code</label>
-				<input type="text" id="clientCode" name="clientCode" required maxlength="6" pattern="[0-9]*" inputmode="numeric">
+				<input type="text" Id="clientCode" name="clientCode" required maxlength="6" pattern="[0-9]*" inputmode="numeric">
 			</div>
 			<button type="submit" class="btn">Verify</button>
 		</form>
 		{{if .Msg}}
 		<div class="resend">
-			Didn't receive the code?
+			DIdn't receive the code?
 			<form method="GET" action="/code-send">
 				<button type="submit" class="btn">Send again</button>
 			</form>
@@ -221,7 +221,7 @@ const (
 			</div>
 			{{else if eq .Msg "Pass the verification reCAPTCHA."}}
 			<div class="error-message">{{.Msg}}</div>
-			{{else if eq .Msg "Login is invalid"}}
+			{{else if eq .Msg "Login is invalId"}}
 			<div class="error error-highlight">{{.Msg}}</div>
 			{{else}}
 			<div class="error">{{.Msg}}</div>
@@ -239,21 +239,21 @@ const (
 			{{end}}
 		</div>
 		{{end}}
-		<form method="POST" action="/sign-in-input-validate">
+		<form method="POST" action="/sign-in-input-valIdate">
 			<div class="form-group">
 				<label for="login">Username</label>
-				<input type="text" id="login" name="login">
+				<input type="text" Id="login" name="login">
 			</div>
 			<div class="form-group">
 				<label for="password">Password</label>
-				<input type="password" id="password" name="password">
+				<input type="password" Id="password" name="password">
 			</div>
-			{{if .CaptchaShow}}
+			{{if .ShowCaptcha}}
 			<div class="g-recaptcha g-recaptcha-centered" data-sitekey="6LfUPt4rAAAAAAEU_lnGN9DbW_QngiTObsj8ro0D"></div>
 			{{end}}
 			<button type="submit" class="btn">Sign In</button>
 		</form>
-		<div class="divider">
+		<div class="divIder">
 			<span>or</span>
 		</div>
 		<form method="GET" action="/yauth">
@@ -268,7 +268,7 @@ const (
 			Don't have an account? <a href="/sign-up">Sign Up</a>
 		</div>
 	</div>
-	{{if .CaptchaShow}}
+	{{if .ShowCaptcha}}
 	<script src="https://www.google.com/recaptcha/api.js" async defer></script>
 	{{end}}
 </body>
@@ -327,7 +327,7 @@ const (
 		<form method="POST" action="/password-reset-email">
 			<div class="form-group">
 				<label for="email">Email</label>
-				<input type="email" id="email" name="email" required autocomplete="email">
+				<input type="email" Id="email" name="email" required autocomplete="email">
 			</div>
 			<button type="submit" class="btn">Submit</button>
 		</form>
@@ -351,7 +351,7 @@ const (
     <meta charset="UTF-8">
     <title>Set Password</title>
     <link rel="stylesheet" href="/public/styles.css">
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="wIdth=device-wIdth, initial-scale=1" />
     </head>
 <body>
     <div class="container">
@@ -368,11 +368,11 @@ const (
         <form method="POST" action="/submit-password">
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" required autocomplete="new-password">
+                <input type="password" Id="password" name="password" required autocomplete="new-password">
             </div>
             <div class="form-group">
                 <label for="confirmPassword">Confirm Password</label>
-                <input type="password" id="confirmPassword" name="confirmPassword" required autocomplete="new-password">
+                <input type="password" Id="confirmPassword" name="confirmPassword" required autocomplete="new-password">
             </div>
             <button type="submit" class="btn">Set Password</button>
         </form>
@@ -387,7 +387,7 @@ const (
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="wIdth=device-wIdth, initial-scale=1">
     <title>Email Verification Code</title>
     <style>
         :root {
@@ -411,7 +411,7 @@ const (
             padding: 20px; /* Added */
         }
         .container {
-            max-width: 400px;
+            max-wIdth: 400px;
             margin: 2rem auto; /* Added for centering */
             padding: 2rem;
             background: #374151; /* var(--container-bg); */
@@ -432,7 +432,7 @@ const (
             border-radius: 6px;
             font-weight: bold;
             box-shadow: 0 2px 8px rgba(0,0,0,0.10);
-            border: 0.5px solid #1d4ed8;
+            border: 0.5px solId #1d4ed8;
             display: inline-block;
             margin: 1.5rem 0;
         }
@@ -459,7 +459,7 @@ const (
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="wIdth=device-wIdth, initial-scale=1">
     <title>Suspicious login attempt</title>
     <style>
         :root {
@@ -483,7 +483,7 @@ const (
             padding: 20px;
         }
         .container {
-            max-width: 400px;
+            max-wIdth: 400px;
             margin: 2rem auto;
             padding: 2rem;
             background: #374151;
@@ -521,7 +521,7 @@ const (
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="wIdth=device-wIdth, initial-scale=1">
     <title>Password Reset</title>
     <style>
         :root {
@@ -543,7 +543,7 @@ const (
             height: 100vh;
         }
         .container {
-            max-width: 400px;
+            max-wIdth: 400px;
             padding: 2rem;
             background: var(--container-bg);
             border-radius: 8px;
@@ -587,7 +587,7 @@ const (
         </p>
         <p>If you don't see the button or it doesn't work, you can simply click this link, or copy and paste it into your browser:</p>
         <p>{{.ResetLink}}</p>
-        <p>If you did not request a password reset, please ignore this email.</p>
+        <p>If you dId not request a password reset, please ignore this email.</p>
     </div>
 </body>
 </html>
@@ -599,7 +599,7 @@ const (
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="wIdth=device-wIdth, initial-scale=1">
     <title>Set New Password</title>
     <link rel="stylesheet" href="/public/styles.css">
 </head>
@@ -610,17 +610,17 @@ const (
         <form method="POST" action="/set-new-password">
             <div class="form-group">
                 <label for="oldPassword">Old Password</label>
-                <input type="password" id="oldPassword" name="oldPassword" required autocomplete="current-password">
+                <input type="password" Id="oldPassword" name="oldPassword" required autocomplete="current-password">
             </div>
             <div class="form-group">
                 <label for="newPassword">New Password</label>
-                <input type="password" id="newPassword" name="newPassword" required autocomplete="new-password">
+                <input type="password" Id="newPassword" name="newPassword" required autocomplete="new-password">
             </div>
             <div class="form-group">
                 <label for="confirmPassword">Confirm New Password</label>
-                <input type="password" id="confirmPassword" name="confirmPassword" required autocomplete="new-password">
+                <input type="password" Id="confirmPassword" name="confirmPassword" required autocomplete="new-password">
             </div>
-            <input type="hidden" name="token" value="{{.Token}}">
+            <input type="hIdden" name="token" value="{{.Token}}">
             <button type="submit" class="btn">Set Password</button>
         </form>
     </div>
@@ -634,7 +634,7 @@ const (
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="wIdth=device-wIdth, initial-scale=1">
     <title>New device login</title>
     <style>
         :root {
@@ -658,7 +658,7 @@ const (
             padding: 20px; /* Added */
         }
         .container {
-            max-width: 400px;
+            max-wIdth: 400px;
             margin: 2rem auto; /* Added for centering */
             padding: 2rem;
             background: #374151; /* var(--container-bg); */

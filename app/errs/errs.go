@@ -8,7 +8,7 @@ import (
 	"github.com/gimaevra94/auth/app/consts"
 )
 
-func LogAndRedirIfErrNotNill(w http.ResponseWriter, r *http.Request, err error, url string) {
+func LogAndRedirectIfErrNotNill(w http.ResponseWriter, r *http.Request, err error, url string) {
 	if err != nil {
 		log.Printf("%v", err)
 

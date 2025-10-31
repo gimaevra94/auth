@@ -7,7 +7,7 @@
     cd C:\Users\gimaevra94\Documents\git\auth\certs\mysql_cert
     ```
     ```bash
-    docker stop <имя_или_ID_вашего_mysql_контейнера>
+    docker stop <имя_или_Id_вашего_mysql_контейнера>
     ```
 *   **Что происходит:**
     *   Создается новая папка `mysql_cert` внутри `certs`.

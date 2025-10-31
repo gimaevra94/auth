@@ -15,25 +15,25 @@ var (
 	passwordRegex = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ\d!@#$%^&*\-\)]{4,30}$`)
 )
 
-func InputValidate(r *http.Request, login, email, password string, IsSignIn bool) error {
+func InputValIdate(r *http.Request, login, email, password string, IsSignIn bool) error {
 	if login == "" || !loginRegex.MatchString(login) {
-		return errors.WithStack(errors.New("login invalid"))
+		return errors.WithStack(errors.New("login invalId"))
 	}
 
 	if password == "" || !passwordRegex.MatchString(password) {
-		return errors.WithStack(errors.New("password invalid"))
+		return errors.WithStack(errors.New("password invalId"))
 	}
 
 	if !IsSignIn {
 		if email == "" || !emailRegex.MatchString(email) {
-			return errors.WithStack(errors.New("email invalid"))
+			return errors.WithStack(errors.New("email invalId"))
 		}
 	}
 
 	return nil
 }
 
-func RefreshTokenValidate(refreshToken string) error {
+func RefreshTokenValIdate(refreshToken string) error {
 	signedToken, err := jwt.ParseWithClaims(refreshToken, &jwt.StandardClaims{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok || t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
 			return nil, errors.WithStack(errors.New("unexpected signing method"))
@@ -45,15 +45,15 @@ func RefreshTokenValidate(refreshToken string) error {
 		return errors.WithStack(err)
 	}
 
-	if !signedToken.Valid {
-		err := errors.New("Refresh token invalid")
+	if !signedToken.ValId {
+		err := errors.New("Refresh token invalId")
 		return errors.WithStack(err)
 	}
 
 	return nil
 }
 
-func CodeValidate(r *http.Request, clientCode, serverCode string) error {
+func CodeValIdate(r *http.Request, clientCode, serverCode string) error {
 	if clientCode == "" {
 		return errors.WithStack(errors.New("clientCode not exist"))
 	}
@@ -64,16 +64,16 @@ func CodeValidate(r *http.Request, clientCode, serverCode string) error {
 	return nil
 }
 
-func EmailValidate(email string) error {
+func EmailValIdate(email string) error {
 	if email == "" || !emailRegex.MatchString(email) {
-		return errors.WithStack(errors.New("email invalid"))
+		return errors.WithStack(errors.New("email invalId"))
 	}
 	return nil
 }
 
-func PasswordValidate(password string) error {
+func PasswordValIdate(password string) error {
 	if password == "" || !passwordRegex.MatchString(password) {
-		return errors.WithStack(errors.New("password invalid"))
+		return errors.WithStack(errors.New("password invalId"))
 	}
 	return nil
 }

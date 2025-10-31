@@ -59,7 +59,7 @@ func GenerateResetLink(email, baseURL string) (string, error) {
 	return resetLink, nil
 }
 
-func ValidateResetToken(signedToken string) (*ResetClaims, error) {
+func ValIdateResetToken(signedToken string) (*ResetClaims, error) {
 	claims := &ResetClaims{}
 
 	tok, err := jwt.ParseWithClaims(signedToken, claims, func(token *jwt.Token) (interface{}, error) {
@@ -73,8 +73,8 @@ func ValidateResetToken(signedToken string) (*ResetClaims, error) {
 		return nil, errors.WithStack(err)
 	}
 
-	if !tok.Valid {
-		return nil, errors.New("token is invalid")
+	if !tok.ValId {
+		return nil, errors.New("token is invalId")
 	}
 
 	return claims, nil

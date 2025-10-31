@@ -24,7 +24,7 @@ body {
 }
 
 .container {
-    max-width: 400px;
+    max-wIdth: 400px;
     margin: 2rem auto;
     padding: 2rem;
     background: var(--container-bg);
@@ -39,7 +39,7 @@ body {
     align-items: center;
     margin-bottom: 2rem;
     padding-bottom: 1rem;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solId var(--border-color);
     gap: 10px;
 }
 
@@ -88,9 +88,9 @@ label {
 input[type="text"],
 input[type="password"],
 input[type="email"] {
-    width: 100%;
+    wIdth: 100%;
     padding: 0.75rem;
-    border: 1px solid var(--border-color);
+    border: 1px solId var(--border-color);
     border-radius: 4px;
     font-size: 1rem;
     transition: border-color 0.2s;
@@ -132,7 +132,7 @@ input[type="email"]:focus {
     cursor: pointer;
     transition: background-color 0.2s;
     text-decoration: none;
-    width: 100%;
+    wIdth: 100%;
 }
 
 .btn:hover {
@@ -150,7 +150,7 @@ input[type="email"]:focus {
 .btn-secondary {
     background-color: transparent;
     color: var(--text-color);
-    border: 1px solid var(--border-color);
+    border: 1px solId var(--border-color);
     margin-left: 1rem;
 }
 
@@ -159,26 +159,26 @@ input[type="email"]:focus {
 }
 
 .success-icon {
-    width: 48px;
+    wIdth: 48px;
     height: 48px;
     margin: 0 auto 1rem;
     color: var(--success-color);
 }
 
 .error-icon {
-    width: 48px;
+    wIdth: 48px;
     height: 48px;
     margin: 0 auto 1rem;
     color: var(--error-color);
 }
 
-.divider {
+.divIder {
     margin: 1.5rem 0;
     text-align: center;
     position: relative;
 }
 
-.divider::before {
+.divIder::before {
     content: "";
     position: absolute;
     top: 50%;
@@ -188,7 +188,7 @@ input[type="email"]:focus {
     background-color: var(--border-color);
 }
 
-.divider span {
+.divIder span {
     background-color: var(--container-bg);
     padding: 0 1rem;
     color: #9ca3af;
@@ -197,10 +197,10 @@ input[type="email"]:focus {
 
 .oauth-btn {
     display: block;
-    width: 100%;
+    wIdth: 100%;
     padding: 0.75rem;
     background-color: var(--input-bg);
-    border: 1px solid var(--border-color);
+    border: 1px solId var(--border-color);
     border-radius: 4px;
     color: var(--text-color);
     font-size: 1rem;

@@ -8,7 +8,7 @@
 
 ### Planner Response
 
-I'll start by searching the codebase to find where captcha display logic and failed login attempt handling are implemented. This will help identify why captcha isn't triggered after 3 failed attempts.
+I'll start by searching the codebase to find where captcha display logic and failed login attempt handling are implemented. This will help Identify why captcha isn't triggered after 3 failed attempts.
 
 *Found code context*
 
@@ -37,28 +37,28 @@ I'll start by searching the codebase to find where captcha display logic and fai
 ### Planner Response
 
 # Причина проблемы
-- Логика счётчика попыток и флага `captchaShow` не сохранялась последовательно в сессии.
+- Логика счётчика попыток и флага `ShowCaptcha` не сохранялась последовательно в сессии.
 - Из-за этого капча не включалась после 3 неудачных попыток.
-- Проверка reCAPTCHA не выполнялась при включённом `captchaShow`.
+- Проверка reCAPTCHA не выполнялась при включённом `ShowCaptcha`.
 
 # Что я изменил
 В [app/auth/signin.go](cci:7://file:///c:/Users/Admin/Documents/git/auth/app/auth/signin.go:0:0-0:0):
 - Инициализация значений капчи в сессии при первом заходе.
-- Последовательное уменьшение `captchaCounter` и установка `captchaShow = true`, когда счётчик достигает 0.
-- Проверка reCAPTCHA при включённом `captchaShow` до валидации инпутов.
-- Сброс `captchaCounter` на 3 и `captchaShow` на false после успешного входа.
+- Последовательное уменьшение `captchaCounter` и установка `ShowCaptcha = true`, когда счётчик достигает 0.
+- Проверка reCAPTCHA при включённом `ShowCaptcha` до валидации инпутов.
+- Сброс `captchaCounter` на 3 и `ShowCaptcha` на false после успешного входа.
 
 Это исправляет показ капчи после 3 неверных попыток.
 
 # Как теперь работает
-- На первом запросе: в сессию пишется `captchaCounter = 3`, `captchaShow = false`.
+- На первом запросе: в сессию пишется `captchaCounter = 3`, `ShowCaptcha = false`.
 - При каждой ошибке ввода или неверных данных в БД: `captchaCounter` уменьшается на 1 и сохраняется в сессию.
-- Когда `captchaCounter == 0`: `captchaShow = true` и сохраняется в сессию — шаблон должен отрисовать капчу.
-- Если `captchaShow == true`: перед проверками вызывается `tools.Captcha(r)`; без токена отдаётся ошибка и требование пройти капчу.
-- При успешном входе: `captchaCounter` сбрасывается на 3, `captchaShow` на false.
+- Когда `captchaCounter == 0`: `ShowCaptcha = true` и сохраняется в сессию — шаблон должен отрисовать капчу.
+- Если `ShowCaptcha == true`: перед проверками вызывается `tools.Captcha(r)`; без токена отдаётся ошибка и требование пройти капчу.
+- При успешном входе: `captchaCounter` сбрасывается на 3, `ShowCaptcha` на false.
 
 # Что проверить у вас
-- Убедитесь, что в шаблоне страницы входа капча действительно рендерится, когда `CaptchaShow == true`:
+- Убедитесь, что в шаблоне страницы входа капча действительно рендерится, когда `ShowCaptcha == true`:
   - Шаблон должен включать виджет reCAPTCHA и отправлять поле `g-recaptcha-response`.
 - Переменная окружения `GOOGLE_CAPTCHA_SECRET` должна быть установлена на сервере.
 - Для чистоты эксперимента очистите куки/сессию и повторите:
@@ -66,7 +66,7 @@ I'll start by searching the codebase to find where captcha display logic and fai
   - После успешного входа капча должна перестать требоваться.
 
 # Рекомендованные действия
-- Проверьте наличие блока с reCAPTCHA в шаблоне входа, условно по `CaptchaShow`.
+- Проверьте наличие блока с reCAPTCHA в шаблоне входа, условно по `ShowCaptcha`.
 - Установите `GOOGLE_CAPTCHA_SECRET` и соответствующий `site key` в шаблон.
 - Перезапустите сервер и протестируйте сценарий с чистой сессией.
 
@@ -143,7 +143,7 @@ I'll start by searching the codebase to find where captcha display logic and fai
 
 ### User Input
 
-текст "Password is invalid
+текст "Password is invalId
 8-30 characters long
 Latin letters only
 Numbers 0-9
@@ -154,12 +154,12 @@ Special symbols: !@#$%^&*" в signin тоже должен быть красны
 ### Planner Response
 
 - **Что сделал**: В шаблоне `SignIn` в [app/tools/TmplsRenderer.go](cci:7://file:///c:/Users/Admin/Documents/git/auth/app/tools/TmplsRenderer.go:0:0-0:0):
-  - Сообщение `"Password is invalid"` выводится красным через `error-message`.
+  - Сообщение `"Password is invalId"` выводится красным через `error-message`.
   - Список требований (`8-30...`, `Latin letters...`, и т.д.) при этой ошибке также выводится красным, вместо стандартного блока требований.
 
 - **Где именно**:
-  - Блок `{{if .Msg}}` шаблона `SignIn`: добавлено условие `{{else if eq .Msg "Password is invalid"}}` с `<div class="error-message">`.
-  - Блок `{{if .Regs}}` шаблона `SignIn`: если `.Msg == "Password is invalid"`, список рендерится внутри `<div class="error-message">...</div>`.
+  - Блок `{{if .Msg}}` шаблона `SignIn`: добавлено условие `{{else if eq .Msg "Password is invalId"}}` с `<div class="error-message">`.
+  - Блок `{{if .Regs}}` шаблона `SignIn`: если `.Msg == "Password is invalId"`, список рендерится внутри `<div class="error-message">...</div>`.
 
 - **Проверка**:
   - На странице входа введите невалидный пароль (чтобы сработала ошибка валидации пароля).
@@ -306,25 +306,25 @@ Special symbols: !@#$%^&*" в signin тоже должен быть красны
 - **Шаг 3.** Сними галочку “Use browser default” и выбери другой User-Agent (например, Safari iPad) или введи кастомный.
 - **Шаг 4.** Обнови любую защищённую страницу (например, Home). Должно уйти письмо “suspicious login”.
 
-Важно: меняй User-Agent в том же профиле браузера (чтобы куки `temporaryUserID` остались).
+Важно: меняй User-Agent в том же профиле браузера (чтобы куки `temporaryUserId` остались).
 
 ## Вариант B: Через curl/Postman
 - **Шаг 1.** Авторизуйся в браузере.
-- **Шаг 2.** В DevTools → Application → Cookies скопируй значение куки `temporaryUserID`.
+- **Шаг 2.** В DevTools → Application → Cookies скопируй значение куки `temporaryUserId`.
 - **Шаг 3.** Выполни запрос к защищённому URL с другим User-Agent и с кукой:
   - curl (пример):
     ```
     curl -H "User-Agent: Test-UA-Different" \
-         --cookie "temporaryUserID=<ЗНАЧЕНИЕ_ИЗ_ШАГА_2>" \
+         --cookie "temporaryUserId=<ЗНАЧЕНИЕ_ИЗ_ШАГА_2>" \
          http://localhost:8080/home
     ```
-  - или в Postman: во вкладке Headers установи `User-Agent: Test-UA-Different`, во вкладке Cookies добавь `temporaryUserID`.
+  - или в Postman: во вкладке Headers установи `User-Agent: Test-UA-Different`, во вкладке Cookies добавь `temporaryUserId`.
 
 Должно сработать условие и прийти письмо о подозрительном входе.
 
 ## Проверки, если письмо не пришло
 - **Проверь маршрут:** обращайся к защищённой странице, на которой висит [IsExpiredTokenMW](cci:1://file:///c:/Users/Admin/Documents/git/auth/app/auth/routesProtector.go:13:0-96:1) (например, Home).
-- **Куки:** в запросе обязательно должна быть кука `temporaryUserID` действительная для текущей сессии.
+- **Куки:** в запросе обязательно должна быть кука `temporaryUserId` действительная для текущей сессии.
 - **Почта:** отправка писем настроена (SMTP/креды), нет ошибок в логах.
 - **User-Agent реально отличается:** в DevTools сними “Use browser default” и выбери действительно другой профиль UA.
 

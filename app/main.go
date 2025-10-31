@@ -39,7 +39,7 @@ func initEnv() {
 		"MAIL_SENDER_EMAIL",
 		"MAIL_PASSWORD",
 		"GOOGLE_CAPTCHA_SECRET",
-		"clientID",
+		"clientId",
 		"clientSecret",
 	}
 
@@ -70,12 +70,12 @@ func initRouter() *chi.Mux {
 	})
 
 	r.With(auth.AlreadyAuthedRedirectMW).Get(consts.SignUpURL, tmpls.SignUp)
-	r.Post(consts.SignUpInputCheckURL, auth.SignUpInputCheck)
+	r.Post(consts.ValIdateSignUpInputURL, auth.ValIdateSignUpInput)
 	r.With(auth.SignUpFlowOnlyMW).Get(consts.CodeSendURL, tmpls.CodeSend)
 	r.Post(consts.UserAddURL, auth.UserAdd)
 
 	r.With(auth.AlreadyAuthedRedirectMW).Get(consts.SignInURL, tmpls.SignIn)
-	r.Post(consts.SignInInputCheckURL, auth.SignInInputValidate)
+	r.Post(consts.ValIdateSignInInputURL, auth.ValIdateSignInInput)
 
 	r.Get("/yauth", auth.YandexAuthHandler)
 	r.Get(consts.YandexCallbackURL, auth.YandexCallbackHandler)

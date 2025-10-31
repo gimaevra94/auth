@@ -9,13 +9,13 @@ import (
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/tools"
-	"github.com/google/uuid"
+	"github.com/google/uuId"
 	"github.com/pkg/errors"
 )
 
 func PasswordResetEmailCheck(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
-	err := tools.EmailValidate(email)
+	err := tools.EmailValIdate(email)
 	if err != nil {
 		err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", struct{ Msg string }{Msg: tools.ErrMsg["email"].Msg})
 		if err != nil {
@@ -115,7 +115,7 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	claims, err := tools.ValidateResetToken(signedToken)
+	claims, err := tools.ValIdateResetToken(signedToken)
 	if err != nil {
 		log.Printf("%+v", errors.WithStack(err))
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -129,7 +129,7 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if cancelled {
-		err := errors.New("reset-token invalid")
+		err := errors.New("reset-token invalId")
 		log.Printf("%+v", errors.WithStack(err))
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
@@ -139,7 +139,7 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 	confirmPassword := r.FormValue("confirmPassword")
 
 	if newPassword != confirmPassword {
-		log.Println("New password validation failed")
+		log.Println("New password valIdation failed")
 		err := tools.TmplsRenderer(w, tools.BaseTmpl, "SetNewPassword", struct{ Msg string }{Msg: tools.ErrMsg["password"].Msg})
 		if err != nil {
 			log.Printf("%+v", errors.WithStack(err))
@@ -147,7 +147,7 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = tools.PasswordValidate(newPassword)
+		err = tools.PasswordValIdate(newPassword)
 		if err != nil {
 			log.Printf("%+v", errors.WithStack(err))
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -155,10 +155,10 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Получаем permanentUserID по email (нужен для записи refresh токена)
-	var permanentUserID string
+	// Получаем permanentUserId по email (нужен для записи refresh токена)
+	var permanentUserId string
 	row := data.DB.QueryRow(consts.PasswordResetEmailSelectQuery, claims.Email)
-	if err := row.Scan(&permanentUserID); err != nil {
+	if err := row.Scan(&permanentUserId); err != nil {
 		log.Printf("%+v", errors.WithStack(err))
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
@@ -193,8 +193,8 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 3) Создаём auth-сессию как при входе
-	temporaryUserID := uuid.New().String()
-	if err := data.TemporaryUserIDAddByEmailTx(tx, claims.Email, temporaryUserID, false); err != nil {
+	temporaryUserId := uuId.New().String()
+	if err := data.TemporaryUserIdAddByEmailTx(tx, claims.Email, temporaryUserId, false); err != nil {
 		log.Printf("%+v", errors.WithStack(err))
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
@@ -208,7 +208,7 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := data.RefreshTokenAddTx(tx, permanentUserID, refreshToken, r.UserAgent(), false); err != nil {
+	if err := data.RefreshTokenAddTx(tx, permanentUserId, refreshToken, r.UserAgent(), false); err != nil {
 		log.Printf("%+v", errors.WithStack(err))
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
@@ -222,24 +222,24 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Ставим куку и ведём в личный кабинет
-	data.TemporaryUserIDCookieSet(w, temporaryUserID)
+	data.SetTemporaryUserIdInCookie(w, temporaryUserId)
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }
 
 func SubmitPassword(w http.ResponseWriter, r *http.Request) {
-	// 1. Получаем temporaryUserID из куки
-	cookie, err := data.TemporaryUserIDCookiesGet(r)
+	// 1. Получаем temporaryUserId из куки
+	cookie, err := data.GetTemporaryUserIdFromCookie(r)
 	if err != nil {
-		log.Printf("SetPasswordHandler: no temporaryUserID cookie: %+v", err)
+		log.Printf("SetPasswordHandler: no temporaryUserId cookie: %+v", err)
 		http.Redirect(w, r, consts.SignInURL, http.StatusFound)
 		return
 	}
-	temporaryUserID := cookie.Value
+	temporaryUserId := cookie.Value
 
 	// 2. Получаем данные пользователя (проверяем, что пароль ещё не задан)
-	row := data.DB.QueryRow(consts.PasswordSetQuery, temporaryUserID)
-	var login, email, permanentUserID string
-	err = row.Scan(&login, &email, &permanentUserID)
+	row := data.DB.QueryRow(consts.PasswordSetQuery, temporaryUserId)
+	var login, email, permanentUserId string
+	err = row.Scan(&login, &email, &permanentUserId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			log.Println("SetPasswordHandler: user not found or password already set")
@@ -262,9 +262,9 @@ func SubmitPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 5. Валидация пароля
-	err = tools.PasswordValidate(password) // login и email пустые, проверяем только пароль
+	err = tools.PasswordValIdate(password) // login и email пустые, проверяем только пароль
 	if err != nil {
-		log.Printf("SetPasswordHandler: validation error: %+v", err)
+		log.Printf("SetPasswordHandler: valIdation error: %+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
@@ -278,9 +278,9 @@ func SubmitPassword(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback()
 
-	err = data.UpdatePasswordByPermanentIDTx(tx, permanentUserID, password)
+	err = data.UpdatePasswordByPermanentIdTx(tx, permanentUserId, password)
 	if err != nil {
-		log.Printf("SetPasswordHandler: UpdatePasswordByPermanentIDTx failed: %+v", err)
+		log.Printf("SetPasswordHandler: UpdatePasswordByPermanentIdTx failed: %+v", err)
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 		return
 	}
@@ -300,7 +300,7 @@ func SubmitPassword(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: false,
 		Secure:   false,
 		SameSite: http.SameSiteLaxMode,
-		MaxAge:   consts.TemporaryUserIDExp,
+		MaxAge:   consts.TemporaryUserIdExp,
 	})
 
 	successMessage := "Password has been set successfully." // Сообщение на английском

@@ -1,19 +1,19 @@
 package structs
 
 type User struct {
-	UserID          string `sql:"userId"`
+	UserId          string `sql:"userId"`
 	Login           string `sql:"login" json:"login"`
 	Email           string `sql:"email" json:"default_email"`
 	Password        string `sql:"passwordHash"`
 	ServerCode      string
-	TemporaryUserID string `sql:"temporaryUserID"`
-	PermanentUserID string `sql:"permanentUserID"`
+	TemporaryUserId string `sql:"temporaryUserId"`
+	PermanentUserId string `sql:"permanentUserId"`
 }
 
 type RevocatePreference struct {
 	RefreshToken    string
 	DeviceInfo      string
-	TemporaryUserID string
+	TemporaryUserId string
 }
 
 type ErrMsg struct {
@@ -23,14 +23,14 @@ type ErrMsg struct {
 
 type SignUpPageData struct {
 	Msg         string
-	CaptchaShow bool
+	ShowCaptcha bool
 	Regs        []string
 }
 
 type SignInPageData struct {
 	Msg                string
 	ShowForgotPassword bool
-	CaptchaShow        bool
+	ShowCaptcha        bool
 	Regs               []string
 	NoPassword         bool
 }

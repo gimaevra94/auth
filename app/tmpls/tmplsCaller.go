@@ -44,9 +44,9 @@ func CodeSend(w http.ResponseWriter, r *http.Request) {
 func Home(w http.ResponseWriter, r *http.Request) {
 	show := false
 	// Предпочитаем проверку по БД: если у текущего пользователя пароль ещё НЕ задан (passwordHash IS NULL), показываем кнопку.
-	if tempCookie, err := data.TemporaryUserIDCookiesGet(r); err == nil && tempCookie != nil {
-		var login, email, permanentUserID string
-		if err := data.DB.QueryRow(consts.PasswordSetQuery, tempCookie.Value).Scan(&login, &email, &permanentUserID); err == nil {
+	if tempCookie, err := data.GetTemporaryUserIdFromCookie(r); err == nil && tempCookie != nil {
+		var login, email, permanentUserId string
+		if err := data.DB.QueryRow(consts.PasswordSetQuery, tempCookie.Value).Scan(&login, &email, &permanentUserId); err == nil {
 			// Запись найдена -> passwordHash IS NULL -> показываем кнопку
 			show = true
 		} else if err != sql.ErrNoRows {
