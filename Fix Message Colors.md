@@ -224,7 +224,7 @@ Special symbols: !@#$%^&*" в signin тоже должен быть красны
 
 *Searched filesystem*
 
-*Viewed [cookies.go](file:///c:/Users/Admin/Documents/git/auth/app/data/cookies.go) *
+*Viewed [Cookies.go](file:///c:/Users/Admin/Documents/git/auth/app/data/Cookies.go) *
 
 *Viewed [routesProtector.go](file:///c:/Users/Admin/Documents/git/auth/app/auth/routesProtector.go) *
 
@@ -297,7 +297,7 @@ Special symbols: !@#$%^&*" в signin тоже должен быть красны
 
 # Как быстро протестировать “подозрительный вход” (подмена User-Agent)
 
-Нужно выполнить запрос к защищенному маршруту с теми же куками авторизации, но с другим заголовком `User-Agent`. Тогда в [routesProtector.IsExpiredTokenMW](cci:1://file:///c:/Users/Admin/Documents/git/auth/app/auth/routesProtector.go:13:0-96:1) сработает ветка:
+Нужно выполнить запрос к защищенному маршруту с теми же куками авторизации, но с другим заголовком `User-Agent`. Тогда в [routesProtector.AuthGuardForHomePath](cci:1://file:///c:/Users/Admin/Documents/git/auth/app/auth/routesProtector.go:13:0-96:1) сработает ветка:
 - если `deviceInfo != r.UserAgent()` → отправится письмо о подозрительном входе и запрос будет разрешён.
 
 ## Вариант A: Через браузер (проще всего)
@@ -315,7 +315,7 @@ Special symbols: !@#$%^&*" в signin тоже должен быть красны
   - curl (пример):
     ```
     curl -H "User-Agent: Test-UA-Different" \
-         --cookie "temporaryUserId=<ЗНАЧЕНИЕ_ИЗ_ШАГА_2>" \
+         --Cookies "temporaryUserId=<ЗНАЧЕНИЕ_ИЗ_ШАГА_2>" \
          http://localhost:8080/home
     ```
   - или в Postman: во вкладке Headers установи `User-Agent: Test-UA-Different`, во вкладке Cookies добавь `temporaryUserId`.
@@ -323,7 +323,7 @@ Special symbols: !@#$%^&*" в signin тоже должен быть красны
 Должно сработать условие и прийти письмо о подозрительном входе.
 
 ## Проверки, если письмо не пришло
-- **Проверь маршрут:** обращайся к защищённой странице, на которой висит [IsExpiredTokenMW](cci:1://file:///c:/Users/Admin/Documents/git/auth/app/auth/routesProtector.go:13:0-96:1) (например, Home).
+- **Проверь маршрут:** обращайся к защищённой странице, на которой висит [AuthGuardForHomePath](cci:1://file:///c:/Users/Admin/Documents/git/auth/app/auth/routesProtector.go:13:0-96:1) (например, Home).
 - **Куки:** в запросе обязательно должна быть кука `temporaryUserId` действительная для текущей сессии.
 - **Почта:** отправка писем настроена (SMTP/креды), нет ошибок в логах.
 - **User-Agent реально отличается:** в DevTools сними “Use browser default” и выбери действительно другой профиль UA.

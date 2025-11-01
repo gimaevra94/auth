@@ -10,7 +10,7 @@ import (
 	"github.com/gimaevra94/auth/app/errs"
 	"github.com/gimaevra94/auth/app/structs"
 	"github.com/gimaevra94/auth/app/tools"
-	"github.com/google/uuId"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -117,8 +117,8 @@ func CheckSignInUserInDb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	temporaryUserId := uuId.New().String()
-	data.SetTemporaryUserIdInCookie(w, temporaryUserId)
+	temporaryUserId := uuid.New().String()
+	data.SetTemporaryUserIdInCookies(w, temporaryUserId)
 	rememberMe := r.FormValue("rememberMe") != ""
 
 	refreshToken, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe)

@@ -9,7 +9,7 @@ import (
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/tools"
-	"github.com/google/uuId"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
 
@@ -193,7 +193,7 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 3) Создаём auth-сессию как при входе
-	temporaryUserId := uuId.New().String()
+	temporaryUserId := uuid.New().String()
 	if err := data.TemporaryUserIdAddByEmailTx(tx, claims.Email, temporaryUserId, false); err != nil {
 		log.Printf("%+v", errors.WithStack(err))
 		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
@@ -222,19 +222,19 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Ставим куку и ведём в личный кабинет
-	data.SetTemporaryUserIdInCookie(w, temporaryUserId)
+	data.SetTemporaryUserIdInCookies(w, temporaryUserId)
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }
 
 func SubmitPassword(w http.ResponseWriter, r *http.Request) {
 	// 1. Получаем temporaryUserId из куки
-	cookie, err := data.GetTemporaryUserIdFromCookie(r)
+	Cookies, err := data.GetTemporaryUserIdFromCookies(r)
 	if err != nil {
-		log.Printf("SetPasswordHandler: no temporaryUserId cookie: %+v", err)
+		log.Printf("SetPasswordHandler: no temporaryUserId Cookies: %+v", err)
 		http.Redirect(w, r, consts.SignInURL, http.StatusFound)
 		return
 	}
-	temporaryUserId := cookie.Value
+	temporaryUserId := Cookies.Value
 
 	// 2. Получаем данные пользователя (проверяем, что пароль ещё не задан)
 	row := data.DB.QueryRow(consts.PasswordSetQuery, temporaryUserId)
@@ -293,7 +293,7 @@ func SubmitPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Обновляем маркер входа: после установки пароля считаем, что вход больше не только через Яндекс
-	http.SetCookie(w, &http.Cookie{
+	http.SetCookies(w, &http.Cookies{
 		Name:     "yauth",
 		Value:    "0",
 		Path:     "/",

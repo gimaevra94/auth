@@ -121,7 +121,7 @@ func PasswordResetEmailCheck(email string) error {
 	return nil
 }
 
-func RefreshTokenCheck(permanentUserId, userAgent string) (string, string, bool, error) {
+func GetRefreshToken(permanentUserId, userAgent string) (string, string, bool, error) {
 	row := DB.QueryRow(consts.RefreshTokenSelectQuery, permanentUserId, userAgent)
 	var refreshToken string
 	var deviceInfo string
@@ -152,7 +152,7 @@ func GetYauthUserFromDB(login string) (string, error) {
 	return permanentUserId, nil
 }
 
-func MWUserCheck(key string) (string, string, string, bool, error) {
+func MiddlewareUserCheck(key string) (string, string, string, bool, error) {
 	row := DB.QueryRow(consts.MWUserSelectQuery, key)
 	var login string
 	var email string
@@ -178,7 +178,7 @@ func ResetTokenCheck(signedToken string) (bool, error) {
 	return cancelled, nil
 }
 
-func UserAddTx(tx *sql.Tx, login, email, password, temporaryUserId, permanentUserId string, temporaryUserIdCancelled bool) error {
+func SetUserInDbTx(tx *sql.Tx, login, email, password, temporaryUserId, permanentUserId string, temporaryUserIdCancelled bool) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password),
 		bcrypt.DefaultCost)
 	if err != nil {

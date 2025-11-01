@@ -44,21 +44,21 @@ func CodeSend(w http.ResponseWriter, r *http.Request) {
 func Home(w http.ResponseWriter, r *http.Request) {
 	show := false
 	// Предпочитаем проверку по БД: если у текущего пользователя пароль ещё НЕ задан (passwordHash IS NULL), показываем кнопку.
-	if tempCookie, err := data.GetTemporaryUserIdFromCookie(r); err == nil && tempCookie != nil {
+	if tempCookies, err := data.GetTemporaryUserIdFromCookies(r); err == nil && tempCookies != nil {
 		var login, email, permanentUserId string
-		if err := data.DB.QueryRow(consts.PasswordSetQuery, tempCookie.Value).Scan(&login, &email, &permanentUserId); err == nil {
+		if err := data.DB.QueryRow(consts.PasswordSetQuery, tempCookies.Value).Scan(&login, &email, &permanentUserId); err == nil {
 			// Запись найдена -> passwordHash IS NULL -> показываем кнопку
 			show = true
 		} else if err != sql.ErrNoRows {
 			// В случае ошибки БД не ломаем UX, логируем и используем запасную проверку по куке yauth
 			log.Printf("Home: PasswordSetQuery error: %+v", err)
-			if c, cerr := r.Cookie("yauth"); cerr == nil && c != nil && c.Value == "1" {
+			if c, cerr := r.Cookies("yauth"); cerr == nil && c != nil && c.Value == "1" {
 				show = true
 			}
 		}
 	} else {
-		// Если нет temp cookie, откатываемся к прежней логике по куке yauth
-		if c, err := r.Cookie("yauth"); err == nil && c != nil && c.Value == "1" {
+		// Если нет temp Cookies, откатываемся к прежней логике по куке yauth
+		if c, err := r.Cookies("yauth"); err == nil && c != nil && c.Value == "1" {
 			show = true
 		}
 	}

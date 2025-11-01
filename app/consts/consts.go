@@ -2,17 +2,13 @@ package consts
 
 const (
 	SignUpURL              = "/sign-up"
-	ValIdateSignUpInputURL = "/sign-up-input-check"
+	ValIdateSignUpInputURL = "/valIdate-sign-up-input"
 	CodeSendURL            = "/code-send"
-	UserAddURL             = "/user-add"
+	SetUserInDbURL         = "/set-user-in-db"
 
 	SignInURL              = "/sign-in"
-	ValIdateSignInInputURL = "/sign-in-input-valIdate"
+	ValIdateSignInInputURL = "/valIdate-sign-in-input"
 
-	HomeURL               = "/home"
-	LogoutURL             = "/logout"
-	SimpleLogoutURL       = "/simple-logout"
-	Err500URL             = "/500"
 	YandexCallbackURL     = "/ya_callback"
 	YandexCallbackFullURL = "http://localhost:8080/ya_callback"
 
@@ -22,18 +18,21 @@ const (
 	SetPasswordURL        = "/set-password"
 	SubmitPasswordURL     = "/submit-password"
 
+	HomeURL         = "/home"
+	LogoutURL       = "/logout"
+	SimpleLogoutURL = "/simple-logout"
+	Err500URL       = "/500"
+)
+
+const (
 	TemporaryUserIdExp     = 30 * 24 * 60 * 60
 	RefreshTokenExp7Days   = 7 * 24 * 60 * 60
 	RefreshTokenExp24Hours = 24 * 60 * 60
 )
 
 const (
-	UserAgentSelectQuery    = "select DISTINCT deviceInfo FROM refresh_token WHERE permanentUserId = ?"
-	UserInsertQuery         = "insert into user (login,email,passwordHash,temporaryUserId,permanentUserId,temporaryUserIdCancelled) values(?,?,?,?,?,?)"
-	RefreshTokenInsertQuery = "insert into refresh_token (permanentUserId,refreshToken,deviceInfo,refreshTokenCancelled) values (?,?,?,?)"
-	YauthInsertQuery        = "insert into user (login,email, temporaryUserId, permanentUserId, temporaryUserIdCancelled) values(?,?,?,?,?)"
-	ResetTokenInsertQuery   = "insert into reset_token  (token, cancelled) values (?, ?)"
-
+	UserAgents                    = "select distinct device_info FROM refresh_tokens WHERE permanentUserId = $1 AND refreshTokenCancelled = false;"
+	UserAgentSelectQuery          = "select distinct deviceInfo FROM refresh_token WHERE permanentUserId = ?"
 	SignUpUserSelectQuery         = "select email from user where login = ? limit 1"
 	SignInUserSelectQuery         = "select passwordHash, permanentUserId from user where login = ? limit 1"
 	PasswordResetEmailSelectQuery = "select permanentUserId from user where email = ?"
@@ -42,23 +41,17 @@ const (
 	MWUserSelectQuery             = "select login, email, permanentUserId, temporaryUserIdCancelled from user where temporaryUserId = ? limit 1"
 	ResetTokenSelectQuery         = "select cancelled from reset_token where token = ?"
 
-	TemporaryIdUpdateQuery        = "update user set temporaryUserId = ?, temporaryUserIdCancelled = ? where login = ?"
-	TemporaryIdUpdateByEmailQuery = "update user set temporaryUserId = ?, temporaryUserIdCancelled = ? where email = ?"
-	RefreshtokenUpdateQuery       = "update refresh_token set refreshTokenCancelled =? where refreshToken =? and deviceInfo =?"
-	TemporaryUserIdUpdateQuery    = "update user set temporaryUserIdCancelled =? where temporaryUserId =?"
-	PasswordUpdateQuery           = "update user set passwordHash = ? where email = ?"
-	ResetTokenUpdateQuery         = "update reset_token  set cancelled = TRUE where token = ?"
+	UserInsertQuery         = "insert into user (login,email,passwordHash,temporaryUserId,permanentUserId,temporaryUserIdCancelled) values(?,?,?,?,?,?)"
+	RefreshTokenInsertQuery = "insert into refresh_token (permanentUserId,refreshToken,deviceInfo,refreshTokenCancelled) values (?,?,?,?)"
+	YauthInsertQuery        = "insert into user (login,email, temporaryUserId, permanentUserId, temporaryUserIdCancelled) values(?,?,?,?,?)"
+	ResetTokenInsertQuery   = "insert into reset_token  (token, cancelled) values (?, ?)"
+	PasswordSetQuery        = `select login, email, permanentUserId from user where temporaryUserId = ? AND passwordHash IS NULL`
 
-	PasswordSetQuery = `
-	SELECT login, email, permanentUserId 
-	FROM user 
-	WHERE temporaryUserId = ? AND passwordHash IS NULL
-`
-
-	PasswordUpdateByPermanentIdQuery = `
-UPDATE user 
-SET passwordHash = ? 
-WHERE permanentUserId = ?
-`
-	UserAgents = "SELECT DISTINCT device_info FROM refresh_tokens WHERE permanentUserId = $1 AND refreshTokenCancelled = false;"
+	TemporaryIdUpdateQuery           = "update user set temporaryUserId = ?, temporaryUserIdCancelled = ? where login = ?"
+	TemporaryIdUpdateByEmailQuery    = "update user set temporaryUserId = ?, temporaryUserIdCancelled = ? where email = ?"
+	RefreshtokenUpdateQuery          = "update refresh_token set refreshTokenCancelled =? where refreshToken =? and deviceInfo =?"
+	TemporaryUserIdUpdateQuery       = "update user set temporaryUserIdCancelled =? where temporaryUserId =?"
+	PasswordUpdateQuery              = "update user set passwordHash = ? where email = ?"
+	ResetTokenUpdateQuery            = "update reset_token  set cancelled = TRUE where token = ?"
+	PasswordUpdateByPermanentIdQuery = "update user set passwordHash = ? where permanentUserId = ?"
 )

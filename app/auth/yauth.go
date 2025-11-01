@@ -14,7 +14,7 @@ import (
 	"github.com/gimaevra94/auth/app/errs"
 	"github.com/gimaevra94/auth/app/structs"
 	"github.com/gimaevra94/auth/app/tools"
-	"github.com/google/uuId"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
 
@@ -69,8 +69,8 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	temporaryUserId := uuId.New().String()
-	permanentUserId := uuId.New().String()
+	temporaryUserId := uuid.New().String()
+	permanentUserId := uuid.New().String()
 	temporaryUserIdCancelled := false
 
 	pepermanentId, err := data.GetYauthUserFromDB(yandexUser.Login)
@@ -89,7 +89,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	if pepermanentId != "" {
 		permanentUserId = pepermanentId
 	}
-	data.SetTemporaryUserIdInCookie(w, temporaryUserId)
+	data.SetTemporaryUserIdInCookies(w, temporaryUserId)
 
 	if err = data.SetTemporaryUserIdInDbTx(tx, yandexUser.Login, temporaryUserId, temporaryUserIdCancelled); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)

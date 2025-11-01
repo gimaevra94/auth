@@ -9,16 +9,16 @@ import (
 	"github.com/gimaevra94/auth/app/tools"
 )
 
-func IsExpiredTokenMW(next http.Handler) http.Handler {
+func AuthGuardForHomePath(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := data.GetTemporaryUserIdFromCookie(r)
+		Cookies, err := data.GetTemporaryUserIdFromCookies(r)
 		if err != nil {
 			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.SignUpURL)
 			return
 		}
-		temporaryUserId := cookie.Value
+		temporaryUserId := Cookies.Value
 
-		login, email, permanentUserId, temporaryUserIdCancelled, err := data.MWUserCheck(temporaryUserId)
+		login, email, permanentUserId, temporaryUserIdCancelled, err := data.MiddlewareUserCheck(temporaryUserId)
 		if err != nil {
 			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
@@ -30,15 +30,14 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 			return
 		}
 
-		_, deviceInfo, refreshTokenCancelled, err := data.RefreshTokenCheck(permanentUserId, r.UserAgent())
+		_, deviceInfo, refreshTokenCancelled, err := data.GetRefreshToken(permanentUserId, r.UserAgent())
 		if err != nil {
 			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 
 		if deviceInfo != r.UserAgent() {
-			err := tools.SendSuspiciousLoginEmail(email, login, r.UserAgent())
-			if err != nil {
+			if err := tools.SendSuspiciousLoginEmail(email, login, r.UserAgent()); err != nil {
 				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.SignUpURL)
 				return
 			}
@@ -50,8 +49,7 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 
 		if refreshTokenCancelled {
 			Revocate(w, r, true, true, false)
-			err := tools.SendSuspiciousLoginEmail(email, login, deviceInfo)
-			if err != nil {
+			if err := tools.SendSuspiciousLoginEmail(email, login, deviceInfo); err != nil {
 				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
@@ -64,22 +62,22 @@ func IsExpiredTokenMW(next http.Handler) http.Handler {
 	})
 }
 
-func AlreadyAuthedRedirectMW(next http.Handler) http.Handler {
+func AuthGuardForSignInPath(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := data.GetTemporaryUserIdFromCookie(r)
+		Cookies, err := data.GetTemporaryUserIdFromCookies(r)
 		if err != nil {
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		temporaryUserId := cookie.Value
-		_, _, permanentUserId, temporaryUserIdCancelled, err := data.MWUserCheck(temporaryUserId)
+		temporaryUserId := Cookies.Value
+		_, _, permanentUserId, temporaryUserIdCancelled, err := data.MiddlewareUserCheck(temporaryUserId)
 		if err != nil || temporaryUserIdCancelled {
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		_, _, refreshTokenCancelled, err := data.RefreshTokenCheck(permanentUserId, r.UserAgent())
+		_, _, refreshTokenCancelled, err := data.GetRefreshToken(permanentUserId, r.UserAgent())
 		if err != nil || refreshTokenCancelled {
 			next.ServeHTTP(w, r)
 			return
@@ -89,7 +87,7 @@ func AlreadyAuthedRedirectMW(next http.Handler) http.Handler {
 	})
 }
 
-func SignUpFlowOnlyMW(next http.Handler) http.Handler {
+func AuthGuardForSignUpPath(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user, err := data.GetUserFromSession(r)
 		if err != nil {
@@ -106,22 +104,20 @@ func SignUpFlowOnlyMW(next http.Handler) http.Handler {
 	})
 }
 
-// ResetTokenGuardMW обеспечивает доступ к установке нового пароля только через действительную ссылку сброса
-func ResetTokenGuardMW(next http.Handler) http.Handler {
+func ResetTokenGuard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := r.URL.Query().Get("token")
 		if token == "" {
 			http.Redirect(w, r, consts.PasswordResetURL, http.StatusFound)
 			return
 		}
-		// Проверяем структуру JWT и срок действия
+
 		if _, err := tools.ValIdateResetToken(token); err != nil {
 			http.Redirect(w, r, consts.PasswordResetURL, http.StatusFound)
 			return
 		}
-		// Проверяем наличие токена и отсутствие отмены в БД
-		cancelled, err := data.ResetTokenCheck(token)
-		if err != nil || cancelled {
+
+		if cancelled, err := data.ResetTokenCheck(token); err != nil || cancelled {
 			http.Redirect(w, r, consts.PasswordResetURL, http.StatusFound)
 			return
 		}

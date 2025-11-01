@@ -18,9 +18,9 @@ func SimpleLogout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, consts.SignInURL, http.StatusFound)
 }
 
-func Revocate(w http.ResponseWriter, r *http.Request, cookieClear, temporaryUserIdCancel, refreshTokenCancel bool) {
-	if cookieClear {
-		data.TemporaryUserIdCookiesClear(w)
+func Revocate(w http.ResponseWriter, r *http.Request, CookiesClear, temporaryUserIdCancel, refreshTokenCancel bool) {
+	if CookiesClear {
+		data.ClearTemporaryUserIdFromCookies(w)
 	}
 
 	tx, err := data.DB.Begin()
@@ -36,12 +36,12 @@ func Revocate(w http.ResponseWriter, r *http.Request, cookieClear, temporaryUser
 		}
 	}()
 
-	cookie, err := data.GetTemporaryUserIdFromCookie(r)
+	Cookies, err := data.GetTemporaryUserIdFromCookies(r)
 	if err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
-	temporaryUserId := cookie.Value
+	temporaryUserId := Cookies.Value
 
 	if temporaryUserIdCancel {
 		if err := data.TemporaryUserIdCancelTx(tx, temporaryUserId); err != nil {
@@ -51,13 +51,13 @@ func Revocate(w http.ResponseWriter, r *http.Request, cookieClear, temporaryUser
 	}
 
 	if refreshTokenCancel {
-		_, _, permanentUserId, _, err := data.MWUserCheck(temporaryUserId)
+		_, _, permanentUserId, _, err := data.MiddlewareUserCheck(temporaryUserId)
 		if err != nil {
 			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 
-		refreshToken, deviceInfo, refreshTokenCancelled, err := data.RefreshTokenCheck(permanentUserId, r.UserAgent())
+		refreshToken, deviceInfo, refreshTokenCancelled, err := data.GetRefreshToken(permanentUserId, r.UserAgent())
 		if err != nil {
 			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return

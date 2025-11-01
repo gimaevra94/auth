@@ -10,7 +10,7 @@ import (
 	"github.com/gimaevra94/auth/app/errs"
 	"github.com/gimaevra94/auth/app/structs"
 	"github.com/gimaevra94/auth/app/tools"
-	"github.com/google/uuId"
+	"github.com/google/uuid"
 
 	"github.com/pkg/errors"
 )
@@ -154,7 +154,7 @@ func CodeSend(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func UserAdd(w http.ResponseWriter, r *http.Request) {
+func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 	user, err := data.GetUserFromSession(r)
 	if err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
@@ -198,11 +198,11 @@ func UserAdd(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	temporaryUserId := uuId.New().String()
-	data.SetTemporaryUserIdInCookie(w, temporaryUserId)
-	permanentUserId := uuId.New().String()
+	temporaryUserId := uuid.New().String()
+	data.SetTemporaryUserIdInCookies(w, temporaryUserId)
+	permanentUserId := uuid.New().String()
 	temporaryUserIdCancelled := false
-	if err := data.UserAddTx(tx, user.Login, user.Email, user.Password, permanentUserId, temporaryUserId, temporaryUserIdCancelled); err != nil {
+	if err := data.SetUserInDbTx(tx, user.Login, user.Email, user.Password, permanentUserId, temporaryUserId, temporaryUserIdCancelled); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
