@@ -5,7 +5,7 @@ import (
 
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
-	"github.com/gimaevra94/auth/app/errs"
+	"github.com/gimaevra94/auth/app/tools"
 )
 
 func Logout(w http.ResponseWriter, r *http.Request) {
@@ -25,7 +25,7 @@ func Revocate(w http.ResponseWriter, r *http.Request, CookiesClear, temporaryUse
 
 	tx, err := data.DB.Begin()
 	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
@@ -38,14 +38,14 @@ func Revocate(w http.ResponseWriter, r *http.Request, CookiesClear, temporaryUse
 
 	Cookies, err := data.GetTemporaryUserIdFromCookies(r)
 	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 	temporaryUserId := Cookies.Value
 
 	if temporaryUserIdCancel {
 		if err := data.TemporaryUserIdCancelTx(tx, temporaryUserId); err != nil {
-			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 	}
@@ -53,26 +53,26 @@ func Revocate(w http.ResponseWriter, r *http.Request, CookiesClear, temporaryUse
 	if refreshTokenCancel {
 		_, _, permanentUserId, _, err := data.MiddlewareUserCheck(temporaryUserId)
 		if err != nil {
-			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 
 		refreshToken, deviceInfo, refreshTokenCancelled, err := data.GetRefreshToken(permanentUserId, r.UserAgent())
 		if err != nil {
-			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 
 		if !refreshTokenCancelled {
 			if err := data.TokenCancelTx(tx, refreshToken, deviceInfo); err != nil {
-				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 }

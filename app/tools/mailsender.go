@@ -30,7 +30,6 @@ func codeGenerate() string {
 func SendNewDeviceLoginEmail(email, login, deviceInfo string) error {
 	senderEmail = os.Getenv("MAIL_SENDER_EMAIL")
 	auth := smtpAuth(senderEmail)
-
 	data := struct {
 		Login      string
 		DeviceInfo string
@@ -41,8 +40,7 @@ func SendNewDeviceLoginEmail(email, login, deviceInfo string) error {
 		return errors.WithStack(err)
 	}
 
-	err = mailSend(senderEmail, email, auth, msg)
-	if err != nil {
+	if err := mailSend(senderEmail, email, auth, msg); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -54,8 +52,7 @@ func mailSend(senderEmail, email string, auth smtp.Auth, msg []byte) error {
 	to := []string{email}
 	addr := "smtp.yandex.ru:587"
 
-	err := smtp.SendMail(addr, auth, from, to, msg)
-	if err != nil {
+	if err := smtp.SendMail(addr, auth, from, to, msg); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -74,23 +71,22 @@ func executeTmpl(senderEmail, email, subject string, data any) ([]byte, error) {
 
 	switch subject {
 	case authCodeSubject:
-		err := BaseTmpl.ExecuteTemplate(&body, "mailCode", data)
-		if err != nil {
+		if err := BaseTmpl.ExecuteTemplate(&body, "mailCode", data); err != nil {
 			return []byte{}, errors.WithStack(err)
 		}
+
 	case suspiciousLoginSubject:
-		err := BaseTmpl.ExecuteTemplate(&body, "suspiciousLoginMail", data)
-		if err != nil {
+		if err := BaseTmpl.ExecuteTemplate(&body, "suspiciousLoginMail", data); err != nil {
 			return []byte{}, errors.WithStack(err)
 		}
+
 	case newDeviceLoginSubject:
-		err := BaseTmpl.ExecuteTemplate(&body, "newDeviceLoginMail", data)
-		if err != nil {
+		if err := BaseTmpl.ExecuteTemplate(&body, "newDeviceLoginMail", data); err != nil {
 			return []byte{}, errors.WithStack(err)
 		}
+		
 	case passwordResetSubject:
-		err := BaseTmpl.ExecuteTemplate(&body, "PasswordResetEmail", data)
-		if err != nil {
+		if err := BaseTmpl.ExecuteTemplate(&body, "PasswordResetEmail", data); err != nil {
 			return []byte{}, errors.WithStack(err)
 		}
 	}
@@ -112,15 +108,14 @@ func AuthCodeSend(email string) (string, error) {
 	senderEmail = os.Getenv("MAIL_SENDER_EMAIL")
 	serverCode := codeGenerate()
 	auth := smtpAuth(senderEmail)
-
 	data := struct{ Code string }{Code: serverCode}
+
 	msg, err := executeTmpl(senderEmail, email, authCodeSubject, data)
 	if err != nil {
 		return "", err
 	}
 
-	err = mailSend(senderEmail, email, auth, msg)
-	if err != nil {
+	if err := mailSend(senderEmail, email, auth, msg); err != nil {
 		return "", err
 	}
 
@@ -130,18 +125,17 @@ func AuthCodeSend(email string) (string, error) {
 func SendSuspiciousLoginEmail(email, login, deviceInfo string) error {
 	senderEmail = os.Getenv("MAIL_SENDER_EMAIL")
 	auth := smtpAuth(senderEmail)
-
 	data := struct {
 		Login      string
 		DeviceInfo string
 	}{Login: login, DeviceInfo: deviceInfo}
+
 	msg, err := executeTmpl(senderEmail, email, suspiciousLoginSubject, data)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	err = mailSend(senderEmail, email, auth, msg)
-	if err != nil {
+	if err := mailSend(senderEmail, email, auth, msg); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -151,15 +145,14 @@ func SendSuspiciousLoginEmail(email, login, deviceInfo string) error {
 func SendPasswordResetEmail(email, resetLink string) error {
 	senderEmail = os.Getenv("MAIL_SENDER_EMAIL")
 	auth := smtpAuth(senderEmail)
-
 	data := struct{ ResetLink string }{ResetLink: resetLink}
+
 	msg, err := executeTmpl(senderEmail, email, passwordResetSubject, data)
 	if err != nil {
 		return err
 	}
 
-	err = mailSend(senderEmail, email, auth, msg)
-	if err != nil {
+	if err := mailSend(senderEmail, email, auth, msg); err != nil {
 		return err
 	}
 

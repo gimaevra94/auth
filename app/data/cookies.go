@@ -24,11 +24,9 @@ func GetTemporaryUserIdFromCookies(r *http.Request) (*http.Cookie, error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-
 	if Cookies.Value == "" {
 		return nil, errors.New("temporaryUserId not exist")
 	}
-
 	return Cookies, nil
 }
 
@@ -45,12 +43,10 @@ func ClearTemporaryUserIdFromCookies(w http.ResponseWriter) {
 
 func ClearCookiesDev(w http.ResponseWriter, r *http.Request) {
 	ClearTemporaryUserIdFromCookies(w)
-	err := EndAuthSession(w, r)
-	if err != nil {
+	if err := EndAuthSession(w, r); err != nil {
 		errors.WithStack(err)
 	}
-	err = CaptchaSessionEnd(w, r)
-	if err != nil {
+	if err := EndCaptchaSession(w, r); err != nil {
 		errors.WithStack(err)
 	}
 	http.Redirect(w, r, consts.SignUpURL, http.StatusFound)

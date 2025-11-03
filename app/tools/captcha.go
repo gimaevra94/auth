@@ -36,8 +36,7 @@ func ShowCaptcha(r *http.Request) error {
 		return errors.WithStack(err)
 	}
 
-	err = json.Unmarshal(body, &result)
-	if err != nil {
+	if err = json.Unmarshal(body, &result); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -50,8 +49,7 @@ func ShowCaptcha(r *http.Request) error {
 }
 
 func UpdateAndRenderCaptchaState(w http.ResponseWriter, r *http.Request, captchaCounter int64, ShowCaptcha bool) error {
-	err := data.SetCaptchaDataInSession(w, r, "captchaCounter", captchaCounter)
-	if err != nil {
+	if err := data.SetCaptchaDataInSession(w, r, "captchaCounter", captchaCounter); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -60,13 +58,11 @@ func UpdateAndRenderCaptchaState(w http.ResponseWriter, r *http.Request, captcha
 		ShowCaptcha = true
 	}
 
-	err = data.SetCaptchaDataInSession(w, r, "ShowCaptcha", ShowCaptcha)
-	if err != nil {
+	if err := data.SetCaptchaDataInSession(w, r, "ShowCaptcha", ShowCaptcha); err != nil {
 		return errors.WithStack(err)
 	}
 
-	err = TmplsRenderer(w, BaseTmpl, "SignUp", structs.SignUpPageData{Msg: ErrMsg["alreadyExist"].Msg, ShowCaptcha: ShowCaptcha})
-	if err != nil {
+	if err := TmplsRenderer(w, BaseTmpl, "SignUp", structs.SignUpPageData{Msg: ErrMsg["alreadyExist"].Msg, ShowCaptcha: ShowCaptcha}); err != nil {
 		return errors.WithStack(err)
 	}
 

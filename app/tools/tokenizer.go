@@ -20,7 +20,6 @@ func GenerateRefreshToken(refreshTokenExp int, rememberMe bool) (string, error) 
 	}
 
 	expiresAt := time.Duration(refreshTokenExp) * time.Second
-
 	standardClaims := jwt.StandardClaims{
 		ExpiresAt: time.Now().Add(expiresAt).Unix(),
 		IssuedAt:  time.Now().Unix(),
@@ -36,7 +35,7 @@ func GenerateRefreshToken(refreshTokenExp int, rememberMe bool) (string, error) 
 	return signedRefreshToken, nil
 }
 
-func GenerateResetLink(email, baseURL string) (string, error) {
+func GeneratePasswordResetLink(email, baseURL string) (string, error) {
 	expirationTime := time.Now().Add(15 * time.Minute)
 
 	claims := ResetClaims{
@@ -48,7 +47,6 @@ func GenerateResetLink(email, baseURL string) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
 	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
 	signedToken, err := token.SignedString(jwtSecret)
 	if err != nil {
@@ -73,8 +71,8 @@ func ValIdateResetToken(signedToken string) (*ResetClaims, error) {
 		return nil, errors.WithStack(err)
 	}
 
-	if !tok.ValId {
-		return nil, errors.New("token is invalId")
+	if !tok.Valid {
+		return nil, errors.New("token invalId")
 	}
 
 	return claims, nil

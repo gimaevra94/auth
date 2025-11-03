@@ -10,13 +10,7 @@ type User struct {
 	PermanentUserId string `sql:"permanentUserId"`
 }
 
-type RevocatePreference struct {
-	RefreshToken    string
-	DeviceInfo      string
-	TemporaryUserId string
-}
-
-type ErrMsg struct {
+type MessagesForUser struct {
 	Msg  string
 	Regs []string
 }

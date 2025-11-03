@@ -4,14 +4,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
 
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
-	"github.com/gimaevra94/auth/app/errs"
 	"github.com/gimaevra94/auth/app/structs"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/google/uuid"
@@ -40,25 +38,25 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	if yauthCode == "" {
 		err := errors.New("yauthCode not exist")
 		tracedErr := errors.WithStack(err)
-		errs.LogAndRedirectIfErrNotNill(w, r, tracedErr, consts.SignUpURL)
+		tools.LogAndRedirectIfErrNotNill(w, r, tracedErr, consts.SignUpURL)
 		return
 	}
 
 	yandexAccessToken, err := getAccessToken(yauthCode)
 	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
 	yandexUser, err := getYandexUserInfo(yandexAccessToken)
 	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
 	tx, err := data.DB.Begin()
 	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
@@ -77,11 +75,11 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			if err = data.SetYauthUserInDBTx(tx, yandexUser.Login, yandexUser.Email, temporaryUserId, permanentUserId, temporaryUserIdCancelled); err != nil {
-				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
 		} else {
-			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 	}
@@ -92,20 +90,20 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	data.SetTemporaryUserIdInCookies(w, temporaryUserId)
 
 	if err = data.SetTemporaryUserIdInDbTx(tx, yandexUser.Login, temporaryUserId, temporaryUserIdCancelled); err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
 	rememberMe := r.FormValue("rememberMe") != ""
 	refreshToken, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe)
 	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
 	uniqueUserAgents, err := data.GetUniqueUserAgents(permanentUserId)
 	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 	} else {
 		isNewDevice := true
 		for _, userAgent := range uniqueUserAgents {
@@ -117,21 +115,19 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 
 		if isNewDevice {
 			if err := tools.SendNewDeviceLoginEmail(yandexUser.Login, yandexUser.Email, r.UserAgent()); err != nil {
-				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			}
 		}
 	}
 
 	refreshTokenCancelled := false
 	if err = data.SetRefreshTokenTx(tx, permanentUserId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		log.Printf("%+v", err)
-		http.Redirect(w, r, consts.Err500URL, http.StatusFound)
+	if err = tx.Commit(); err != nil {
+		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 

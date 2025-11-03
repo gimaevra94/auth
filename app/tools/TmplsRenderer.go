@@ -9,15 +9,17 @@ import (
 )
 
 const (
-	LoginMsg             = "Login is invalId"
-	EmailMsg             = "Email is invalId"
-	PasswrdMsg           = "Password is invalId"
-	UserAlreadyExistMsg  = "User already exists"
-	UserNotExistMsg      = "User does not exist"
-	ServerCodeMsg        = "Wrong code"
-	UserCodeMsg          = "User code is empty"
-	MailSendingStatusMsg = "Sending is secsessful"
-	CaptchaRequiredMsg   = "Pass the verification reCAPTCHA."
+	SuccessfulMailSendingStatus = "Mail sent successfully"
+	FailedMailSendingStatus     = "Failed to send mail"
+	invalidLogin                = "Login is invalId"
+	invalidEmail                = "Email is invalId"
+	invalidPassword             = "Password is invalId"
+	UserAlreadyExist            = "User already exists"
+	UserNotExist                = "User does not exist"
+	ServerCodeMsg               = "Wrong code"
+	UserCodeMsg                 = "User code is empty"
+	CaptchaRequiredMsg          = "Pass the verification reCAPTCHA."
+	PasswordsDoNotMatch         = "Passwords do not match"
 )
 
 var (
@@ -58,20 +60,22 @@ var (
 	_        = Must(BaseTmpl.Parse(newDeviceLoginMailTMPL))
 )
 
-var ErrMsg = map[string]structs.ErrMsg{
-	"login":             {Msg: LoginMsg, Regs: LoginReqs},
-	"captchaRequired":   {Msg: CaptchaRequiredMsg, Regs: nil},
-	"password":          {Msg: PasswrdMsg, Regs: PswrdReqs},
-	"serverCode":        {Msg: ServerCodeMsg, Regs: nil},
-	"userCode":          {Msg: UserCodeMsg, Regs: nil},
-	"alreadyExist":      {Msg: UserAlreadyExistMsg, Regs: nil},
-	"notExist":          {Msg: UserNotExistMsg, Regs: nil},
-	"mailSendingStatus": {Msg: MailSendingStatusMsg, Regs: nil},
+var MessagesForUser = map[string]structs.MessagesForUser{
+	"login":                       {Msg: invalidLogin, Regs: LoginReqs},
+	"invalidEmail":                {Msg: invalidEmail, Regs: EmailReqs},
+	"captchaRequired":             {Msg: CaptchaRequiredMsg, Regs: nil},
+	"invalidPassword":             {Msg: invalidPassword, Regs: PswrdReqs},
+	"passwordsDoNotMatch":         {Msg: PasswordsDoNotMatch, Regs: nil},
+	"serverCode":                  {Msg: ServerCodeMsg, Regs: nil},
+	"userCode":                    {Msg: UserCodeMsg, Regs: nil},
+	"userAlreadyExist":            {Msg: UserAlreadyExist, Regs: nil},
+	"userNotExist":                {Msg: UserNotExist, Regs: nil},
+	"successfulMailSendingStatus": {Msg: SuccessfulMailSendingStatus, Regs: nil},
+	"failedMailSendingStatus":     {Msg: FailedMailSendingStatus, Regs: nil},
 }
 
 func TmplsRenderer(w http.ResponseWriter, tmpl *template.Template, templateName string, data interface{}) error {
-	err := tmpl.ExecuteTemplate(w, templateName, data)
-	if err != nil {
+	if err := tmpl.ExecuteTemplate(w, templateName, data); err != nil {
 		return errors.WithStack(err)
 	}
 	return nil

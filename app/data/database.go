@@ -108,19 +108,6 @@ func SignInUserGetFromDb(login, password string) (string, error) {
 	return permanentUserId, nil
 }
 
-func PasswordResetEmailCheck(email string) error {
-	row := DB.QueryRow(consts.PasswordResetEmailSelectQuery, email)
-	var permanentUserId string
-	err := row.Scan(&permanentUserId)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return errors.WithStack(err)
-		}
-		return errors.WithStack(err)
-	}
-	return nil
-}
-
 func GetRefreshToken(permanentUserId, userAgent string) (string, string, bool, error) {
 	row := DB.QueryRow(consts.RefreshTokenSelectQuery, permanentUserId, userAgent)
 	var refreshToken string
@@ -165,7 +152,7 @@ func MiddlewareUserCheck(key string) (string, string, string, bool, error) {
 	return login, email, permanentUserId, temporaryUserId, nil
 }
 
-func ResetTokenCheck(signedToken string) (bool, error) {
+func GetCancelledFlagForResetToken(signedToken string) (bool, error) {
 	row := DB.QueryRow(consts.ResetTokenSelectQuery, signedToken)
 	var cancelled bool
 	err := row.Scan(&cancelled)
@@ -225,7 +212,7 @@ func SetYauthUserInDBTx(tx *sql.Tx, login, email, temporaryUserId, permanentUser
 	return nil
 }
 
-func ResetTokenAddTx(tx *sql.Tx, resetToken string) error {
+func SetResetTokenInDbTx(tx *sql.Tx, resetToken string) error {
 	_, err := tx.Exec(consts.ResetTokenInsertQuery, resetToken, false)
 	if err != nil {
 		return errors.WithStack(err)
@@ -279,6 +266,19 @@ func UpdatePasswordByPermanentIdTx(tx *sql.Tx, permanentUserId, newPassword stri
 
 	_, err = tx.Exec(consts.PasswordUpdateByPermanentIdQuery, hashedPassword, permanentUserId)
 	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func GetPermanentUserIdFromDb(email string) error {
+	row := DB.QueryRow(consts.PermanentUserIdSelectQuery, email)
+	var permanentUserId string
+	err := row.Scan(&permanentUserId)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return errors.WithStack(err)
+		}
 		return errors.WithStack(err)
 	}
 	return nil

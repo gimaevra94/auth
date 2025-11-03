@@ -24,16 +24,15 @@ func main() {
 }
 
 func initEnv() {
-	err := godotenv.Load("../public/.env")
-	if err != nil {
+	if err := godotenv.Load("../public/.env"); err != nil {
 		log.Printf("%+v", errors.WithStack(err))
 		return
 	}
 
 	envVars := []string{
-		"SESSION_SECRET",
-		"SESSION_AUTH_KEY",
-		"SESSION_ENCRYPTION_KEY",
+		"CAPTCHA_STORE_SESSION_SECRET_KEY",
+		"LOGIN_STORE_SESSION_AUTH_KEY",
+		"LOGIN_STORE_SESSION_ENCRYPTION_KEY",
 		"JWT_SECRET",
 		"DB_PASSWORD",
 		"MAIL_SENDER_EMAIL",
@@ -53,8 +52,7 @@ func initEnv() {
 }
 
 func initDB() {
-	err := data.DBConn()
-	if err != nil {
+	if err := data.DBConn(); err != nil {
 		log.Printf("%+v", errors.WithStack(err))
 		return
 	}
@@ -81,7 +79,7 @@ func initRouter() *chi.Mux {
 	r.Get(consts.YandexCallbackURL, auth.YandexCallbackHandler)
 
 	r.Get(consts.PasswordResetURL, tmpls.PasswordReset)
-	r.Post(consts.PasswordResetEmailURL, auth.PasswordResetEmailCheck)
+	r.Post(consts.ResetPasswordFromDbURL, auth.ResetPasswordFromDb)
 	r.With(auth.ResetTokenGuard).Get(consts.SetNewPasswordURL, tmpls.SetNewPassword)
 	r.Post(consts.SetNewPasswordURL, auth.SetNewPassword)
 	r.Post(consts.SubmitPasswordURL, auth.SubmitPassword)
@@ -101,8 +99,7 @@ func initRouter() *chi.Mux {
 }
 
 func serverStart(r *chi.Mux) {
-	err := http.ListenAndServe(":8080", r)
-	if err != nil {
+	if err := http.ListenAndServe(":8080", r); err != nil {
 		log.Printf("%+v", errors.WithStack(err))
 		return
 	}

@@ -13,7 +13,7 @@ const (
 	YandexCallbackFullURL = "http://localhost:8080/ya_callback"
 
 	PasswordResetURL      = "/password-reset"
-	PasswordResetEmailURL = "/password-reset-email"
+	ResetPasswordFromDbURL = "/password-reset-email"
 	SetNewPasswordURL     = "/set-new-password"
 	SetPasswordURL        = "/set-password"
 	SubmitPasswordURL     = "/submit-password"
@@ -31,15 +31,15 @@ const (
 )
 
 const (
-	UserAgents                    = "select distinct device_info FROM refresh_tokens WHERE permanentUserId = $1 AND refreshTokenCancelled = false;"
-	UserAgentSelectQuery          = "select distinct deviceInfo FROM refresh_token WHERE permanentUserId = ?"
-	SignUpUserSelectQuery         = "select email from user where login = ? limit 1"
-	SignInUserSelectQuery         = "select passwordHash, permanentUserId from user where login = ? limit 1"
-	PasswordResetEmailSelectQuery = "select permanentUserId from user where email = ?"
-	RefreshTokenSelectQuery       = "select refreshToken,deviceInfo,refreshTokenCancelled from refresh_token where permanentUserId =? and deviceInfo =? AND refreshTokenCancelled = FALSE limit 1"
-	YauthSelectQuery              = "select permanentUserId from user where login = ? limit 1"
-	MWUserSelectQuery             = "select login, email, permanentUserId, temporaryUserIdCancelled from user where temporaryUserId = ? limit 1"
-	ResetTokenSelectQuery         = "select cancelled from reset_token where token = ?"
+	UserAgents                 = "select distinct device_info FROM refresh_tokens WHERE permanentUserId = $1 AND refreshTokenCancelled = false;"
+	UserAgentSelectQuery       = "select distinct deviceInfo FROM refresh_token WHERE permanentUserId = ?"
+	SignUpUserSelectQuery      = "select email from user where login = ? limit 1"
+	SignInUserSelectQuery      = "select passwordHash, permanentUserId from user where login = ? limit 1"
+	PermanentUserIdSelectQuery = "select permanentUserId from user where email = ?"
+	RefreshTokenSelectQuery    = "select refreshToken,deviceInfo,refreshTokenCancelled from refresh_token where permanentUserId =? and deviceInfo =? AND refreshTokenCancelled = FALSE limit 1"
+	YauthSelectQuery           = "select permanentUserId from user where login = ? limit 1"
+	MWUserSelectQuery          = "select login, email, permanentUserId, temporaryUserIdCancelled from user where temporaryUserId = ? limit 1"
+	ResetTokenSelectQuery      = "select cancelled from reset_token where token = ?"
 
 	UserInsertQuery         = "insert into user (login,email,passwordHash,temporaryUserId,permanentUserId,temporaryUserIdCancelled) values(?,?,?,?,?,?)"
 	RefreshTokenInsertQuery = "insert into refresh_token (permanentUserId,refreshToken,deviceInfo,refreshTokenCancelled) values (?,?,?,?)"
