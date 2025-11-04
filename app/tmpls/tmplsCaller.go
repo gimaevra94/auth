@@ -46,7 +46,7 @@ func Home(w http.ResponseWriter, r *http.Request) {
 	// Предпочитаем проверку по БД: если у текущего пользователя пароль ещё НЕ задан (passwordHash IS NULL), показываем кнопку.
 	if tempCookies, err := data.GetTemporaryUserIdFromCookies(r); err == nil && tempCookies != nil {
 		var login, email, permanentUserId string
-		if err := data.DB.QueryRow(consts.PasswordSetQuery, tempCookies.Value).Scan(&login, &email, &permanentUserId); err == nil {
+		if err := data.Db.QueryRow(consts.PasswordSetQuery, tempCookies.Value).Scan(&login, &email, &permanentUserId); err == nil {
 			// Запись найдена -> passwordHash IS NULL -> показываем кнопку
 			show = true
 		} else if err != sql.ErrNoRows {

@@ -10,6 +10,7 @@ import (
 	"github.com/gimaevra94/auth/app/structs"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/pkg/errors"
 )
@@ -106,7 +107,8 @@ func CheckSignUpUserInDb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := data.GetSignUpUserFromDb(user.Login); err != nil {
+	_, err = data.GetPermanentUserIdFromDb(user.Email)
+	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			CodeSend(w, r)
 			return
@@ -184,7 +186,7 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx, err := data.DB.Begin()
+	tx, err := data.Db.Begin()
 	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
@@ -201,13 +203,20 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 	data.SetTemporaryUserIdInCookies(w, temporaryUserId)
 	permanentUserId := uuid.New().String()
 	temporaryUserIdCancelled := false
-	if err := data.SetUserInDbTx(tx, user.Login, user.Email, user.Password, permanentUserId, temporaryUserId, temporaryUserIdCancelled); err != nil {
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password),
+		bcrypt.DefaultCost)
+	if err != nil {
+		return
+	}
+
+	if err := data.SetUserInDbTx(tx, user.Login, user.Email, permanentUserId, temporaryUserId, hashedPassword, temporaryUserIdCancelled); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
 	refreshTokenCancelled := false
-	if err = data.SetRefreshTokenInDbTx(tx, permanentUserId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
+	if err = data.SetUserRefreshTokenInDbTx(tx, permanentUserId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}

@@ -17,7 +17,7 @@ func AuthGuardForHomePath(next http.Handler) http.Handler {
 		}
 		temporaryUserId := Cookies.Value
 
-		login, email, permanentUserId, temporaryUserIdCancelled, err := data.GetMiddlewareUserFromDb(temporaryUserId)
+		login, email, permanentUserId, temporaryUserIdCancelled, err := data.GetAllUsersKeysFromDb(temporaryUserId)
 		if err != nil {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
@@ -29,13 +29,13 @@ func AuthGuardForHomePath(next http.Handler) http.Handler {
 			return
 		}
 
-		_, deviceInfo, refreshTokenCancelled, err := data.GetRefreshTokenFromDb(permanentUserId, r.UserAgent())
+		_, userAgent, refreshTokenCancelled, err := data.GetAllRefreshTokenKeysFromDb(permanentUserId, r.UserAgent())
 		if err != nil {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 
-		if deviceInfo != r.UserAgent() {
+		if userAgent != r.UserAgent() {
 			if err := tools.SendSuspiciousLoginEmail(email, login, r.UserAgent()); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.SignUpURL)
 				return
@@ -48,7 +48,7 @@ func AuthGuardForHomePath(next http.Handler) http.Handler {
 
 		if refreshTokenCancelled {
 			Revocate(w, r, true, true, false)
-			if err := tools.SendSuspiciousLoginEmail(email, login, deviceInfo); err != nil {
+			if err := tools.SendSuspiciousLoginEmail(email, login, userAgent); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
@@ -70,13 +70,13 @@ func AuthGuardForSignInPath(next http.Handler) http.Handler {
 		}
 
 		temporaryUserId := Cookies.Value
-		_, _, permanentUserId, temporaryUserIdCancelled, err := data.GetMiddlewareUserFromDb(temporaryUserId)
+		permanentUserId, temporaryUserIdCancelled, err := data.GetPermanentUserIdAndTemporaryUserIdCancelledFlagFromDb(temporaryUserId)
 		if err != nil || temporaryUserIdCancelled {
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		_, _, refreshTokenCancelled, err := data.GetRefreshTokenFromDb(permanentUserId, r.UserAgent())
+		_, _, refreshTokenCancelled, err := data.GetAllRefreshTokenKeysFromDb(permanentUserId, r.UserAgent())
 		if err != nil || refreshTokenCancelled {
 			next.ServeHTTP(w, r)
 			return

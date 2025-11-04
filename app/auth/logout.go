@@ -23,7 +23,7 @@ func Revocate(w http.ResponseWriter, r *http.Request, CookiesClear, temporaryUse
 		data.ClearTemporaryUserIdFromCookies(w)
 	}
 
-	tx, err := data.DB.Begin()
+	tx, err := data.Db.Begin()
 	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
@@ -44,27 +44,27 @@ func Revocate(w http.ResponseWriter, r *http.Request, CookiesClear, temporaryUse
 	temporaryUserId := Cookies.Value
 
 	if temporaryUserIdCancel {
-		if err := data.TemporaryUserIdCancelTx(tx, temporaryUserId); err != nil {
+		if err := data.SetTemporaryUserIdCancelledFlagFromDbTx(tx, temporaryUserId); err != nil {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 	}
 
 	if refreshTokenCancel {
-		_, _, permanentUserId, _, err := data.GetMiddlewareUserFromDb(temporaryUserId)
+		_, _, permanentUserId, _, err := data.GetAllUsersKeysFromDb(temporaryUserId)
 		if err != nil {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 
-		refreshToken, deviceInfo, refreshTokenCancelled, err := data.GetRefreshTokenFromDb(permanentUserId, r.UserAgent())
+		refreshToken, userAgent, refreshTokenCancelled, err := data.GetAllRefreshTokenKeysFromDb(permanentUserId, r.UserAgent())
 		if err != nil {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 
 		if !refreshTokenCancelled {
-			if err := data.TokenCancelTx(tx, refreshToken, deviceInfo); err != nil {
+			if err := data.SetRefreshTokenCancelledFlagFromDbTx(tx, refreshToken, userAgent); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}

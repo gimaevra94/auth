@@ -55,7 +55,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx, err := data.DB.Begin()
+	tx, err := data.Db.Begin()
 	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
@@ -72,7 +72,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	permanentUserId := uuid.New().String()
 	temporaryUserIdCancelled := false
 
-	pepermanentId, err := data.GetYauthUserFromDb(yandexUser.Login)
+	permanentId, err := data.GetPermanentUserIdFromDb(yandexUser.Email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			if err = data.SetYauthUserInDbTx(tx, yandexUser.Login, yandexUser.Email, temporaryUserId, permanentUserId, temporaryUserIdCancelled); err != nil {
@@ -85,8 +85,8 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if pepermanentId != "" {
-		permanentUserId = pepermanentId
+	if permanentId != "" {
+		permanentUserId = permanentId
 	}
 	data.SetTemporaryUserIdInCookies(w, temporaryUserId)
 
@@ -102,7 +102,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uniqueUserAgents, err := data.GetUniqueUserAgents(permanentUserId)
+	uniqueUserAgents, err := data.GetUniqueUserAgentsFromDb(permanentUserId)
 	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 	} else {
@@ -122,7 +122,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	refreshTokenCancelled := false
-	if err = data.SetRefreshTokenInDbTx(tx, permanentUserId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
+	if err = data.SetUserRefreshTokenInDbTx(tx, permanentUserId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}

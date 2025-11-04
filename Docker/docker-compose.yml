@@ -1,13 +1,13 @@
 name: auth
 services:
-  db:
-    container_name: db
-    image: gimaevra94/db:latest
+  Db:
+    container_name: Db
+    image: gimaevra94/Db:latest
     environment:
-       MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_password
-       MYSQL_DATABASE: db
+       MYSQL_ROOT_PASSWORD_FILE: /run/secrets/Db_password
+       MYSQL_DATABASE: Db
     volumes:
-      - db:/var/lib/mysql
+      - Db:/var/lib/mysql
       - C:/Users/gimaevra94/Documents/git/auth/certs/mysql_cert:/etc/mysql/certs:ro
     ports: 
       - 3306:3306
@@ -18,18 +18,18 @@ services:
       retries: 3
     restart: unless-stopped
     secrets:
-      - db_password
+      - Db_password
     #command: >
       # --ssl-ca=/etc/mysql/certs/ca.pem
-      # --ssl-cert=/etc/mysql/certs/db-cert.pem
-      # --ssl-key=/etc/mysql/certs/db-key.pem
+      # --ssl-cert=/etc/mysql/certs/Db-cert.pem
+      # --ssl-key=/etc/mysql/certs/Db-key.pem
       # --require_secure_transport=ON
 
     #app:
     # image: gimaevra94/app:latest
     #environment:
-    # DB_PASSWORD_FILE: /run/secrets/db_password
-    #DB_USER: root
+    # Db_PASSWORD_FILE: /run/secrets/Db_password
+    #Db_USER: root
     #volumes:
     #  - /c/Users/gimaevra94/Documents/git/auth/public:/app/public
     #ports: 8000:8000
@@ -41,15 +41,15 @@ services:
     #  start_period: 5s
     #restart: unless-stopped
     #secrets:
-    #  - db_password
+    #  - Db_password
     #depends_on:
-    #  db:
+    #  Db:
     #    condition: service_healthy
 
 
 volumes:
-  db:
+  Db:
 
 secrets:
-  db_password: 
-    environment: DB_PASSWORD
+  Db_password: 
+    environment: Db_PASSWORD

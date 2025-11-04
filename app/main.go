@@ -15,24 +15,24 @@ import (
 )
 
 const (
-	ValIdateSignUpInputURL = "/valIdate-sign-up-input"
-	SetUserInDbURL         = "/set-user-in-db"
-	ValIdateSignInInputURL = "/valIdate-sign-in-input"
+	ValIdateSignUpInputURL       = "/valIdate-sign-up-input"
+	SetUserInDbURL               = "/set-user-in-Db"
+	ValIdateSignInInputURL       = "/valIdate-sign-in-input"
 	GeneratePasswordResetLinkURL = "/generate-password-reset-link"
-	YandexCallbackURL = "/ya_callback"
-	SetNewPasswordURL = "/set-new-password"
-	SetFirstTimePasswordURL = "/set-first-time-password"
-	LogoutURL = "/logout"
-	SimpleLogoutURL = "/simple-logout"
+	YandexCallbackURL            = "/ya_callback"
+	SetNewPasswordURL            = "/set-new-password"
+	SetFirstTimePasswordURL      = "/set-first-time-password"
+	LogoutURL                    = "/logout"
+	SimpleLogoutURL              = "/simple-logout"
 )
 
 func main() {
 	initEnv()
-	initDB()
+	initDb()
 	data.InitStore()
 	r := initRouter()
 	serverStart(r)
-	defer data.DBClose()
+	defer data.DbClose()
 }
 
 func initEnv() {
@@ -46,7 +46,7 @@ func initEnv() {
 		"LOGIN_STORE_SESSION_AUTH_KEY",
 		"LOGIN_STORE_SESSION_ENCRYPTION_KEY",
 		"JWT_SECRET",
-		"DB_PASSWORD",
+		"Db_PASSWORD",
 		"MAIL_SENDER_EMAIL",
 		"MAIL_PASSWORD",
 		"GOOGLE_CAPTCHA_SECRET",
@@ -63,8 +63,8 @@ func initEnv() {
 	}
 }
 
-func initDB() {
-	if err := data.DBConn(); err != nil {
+func initDb() {
+	if err := data.DbConn(); err != nil {
 		log.Printf("%+v", errors.WithStack(err))
 		return
 	}

@@ -29,7 +29,7 @@ func ValIdateSignInInput(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(err.Error(), "exist") {
 			captchaCounter = 3
 			if err := data.SetCaptchaDataInSession(w, r, "captchaCounter", captchaCounter); err != nil {
-					tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
 			return
@@ -103,7 +103,7 @@ func CheckSignInUserInDb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	permanentUserId, err := data.GetSignInUserFromDb(user.Login, user.Password)
+	passwordHash, permanentUserId, err := data.GetPasswordHashAndPermanentUserIdFromDb(user.Login, user.Password)
 	if err != nil {
 		if strings.Contains(err.Error(), "password not found") || errors.Is(err, sql.ErrNoRows) || errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
 			if err := tools.UpdateAndRenderCaptchaState(w, r, captchaCounter, ShowCaptcha); err != nil {
@@ -113,6 +113,22 @@ func CheckSignInUserInDb(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	if !passwordHash.Valid {
+		if err := tools.UpdateAndRenderCaptchaState(w, r, captchaCounter, ShowCaptcha); err != nil {
+			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
+		}
+		return
+	}
+
+	if err = bcrypt.CompareHashAndPassword([]byte(passwordHash.String), []byte(user.Password)); err != nil {
+		if err := tools.UpdateAndRenderCaptchaState(w, r, captchaCounter, ShowCaptcha); err != nil {
+			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
+		}
 		return
 	}
 
@@ -126,7 +142,7 @@ func CheckSignInUserInDb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uniqueUserAgents, err := data.GetUniqueUserAgents(permanentUserId)
+	uniqueUserAgents, err := data.GetUniqueUserAgentsFromDb(permanentUserId)
 	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 	} else {
@@ -145,7 +161,7 @@ func CheckSignInUserInDb(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	tx, err := data.DB.Begin()
+	tx, err := data.Db.Begin()
 	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
@@ -165,7 +181,7 @@ func CheckSignInUserInDb(w http.ResponseWriter, r *http.Request) {
 	}
 
 	refreshTokenCancelled := false
-	if err = data.SetRefreshTokenInDbTx(tx, permanentUserId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
+	if err = data.SetUserRefreshTokenInDbTx(tx, permanentUserId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}

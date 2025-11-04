@@ -49,15 +49,15 @@
 
 *   **Цель:** Изменить ваш `docker-compose.yml`, чтобы MySQL-сервис знал о сертификатах и требовал SSL/TLS соединения.
 *   **Действие:** Откройте файл `C:\Users\gimaevra94\Documents\git\auth\Docker\docker-compose.yml` в текстовом редакторе.
-*   **Изменения в файле:** Найдите сервис `db` и добавьте/измените следующие строки:
+*   **Изменения в файле:** Найдите сервис `Db` и добавьте/измените следующие строки:
     ```yaml
     # Docker/docker-compose.yml
     services:
-      db:
-        image: gimaevra94/db:latest
+      Db:
+        image: gimaevra94/Db:latest
         # ... другие ваши настройки ...
         volumes:
-          - db:/var/lib/mysql
+          - Db:/var/lib/mysql
           - C:/Users/gimaevra94/Documents/git/auth/certs/mysql_cert:/etc/mysql/certs:ro # ДОБАВЬТЕ ЭТУ СТРОКУ
         # ... другие ваши настройки ...
         command: > # ДОБАВЬТЕ ЭТОТ БЛОК
@@ -77,7 +77,7 @@
 **Шаг 3: Применение изменений Docker Compose (Пересоздание контейнеров)**
 
 *   **Цель:** Заставить Docker Compose прочитать обновленный `docker-compose.yml` и пересоздать MySQL-контейнер с новыми SSL/TLS настройками.
-*   **Предварительно:** Убедитесь, что в вашем `.env` файле (который находится в `C:\Users\gimaevra94\Documents\git\auth`) есть строка `DB_PASSWORD=ваш_надежный_пароль`.
+*   **Предварительно:** Убедитесь, что в вашем `.env` файле (который находится в `C:\Users\gimaevra94\Documents\git\auth`) есть строка `Db_PASSWORD=ваш_надежный_пароль`.
 *   **Команды:** (Убедитесь, что вы **находитесь в корневой директории вашего проекта `C:\Users\gimaevra94\Documents\git\auth`**).
     ```powershell
     cd C:\Users\gimaevra94\Documents\git\auth
@@ -85,10 +85,10 @@
     docker compose -f Docker/docker-compose.yml --profile dev up -d
     ```
 *   **Что происходит:**
-    *   `docker compose down`: Останавливает все сервисы, определенные в `docker-compose.yml` (включая ваш MySQL-контейнер `db`), и **удаляет их контейнеры**. Это необходимо, так как изменения в `volumes` и `command` применяются только при *создании* контейнера.
-    *   Ваши данные MySQL, хранящиеся в именованном томе `db`, **не удаляются** этой командой. Они в безопасности.
-    *   `docker compose up -d`: Читает обновленный `docker-compose.yml`. Поскольку контейнера `db` больше нет, он **создает новый контейнер** с вашими новыми настройками монтирования сертификатов и параметрами запуска SSL/TLS.
-    *   Новый контейнер `db` запускается в фоновом режиме (`-d`).
+    *   `docker compose down`: Останавливает все сервисы, определенные в `docker-compose.yml` (включая ваш MySQL-контейнер `Db`), и **удаляет их контейнеры**. Это необходимо, так как изменения в `volumes` и `command` применяются только при *создании* контейнера.
+    *   Ваши данные MySQL, хранящиеся в именованном томе `Db`, **не удаляются** этой командой. Они в безопасности.
+    *   `docker compose up -d`: Читает обновленный `docker-compose.yml`. Поскольку контейнера `Db` больше нет, он **создает новый контейнер** с вашими новыми настройками монтирования сертификатов и параметрами запуска SSL/TLS.
+    *   Новый контейнер `Db` запускается в фоновом режиме (`-d`).
     *   **Результат:** У вас запущен новый MySQL-контейнер, который сконфигурирован на использование SSL/TLS.
 
 ---
@@ -138,10 +138,10 @@
 docker run --rm -v "$(pwd):/certs" alpine sh -c " \
   apk add --no-cache openssl && \
   openssl genrsa 2048 > /certs/ca-key.pem && \
-  openssl req -new -x509 -nodes -days 3650 -key /certs/ca-key.pem -out /certs/ca.pem -subj '/CN=My db CA/O=MyOrg/C=US' && \
-  openssl genrsa 2048 > /certs/db-key.pem && \
-  openssl req -new -key /certs/db-key.pem -out /certs/db-req.pem -subj '/CN=localhost/O=MyOrg/C=US' && \
-  openssl x509 -req -in /certs/db-req.pem -days 3650 -CA /certs/ca.pem -CAkey /certs/ca-key.pem -set_serial 01 -out /certs/db-cert.pem \
+  openssl req -new -x509 -nodes -days 3650 -key /certs/ca-key.pem -out /certs/ca.pem -subj '/CN=My Db CA/O=MyOrg/C=US' && \
+  openssl genrsa 2048 > /certs/Db-key.pem && \
+  openssl req -new -key /certs/Db-key.pem -out /certs/Db-req.pem -subj '/CN=localhost/O=MyOrg/C=US' && \
+  openssl x509 -req -in /certs/Db-req.pem -days 3650 -CA /certs/ca.pem -CAkey /certs/ca-key.pem -set_serial 01 -out /certs/Db-cert.pem \
 "
 ```
 docker run --rm -v "$(pwd):/certs" alpine sh -c " \
@@ -225,7 +225,7 @@ docker run --rm -v "$(pwd):/certs" alpine sh -c " \
     *   **`-subj '/CN=localhost/O=MyOrg/C=US'`**: Снова флаг для неинтерактивного ввода Subject Name.
         *   **`CN=localhost`**: **Это ОЧЕНЬ ВАЖНО!** Common Name для серверного сертификата **должен точно совпадать** с тем именем хоста или IP-ададресом, по которому клиентское приложение будет подключаться к MySQL.
             *   Если вы подключаетесь с хоста по `127.0.0.1` или `localhost`, то `CN=localhost` (или `CN=127.0.0.1`) подходит.
-            *   Если ваше Go-приложение находится в другом Docker-контейнере и подключается к MySQL по имени сервиса (например, `db`), то `CN` должен быть `db`.
+            *   Если ваше Go-приложение находится в другом Docker-контейнере и подключается к MySQL по имени сервиса (например, `Db`), то `CN` должен быть `Db`.
             *   Если подключение идет по публичному IP, то `CN` должен быть этим IP.
     *   **Что происходит:** Создается запрос, который будет передан нашему CA для подписи, чтобы получить конечный сертификат сервера.
 

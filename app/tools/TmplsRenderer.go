@@ -512,7 +512,7 @@ const (
 <body>
     <div class="container">
     <h1>Suspicious login attempt detected</h1>
-    <p>Login attempt from: {{.DeviceInfo}}.</p>
+    <p>Login attempt from: {{.userAgent}}.</p>
     <p>If unauthorized, change your password immediately.</p>
 </div>
 </body>

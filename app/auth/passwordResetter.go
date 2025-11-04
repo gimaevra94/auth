@@ -11,6 +11,7 @@ import (
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +50,7 @@ func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
 
 	resetToken := url.Query().Get("token")
 	if resetToken != "" {
-		tx, err := data.DB.Begin()
+		tx, err := data.Db.Begin()
 		if err != nil {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
@@ -62,7 +63,7 @@ func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
 			}
 		}()
 
-		if err := data.SetResetTokenInDbTx(tx, resetToken); err != nil {
+		if err := data.SetPasswordResetTokenInDbTx(tx, resetToken); err != nil {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
@@ -140,7 +141,7 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx, err := data.DB.Begin()
+	tx, err := data.Db.Begin()
 	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
@@ -153,12 +154,12 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	if err := data.SetPasswordInDbByEmailTx(tx, claims.Email, newPassword); err != nil {
+	if err := data.SetUserPasswordInDbByEmailTx(tx, claims.Email, newPassword); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
-	if err := data.SetResetTokenCancelledFlagFromDbTx(tx, resetToken); err != nil {
+	if err := data.SetPasswordResetTokenCancelledFlagFromDbTx(tx, resetToken); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -178,7 +179,7 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	refreshTokenCancelled := false
-	if err := data.SetRefreshTokenInDbTx(tx, permanentUserId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
+	if err := data.SetUserRefreshTokenInDbTx(tx, permanentUserId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -200,7 +201,7 @@ func SetFirstTimePassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	temporaryUserId := cookies.Value
-	passwordHash, err := data.GetPasswordFromDb(temporaryUserId)
+	passwordHash, err := data.GetUserPasswordFromDb(temporaryUserId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
@@ -230,7 +231,13 @@ func SetFirstTimePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := data.SetPasswordInDbByTemporaryUserId(temporaryUserId, password); err != nil {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	if err := data.SetUserPasswordInDbByTemporaryUserId(temporaryUserId, hashedPassword); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
