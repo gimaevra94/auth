@@ -61,7 +61,7 @@ func ValIdateResetToken(signedToken string) (*ResetClaims, error) {
 	claims := &ResetClaims{}
 
 	tok, err := jwt.ParseWithClaims(signedToken, claims, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+		if _, ok := token.Method.(*jwt.Signin2gMethodHMAC); !ok {
 			return nil, errors.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return []byte(os.Getenv("JWT_SECRET")), nil
