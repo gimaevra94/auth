@@ -57,7 +57,7 @@ func ValIdateSignUpInput(w http.ResponseWriter, r *http.Request) {
 	if ShowCaptcha {
 		if err := tools.ShowCaptcha(r); err != nil {
 			if strings.Contains(err.Error(), "captchaToken not exist") {
-				if err := tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", structs.SignUpPageData{Msg: tools.ErrMsg["captchaRequired"].Msg, ShowCaptcha: ShowCaptcha, Regs: nil}); err != nil {
+				if err := tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", structs.SignUpPageData{Msg: tools.MessagesForUser["captchaRequired"].Msg, ShowCaptcha: ShowCaptcha, Regs: nil}); err != nil {
 					tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 					return
 				}
@@ -106,7 +106,7 @@ func CheckSignUpUserInDb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := data.GetSignUpUserInDb(user.Login); err != nil {
+	if err := data.GetSignUpUserFromDb(user.Login); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			CodeSend(w, r)
 			return
@@ -163,13 +163,13 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 	clientCode := r.FormValue("clientCode")
 	if err := tools.CodeValIdate(r, clientCode, user.ServerCode); err != nil {
 		if strings.Contains(err.Error(), "exist") {
-			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "CodeSend", tools.ErrMsg["userCode"]); err != nil {
+			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "CodeSend", tools.MessagesForUser["userCode"]); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
 			return
 		} else if strings.Contains(err.Error(), "match") {
-			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "CodeSend", tools.ErrMsg["serverCode"]); err != nil {
+			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "CodeSend", tools.MessagesForUser["serverCode"]); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
@@ -207,7 +207,7 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 	}
 
 	refreshTokenCancelled := false
-	if err = data.SetRefreshTokenTx(tx, permanentUserId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
+	if err = data.SetRefreshTokenInDbTx(tx, permanentUserId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}

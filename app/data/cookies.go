@@ -7,6 +7,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const TemporaryUserIdExp = 30 * 24 * 60 * 60
+
 func SetTemporaryUserIdInCookies(w http.ResponseWriter, v string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "temporaryUserId",
@@ -15,7 +17,7 @@ func SetTemporaryUserIdInCookies(w http.ResponseWriter, v string) {
 		Secure:   false,
 		SameSite: http.SameSiteLaxMode,
 		Value:    v,
-		MaxAge:   consts.TemporaryUserIdExp,
+		MaxAge:   TemporaryUserIdExp,
 	})
 }
 

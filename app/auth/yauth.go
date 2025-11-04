@@ -17,16 +17,17 @@ import (
 )
 
 const (
-	authURL     = "https://oauth.yandex.ru/authorize"
-	tokenURL    = "https://oauth.yandex.ru/token"
-	userInfoURL = "https://login.yandex.ru/info"
+	authURL               = "https://oauth.yandex.ru/authorize"
+	tokenURL              = "https://oauth.yandex.ru/token"
+	userInfoURL           = "https://login.yandex.ru/info"
+	YandexCallbackFullURL = "http://localhost:8080/ya_callback"
 )
 
 func YandexAuthHandler(w http.ResponseWriter, r *http.Request) {
 	authParams := url.Values{
 		"response_type": {"code"},
 		"client_Id":     {os.Getenv("clientId")},
-		"redirect_uri":  {consts.YandexCallbackFullURL},
+		"redirect_uri":  {YandexCallbackFullURL},
 		"scope":         {"login:email"},
 	}
 	authURLWithParams := authURL + "?" + authParams.Encode()
@@ -71,10 +72,10 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	permanentUserId := uuid.New().String()
 	temporaryUserIdCancelled := false
 
-	pepermanentId, err := data.GetYauthUserFromDB(yandexUser.Login)
+	pepermanentId, err := data.GetYauthUserFromDb(yandexUser.Login)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			if err = data.SetYauthUserInDBTx(tx, yandexUser.Login, yandexUser.Email, temporaryUserId, permanentUserId, temporaryUserIdCancelled); err != nil {
+			if err = data.SetYauthUserInDbTx(tx, yandexUser.Login, yandexUser.Email, temporaryUserId, permanentUserId, temporaryUserIdCancelled); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
@@ -89,7 +90,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	data.SetTemporaryUserIdInCookies(w, temporaryUserId)
 
-	if err = data.SetTemporaryUserIdInDbTx(tx, yandexUser.Login, temporaryUserId, temporaryUserIdCancelled); err != nil {
+	if err = data.SetTemporaryUserIdInDbByEmailTx(tx, yandexUser.Login, temporaryUserId, temporaryUserIdCancelled); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -121,7 +122,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	refreshTokenCancelled := false
-	if err = data.SetRefreshTokenTx(tx, permanentUserId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
+	if err = data.SetRefreshTokenInDbTx(tx, permanentUserId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -140,7 +141,7 @@ func getAccessToken(yauthCode string) (string, error) {
 		"code":          {yauthCode},
 		"client_Id":     {os.Getenv("clientId")},
 		"client_secret": {os.Getenv("clientSecret")},
-		"redirect_uri":  {consts.YandexCallbackFullURL},
+		"redirect_uri":  {YandexCallbackFullURL},
 	}
 
 	resp, err := http.PostForm(tokenURL, tokenParams)

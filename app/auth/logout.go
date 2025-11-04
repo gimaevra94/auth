@@ -51,13 +51,13 @@ func Revocate(w http.ResponseWriter, r *http.Request, CookiesClear, temporaryUse
 	}
 
 	if refreshTokenCancel {
-		_, _, permanentUserId, _, err := data.MiddlewareUserCheck(temporaryUserId)
+		_, _, permanentUserId, _, err := data.GetMiddlewareUserFromDb(temporaryUserId)
 		if err != nil {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 
-		refreshToken, deviceInfo, refreshTokenCancelled, err := data.GetRefreshToken(permanentUserId, r.UserAgent())
+		refreshToken, deviceInfo, refreshTokenCancelled, err := data.GetRefreshTokenFromDb(permanentUserId, r.UserAgent())
 		if err != nil {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return

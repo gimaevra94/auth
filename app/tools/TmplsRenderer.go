@@ -56,7 +56,7 @@ var (
 	_        = Must(BaseTmpl.Parse(PasswordResetTMPL))
 	_        = Must(BaseTmpl.Parse(PasswordResetEmailTMPL))
 	_        = Must(BaseTmpl.Parse(SetNewPasswordTMPL))
-	_        = Must(BaseTmpl.Parse(SetPasswordTMPL))
+	_        = Must(BaseTmpl.Parse(SetFirstTimePasswordTMPL))
 	_        = Must(BaseTmpl.Parse(newDeviceLoginMailTMPL))
 )
 
@@ -328,7 +328,7 @@ const (
 		{{if not .Msg}}
 		<h1>Password Reset</h1>
 		<p class="message">Enter your email to reset your password.</p>
-		<form method="POST" action="/password-reset-email">
+		<form method="POST" action="/generate-password-reset-link">
 			<div class="form-group">
 				<label for="email">Email</label>
 				<input type="email" Id="email" name="email" required autocomplete="email">
@@ -347,8 +347,8 @@ const (
 </html>
 {{ end }}
 `
-	SetPasswordTMPL = `
-{{ define "SetPassword" }}
+	SetFirstTimePasswordTMPL = `
+{{ define "SetFirstTimePassword" }}
 <!DOCTYPE html>
 <html lang="ru">
 <head>

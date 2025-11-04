@@ -2,32 +2,19 @@ package consts
 
 const (
 	SignUpURL              = "/sign-up"
-	ValIdateSignUpInputURL = "/valIdate-sign-up-input"
 	CodeSendURL            = "/code-send"
-	SetUserInDbURL         = "/set-user-in-db"
 
 	SignInURL              = "/sign-in"
-	ValIdateSignInInputURL = "/valIdate-sign-in-input"
 
-	YandexCallbackURL     = "/ya_callback"
-	YandexCallbackFullURL = "http://localhost:8080/ya_callback"
 
-	PasswordResetURL      = "/password-reset"
-	ResetPasswordFromDbURL = "/password-reset-email"
-	SetNewPasswordURL     = "/set-new-password"
-	SetPasswordURL        = "/set-password"
-	SubmitPasswordURL     = "/submit-password"
+	PasswordResetURL             = "/password-reset"
 
 	HomeURL         = "/home"
-	LogoutURL       = "/logout"
-	SimpleLogoutURL = "/simple-logout"
 	Err500URL       = "/500"
 )
 
 const (
-	TemporaryUserIdExp     = 30 * 24 * 60 * 60
 	RefreshTokenExp7Days   = 7 * 24 * 60 * 60
-	RefreshTokenExp24Hours = 24 * 60 * 60
 )
 
 const (
@@ -46,6 +33,7 @@ const (
 	YauthInsertQuery        = "insert into user (login,email, temporaryUserId, permanentUserId, temporaryUserIdCancelled) values(?,?,?,?,?)"
 	ResetTokenInsertQuery   = "insert into reset_token  (token, cancelled) values (?, ?)"
 	PasswordSetQuery        = `select login, email, permanentUserId from user where temporaryUserId = ? AND passwordHash IS NULL`
+	PasswordSelectQuery     = "select passwordHash from user where temporaryUserId = ?"
 
 	TemporaryIdUpdateQuery           = "update user set temporaryUserId = ?, temporaryUserIdCancelled = ? where login = ?"
 	TemporaryIdUpdateByEmailQuery    = "update user set temporaryUserId = ?, temporaryUserIdCancelled = ? where email = ?"

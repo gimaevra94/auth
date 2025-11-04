@@ -4,10 +4,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/gimaevra94/auth/app/consts"
 	"github.com/golang-jwt/jwt"
 	"github.com/pkg/errors"
 )
+
+const RefreshTokenExp24Hours = 24 * 60 * 60
 
 type ResetClaims struct {
 	jwt.StandardClaims
@@ -16,7 +17,7 @@ type ResetClaims struct {
 
 func GenerateRefreshToken(refreshTokenExp int, rememberMe bool) (string, error) {
 	if !rememberMe {
-		refreshTokenExp = consts.RefreshTokenExp24Hours
+		refreshTokenExp = RefreshTokenExp24Hours
 	}
 
 	expiresAt := time.Duration(refreshTokenExp) * time.Second
@@ -61,7 +62,7 @@ func ValIdateResetToken(signedToken string) (*ResetClaims, error) {
 	claims := &ResetClaims{}
 
 	tok, err := jwt.ParseWithClaims(signedToken, claims, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.Signin2gMethodHMAC); !ok {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return []byte(os.Getenv("JWT_SECRET")), nil

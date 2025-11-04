@@ -12,7 +12,7 @@ CREATE TABLE refresh_token (
     refreshToken VARCHAR(255) PRIMARY KEY,
     permanentUserId VARCHAR(255) NOT NULL,
     deviceInfo VARCHAR(255) NOT NULL DEFAULT '',
-    refreshrefreshTokenCancelled BOOLEAN NOT NULL DEFAULT FALSE,
+    refreshTokenCancelled BOOLEAN NOT NULL DEFAULT FALSE,
     FOREIGN KEY (permanentUserId) REFERENCES user(permanentUserId)
 );
 

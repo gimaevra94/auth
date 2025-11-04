@@ -13,7 +13,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func ResetPasswordFromDb(w http.ResponseWriter, r *http.Request) {
+func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
 	userEmail := r.FormValue("email")
 	if err := tools.EmailValIdate(userEmail); err != nil {
 		if err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", structs.MessagesForUser{Msg: tools.MessagesForUser["invalidEmail"].Msg, Regs: nil}); err != nil {
@@ -22,7 +22,7 @@ func ResetPasswordFromDb(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := data.GetPermanentUserIdFromDb(userEmail); err != nil {
+	if _, err := data.GetPermanentUserIdFromDb(userEmail); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", structs.MessagesForUser{Msg: tools.MessagesForUser["userNotExist"].Msg, Regs: nil}); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
@@ -105,7 +105,7 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cancelled, err := data.GetCancelledFlagForResetToken(resetToken)
+	cancelled, err := data.GetResetTokenCancelledFlagFromDb(resetToken)
 	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
@@ -134,10 +134,8 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Получаем permanentUserId по email (нужен для записи refresh токена)
-	var permanentUserId string
-	row := data.DB.QueryRow(consts.PasswordResetEmailSelectQuery, claims.Email)
-	if err := row.Scan(&permanentUserId); err != nil {
+	permanentUserId, err := data.GetPermanentUserIdFromDb(claims.Email)
+	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -147,29 +145,27 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
+
 	defer func() {
 		if err := recover(); err != nil {
 			tx.Rollback()
 			panic(err)
 		}
 	}()
-	defer tx.Rollback()
 
-	// 1) Обновляем пароль
-	if err := data.UpdatePasswordTx(tx, claims.Email, newPassword); err != nil {
+	if err := data.SetPasswordInDbByEmailTx(tx, claims.Email, newPassword); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
-	// 2) Аннулируем reset token
-	if err := data.ResetTokenCancelTx(tx, resetToken); err != nil {
+	if err := data.SetResetTokenCancelledFlagFromDbTx(tx, resetToken); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
-	// 3) Создаём auth-сессию как при входе
 	temporaryUserId := uuid.New().String()
-	if err := data.TemporaryUserIdAddByEmailTx(tx, claims.Email, temporaryUserId, false); err != nil {
+	temporaryUserIdCancelled := false
+	if err := data.SetTemporaryUserIdInDbByEmailTx(tx, claims.Email, temporaryUserId, temporaryUserIdCancelled); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -181,7 +177,8 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := data.RefreshTokenAddTx(tx, permanentUserId, refreshToken, r.UserAgent(), false); err != nil {
+	refreshTokenCancelled := false
+	if err := data.SetRefreshTokenInDbTx(tx, permanentUserId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -191,78 +188,53 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Ставим куку и ведём в личный кабинет
 	data.SetTemporaryUserIdInCookies(w, temporaryUserId)
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }
 
-func SubmitPassword(w http.ResponseWriter, r *http.Request) {
-	// 1. Получаем temporaryUserId из куки
-	Cookies, err := data.GetTemporaryUserIdFromCookies(r)
+func SetFirstTimePassword(w http.ResponseWriter, r *http.Request) {
+	cookies, err := data.GetTemporaryUserIdFromCookies(r)
 	if err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.SignInURL)
+		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
-	temporaryUserId := Cookies.Value
 
-	// 2. Получаем данные пользователя (проверяем, что пароль ещё не задан)
-	row := data.DB.QueryRow(consts.PasswordSetQuery, temporaryUserId)
-	var login, email, permanentUserId string
-	if err := row.Scan(&login, &email, &permanentUserId); err != nil {
+	temporaryUserId := cookies.Value
+	passwordHash, err := data.GetPasswordFromDb(temporaryUserId)
+	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			tools.LogAndRedirectIfErrNotNill(w, r, errors.New("user not found or password already set"), consts.SignInURL)
+			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
-	// 3. Получаем данные формы
+	if passwordHash != "" {
+		err := errors.New("password already set")
+		wrappedErr := errors.WithStack(err)
+		tools.LogAndRedirectIfErrNotNill(w, r, wrappedErr, consts.Err500URL)
+		return
+	}
+
 	password := r.FormValue("password")
 	confirmPassword := r.FormValue("confirmPassword")
 
-	// 4. Проверка совпадения
 	if password != confirmPassword {
-		http.Redirect(w, r, consts.SetPasswordURL+"?msg=Passwords+do+not+match", http.StatusFound)
+		tools.TmplsRenderer(w, tools.BaseTmpl, "SetFirstTimePassword", structs.MessagesForUser{Msg: tools.MessagesForUser["passwordsDoNotMatch"].Msg, Regs: nil})
 		return
 	}
 
-	// 5. Валидация пароля
 	if err := tools.PasswordValIdate(password); err != nil {
+		tools.TmplsRenderer(w, tools.BaseTmpl, "SetFirstTimePassword", structs.MessagesForUser{Msg: tools.MessagesForUser["invalidPassword"].Msg, Regs: nil})
+		return
+	}
+
+	if err := data.SetPasswordInDbByTemporaryUserId(temporaryUserId, password); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
-	// 6. Начинаем транзакцию и обновляем пароль
-	tx, err := data.DB.Begin()
-	if err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-	defer tx.Rollback()
-
-	if err := data.UpdatePasswordByPermanentIdTx(tx, permanentUserId, password); err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
-	if err := tx.Commit(); err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
-	// Обновляем маркер входа: после установки пароля считаем, что вход больше не только через Яндекс
-	data.SetTemporaryUserIdInCookies(w, temporaryUserId)
-	http.SetCookies(w, &http.Cookies{
-		Name:     "yauth",
-		Value:    "0",
-		Path:     "/",
-		HttpOnly: false,
-		Secure:   false,
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   consts.TemporaryUserIdExp,
-	})
-
-	successMessage := "Password has been set successfully." // Сообщение на английском
+	successMessage := "Password has been set successfully."
 	http.Redirect(w, r, consts.HomeURL+"?msg="+url.QueryEscape(successMessage), http.StatusFound)
 }

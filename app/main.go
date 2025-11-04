@@ -14,6 +14,18 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	ValIdateSignUpInputURL = "/valIdate-sign-up-input"
+	SetUserInDbURL         = "/set-user-in-db"
+	ValIdateSignInInputURL = "/valIdate-sign-in-input"
+	GeneratePasswordResetLinkURL = "/generate-password-reset-link"
+	YandexCallbackURL = "/ya_callback"
+	SetNewPasswordURL = "/set-new-password"
+	SetFirstTimePasswordURL = "/set-first-time-password"
+	LogoutURL = "/logout"
+	SimpleLogoutURL = "/simple-logout"
+)
+
 func main() {
 	initEnv()
 	initDB()
@@ -68,28 +80,27 @@ func initRouter() *chi.Mux {
 	})
 
 	r.With(auth.AuthGuardForSignInPath).Get(consts.SignUpURL, tmpls.SignUp)
-	r.Post(consts.ValIdateSignUpInputURL, auth.ValIdateSignUpInput)
+	r.Post(ValIdateSignUpInputURL, auth.ValIdateSignUpInput)
 	r.With(auth.AuthGuardForSignUpPath).Get(consts.CodeSendURL, tmpls.CodeSend)
-	r.Post(consts.SetUserInDbURL, auth.SetUserInDb)
+	r.Post(SetUserInDbURL, auth.SetUserInDb)
 
 	r.With(auth.AuthGuardForSignInPath).Get(consts.SignInURL, tmpls.SignIn)
-	r.Post(consts.ValIdateSignInInputURL, auth.ValIdateSignInInput)
+	r.Post(ValIdateSignInInputURL, auth.ValIdateSignInInput)
 
 	r.Get("/yauth", auth.YandexAuthHandler)
-	r.Get(consts.YandexCallbackURL, auth.YandexCallbackHandler)
+	r.Get(YandexCallbackURL, auth.YandexCallbackHandler)
 
 	r.Get(consts.PasswordResetURL, tmpls.PasswordReset)
-	r.Post(consts.ResetPasswordFromDbURL, auth.ResetPasswordFromDb)
-	r.With(auth.ResetTokenGuard).Get(consts.SetNewPasswordURL, tmpls.SetNewPassword)
-	r.Post(consts.SetNewPasswordURL, auth.SetNewPassword)
-	r.Post(consts.SubmitPasswordURL, auth.SubmitPassword)
-
-	r.With(auth.AuthGuardForHomePath).Get(consts.SetPasswordURL, tmpls.SetPassword)
+	r.Post(GeneratePasswordResetLinkURL, auth.GeneratePasswordResetLink)
+	r.With(auth.ResetTokenGuard).Get(SetNewPasswordURL, tmpls.SetNewPassword)
+	r.Post(SetNewPasswordURL, auth.SetNewPassword)
+	r.With(auth.AuthGuardForHomePath).Get(SetFirstTimePasswordURL, tmpls.SetFirstTimePassword)
+	r.Post(SetFirstTimePasswordURL, auth.SetFirstTimePassword)
 
 	r.With(auth.AuthGuardForHomePath).Get(consts.HomeURL, tmpls.Home)
 
-	r.With(auth.AuthGuardForHomePath).Get(consts.LogoutURL, auth.Logout)
-	r.With(auth.AuthGuardForHomePath).Get(consts.SimpleLogoutURL, auth.SimpleLogout)
+	r.With(auth.AuthGuardForHomePath).Get(LogoutURL, auth.Logout)
+	r.With(auth.AuthGuardForHomePath).Get(SimpleLogoutURL, auth.SimpleLogout)
 
 	r.Get("/clear", data.ClearCookiesDev)
 

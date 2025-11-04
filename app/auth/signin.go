@@ -55,7 +55,7 @@ func ValIdateSignInInput(w http.ResponseWriter, r *http.Request) {
 	if ShowCaptcha {
 		if err := tools.ShowCaptcha(r); err != nil {
 			if strings.Contains(err.Error(), "captchaToken not exist") {
-				if err := tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", structs.SignInPageData{Msg: tools.ErrMsg["captchaRequired"].Msg, ShowCaptcha: ShowCaptcha, Regs: nil}); err != nil {
+				if err := tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", structs.SignInPageData{Msg: tools.MessagesForUser["captchaRequired"].Msg, ShowCaptcha: ShowCaptcha, Regs: nil}); err != nil {
 					tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 					return
 				}
@@ -103,7 +103,7 @@ func CheckSignInUserInDb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	permanentUserId, err := data.SignInUserGetFromDb(user.Login, user.Password)
+	permanentUserId, err := data.GetSignInUserFromDb(user.Login, user.Password)
 	if err != nil {
 		if strings.Contains(err.Error(), "password not found") || errors.Is(err, sql.ErrNoRows) || errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
 			if err := tools.UpdateAndRenderCaptchaState(w, r, captchaCounter, ShowCaptcha); err != nil {
@@ -159,13 +159,13 @@ func CheckSignInUserInDb(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	temporaryUserIdCancelled := false
-	if err = data.SetTemporaryUserIdInDbTx(tx, user.Login, temporaryUserId, temporaryUserIdCancelled); err != nil {
+	if err = data.SetTemporaryUserIdInDbByEmailTx(tx, user.Login, temporaryUserId, temporaryUserIdCancelled); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
 	refreshTokenCancelled := false
-	if err = data.SetRefreshTokenTx(tx, permanentUserId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
+	if err = data.SetRefreshTokenInDbTx(tx, permanentUserId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
