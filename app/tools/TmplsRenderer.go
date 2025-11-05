@@ -12,18 +12,18 @@ func Must(t *template.Template, err error) *template.Template {
 }
 
 var (
-	BaseTmpl = Must(template.New("base").Parse(BaseTMPL))
-	_        = Must(BaseTmpl.Parse(SignUpTMPL))
-	_        = Must(BaseTmpl.Parse(SignInTMPL))
-	_        = Must(BaseTmpl.Parse(HomeTMPL))
-	_        = Must(BaseTmpl.Parse(CodeSendTMPL))
-	_        = Must(BaseTmpl.Parse(mailCodeTMPL))
-	_        = Must(BaseTmpl.Parse(suspiciousLoginMailTMPL))
-	_        = Must(BaseTmpl.Parse(PasswordResetTMPL))
-	_        = Must(BaseTmpl.Parse(PasswordResetEmailTMPL))
-	_        = Must(BaseTmpl.Parse(SetNewPasswordTMPL))
-	_        = Must(BaseTmpl.Parse(SetFirstTimePasswordTMPL))
-	_        = Must(BaseTmpl.Parse(newDeviceLoginMailTMPL))
+	BaseTmpl = Must(template.New("base").Parse(baseTMPL))
+	_        = Must(BaseTmpl.Parse(signUpTMPL))
+	_        = Must(BaseTmpl.Parse(signInTMPL))
+	_        = Must(BaseTmpl.Parse(homeTMPL))
+	_        = Must(BaseTmpl.Parse(serverAuthCodeSendTMPL))
+	_        = Must(BaseTmpl.Parse(emailMessageWithServerAuthCodeTMPL))
+	_        = Must(BaseTmpl.Parse(emailMessageAboutSuspiciousLoginEmailTMPL))
+	_        = Must(BaseTmpl.Parse(generatePasswordResetLinkTMPL))
+	_        = Must(BaseTmpl.Parse(emailMessageWithPasswordResetLinkTMPL))
+	_        = Must(BaseTmpl.Parse(setNewPasswordTMPL))
+	_        = Must(BaseTmpl.Parse(setFirstTimePasswordTMPL))
+	_        = Must(BaseTmpl.Parse(emailMessageAboutNewDeviceLoginEmailTMPL))
 )
 
 func TmplsRenderer(w http.ResponseWriter, tmpl *template.Template, templateName string, data interface{}) error {
@@ -34,7 +34,7 @@ func TmplsRenderer(w http.ResponseWriter, tmpl *template.Template, templateName 
 }
 
 const (
-	BaseTMPL = `
+	baseTMPL = `
 {{ define "base" }}
 <!DOCTYPE html>
 <html lang="ru">
@@ -54,8 +54,8 @@ const (
 </html>
 {{ end }}
 `
-	SignUpTMPL = `
-{{ define "SignUp" }}
+	signUpTMPL = `
+{{ define "signUp" }}
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -118,8 +118,8 @@ const (
 </html>
 {{ end }}
 `
-	CodeSendTMPL = `
-{{ define "CodeSend" }}
+	serverAuthCodeSendTMPL = `
+{{ define "serverAuthCodeSend" }}
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -152,8 +152,8 @@ const (
 </html>
 {{ end }}
 `
-	SignInTMPL = `
-{{ define "SignIn" }}
+	signInTMPL = `
+{{ define "signIn" }}
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -231,8 +231,8 @@ const (
 </html>
 {{ end }}
 `
-	HomeTMPL = `
-{{ define "Home" }}
+	homeTMPL = `
+{{ define "home" }}
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -266,8 +266,8 @@ const (
 </html>
 {{ end }}
 `
-	PasswordResetTMPL = `
-{{ define "PasswordReset" }}
+	generatePasswordResetLinkTMPL = `
+{{ define "generatePasswordResetLink" }}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -299,8 +299,8 @@ const (
 </html>
 {{ end }}
 `
-	SetFirstTimePasswordTMPL = `
-{{ define "SetFirstTimePassword" }}
+	setFirstTimePasswordTMPL = `
+{{ define "setFirstTimePassword" }}
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -337,8 +337,8 @@ const (
 </html>
 {{ end }}
 `
-	mailCodeTMPL = `
-{{ define "mailCode" }}
+	emailMessageWithServerAuthCodeTMPL = `
+{{ define "emailMessageWithServerAuthCode" }}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -409,8 +409,8 @@ const (
 </html>
 {{ end }}
 `
-	suspiciousLoginMailTMPL = `
-{{ define "suspiciousLoginMail" }}
+	emailMessageAboutSuspiciousLoginEmailTMPL = `
+{{ define "emailMessageAboutSuspiciousLoginEmail" }}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -471,8 +471,8 @@ const (
 </html>
 {{ end }}
 `
-	PasswordResetEmailTMPL = `
-{{ define "PasswordResetEmail" }}
+	emailMessageWithPasswordResetLinkTMPL = `
+{{ define "emailMessageWithPasswordResetLink" }}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -549,8 +549,8 @@ const (
 </html>
 {{ end }}
 `
-	SetNewPasswordTMPL = `
-{{ define "SetNewPassword" }}
+	setNewPasswordTMPL = `
+{{ define "setNewPassword" }}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -584,8 +584,8 @@ const (
 </html>
 {{ end }}
 `
-	newDeviceLoginMailTMPL = `
-{{ define "newDeviceLoginMail" }}
+	emailMessageAboutNewDeviceLoginEmailTMPL = `
+{{ define "emailMessageAboutNewDeviceLoginEmail" }}
 <!DOCTYPE html>
 <html lang="en">
 <head>

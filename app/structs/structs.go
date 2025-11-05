@@ -1,5 +1,7 @@
 package structs
 
+import "github.com/golang-jwt/jwt"
+
 type User struct {
 	UserId          string `sql:"userId"`
 	Login           string `sql:"login" json:"login"`
@@ -27,4 +29,9 @@ type SignInPageData struct {
 	ShowCaptcha        bool
 	Regs               []string
 	NoPassword         bool
+}
+
+type PasswordResetTokenClaims struct {
+	jwt.StandardClaims
+	UserEmail string `json:"userEmail"`
 }

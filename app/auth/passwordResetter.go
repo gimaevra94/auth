@@ -17,7 +17,7 @@ import (
 func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
 	userEmail := r.FormValue("email")
 	if err := tools.EmailValIdate(userEmail); err != nil {
-		data:=structs.MessagesForUser{Msg: consts.MessagesForUser["invalidEmail"].Msg, Regs: nil}
+		data := structs.MessagesForUser{Msg: consts.MessagesForUser["invalidEmail"].Msg, Regs: nil}
 		if err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", data); err != nil {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
@@ -26,7 +26,7 @@ func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
 
 	if _, err := data.GetPermanentUserIdFromDb(userEmail); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			data:=structs.MessagesForUser{Msg: consts.MessagesForUser["userNotExist"].Msg, Regs: nil}
+			data := structs.MessagesForUser{Msg: consts.MessagesForUser["userNotExist"].Msg, Regs: nil}
 			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", data); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
@@ -77,7 +77,7 @@ func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := tools.SendPasswordResetEmail(userEmail, passwordResetLink); err != nil {
-		data:=structs.MessagesForUser{Msg: consts.MessagesForUser["failedMailSendingStatus"].Msg, Regs: nil}
+		data := structs.MessagesForUser{Msg: consts.MessagesForUser["failedMailSendingStatus"].Msg, Regs: nil}
 		if err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", data); err != nil {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
@@ -86,7 +86,7 @@ func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodPost {
-		data:=structs.MessagesForUser{Msg: consts.MessagesForUser["successfulMailSendingStatus"].Msg, Regs: nil}
+		data := structs.MessagesForUser{Msg: consts.MessagesForUser["successfulMailSendingStatus"].Msg, Regs: nil}
 		if err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", data); err != nil {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
@@ -127,7 +127,7 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 	confirmPassword := r.FormValue("confirmPassword")
 
 	if newPassword != confirmPassword {
-		data:=structs.MessagesForUser{Msg: consts.MessagesForUser["passwordsDoNotMatch"].Msg, Regs: nil}
+		data := structs.MessagesForUser{Msg: consts.MessagesForUser["passwordsDoNotMatch"].Msg, Regs: nil}
 		if err := tools.TmplsRenderer(w, tools.BaseTmpl, "SetNewPassword", data); err != nil {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
@@ -136,7 +136,7 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := tools.PasswordValIdate(newPassword); err != nil {
-		data:=structs.MessagesForUser{Msg: consts.MessagesForUser["invalidPassword"].Msg, Regs: nil}
+		data := structs.MessagesForUser{Msg: consts.MessagesForUser["invalidPassword"].Msg, Regs: nil}
 		if err := tools.TmplsRenderer(w, tools.BaseTmpl, "SetNewPassword", data); err != nil {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
@@ -181,7 +181,7 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rememberMe := false
-	refreshToken, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe)
+	refreshToken, err := tools.GenerateUserRefreshToken(consts.RefreshTokenExp7Days, rememberMe)
 	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
@@ -231,8 +231,8 @@ func SetFirstTimePassword(w http.ResponseWriter, r *http.Request) {
 	confirmPassword := r.FormValue("confirmPassword")
 
 	if password != confirmPassword {
-		data:=structs.MessagesForUser{Msg: consts.MessagesForUser["passwordsDoNotMatch"].Msg, 
-		Regs: nil}
+		data := structs.MessagesForUser{Msg: consts.MessagesForUser["passwordsDoNotMatch"].Msg,
+			Regs: nil}
 		if err := tools.TmplsRenderer(w, tools.BaseTmpl, "SetFirstTimePassword", data); err != nil {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
@@ -241,8 +241,8 @@ func SetFirstTimePassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := tools.PasswordValIdate(password); err != nil {
-		data:=structs.MessagesForUser{Msg: consts.MessagesForUser["invalidPassword"].Msg, 
-		Regs: nil}
+		data := structs.MessagesForUser{Msg: consts.MessagesForUser["invalidPassword"].Msg,
+			Regs: nil}
 		if err := tools.TmplsRenderer(w, tools.BaseTmpl, "SetFirstTimePassword", data); err != nil {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return

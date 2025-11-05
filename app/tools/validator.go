@@ -5,6 +5,8 @@ import (
 	"os"
 	"regexp"
 
+	"github.com/gimaevra94/auth/app/structs"
+
 	"github.com/golang-jwt/jwt"
 	"github.com/pkg/errors"
 )
@@ -84,4 +86,25 @@ func PasswordValIdate(password string) error {
 		return errors.WithStack(err)
 	}
 	return nil
+}
+
+func ValIdateResetToken(signedToken string) (*structs.ResetClaims, error) {
+	claims := &structs.ResetClaims{}
+
+	tok, err := jwt.ParseWithClaims(signedToken, claims, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(os.Getenv("JWT_SECRET")), nil
+	})
+
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	if !tok.Valid {
+		return nil, errors.New("token invalId")
+	}
+
+	return claims, nil
 }
