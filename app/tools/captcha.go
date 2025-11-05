@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/structs"
 	"github.com/pkg/errors"
@@ -62,7 +63,8 @@ func UpdateAndRenderCaptchaState(w http.ResponseWriter, r *http.Request, captcha
 		return errors.WithStack(err)
 	}
 
-	if err := TmplsRenderer(w, BaseTmpl, "SignUp", structs.SignUpPageData{Msg: ErrMsg["alreadyExist"].Msg, ShowCaptcha: ShowCaptcha}); err != nil {
+	data := structs.SignUpPageData{Msg: consts.MessagesForUser["captchaRequired"].Msg, ShowCaptcha: ShowCaptcha, Regs: nil}
+	if err := TmplsRenderer(w, BaseTmpl, "SignUp", data); err != nil {
 		return errors.WithStack(err)
 	}
 

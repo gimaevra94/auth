@@ -14,15 +14,16 @@ const (
 	UserPasswordSelectQuery                                   = "select passwordHash from user where temporaryUserId = ?"
 	AllUsersKeysSelectQuery                                   = "select login, email, permanentUserId, temporaryUserIdCancelled from user where temporaryUserId = ? limit 1"
 	PasswordHashAndPermanentUserIdSelectQuery                 = "select passwordHash, permanentUserId from user where login = ? limit 1"
+	PasswordHashSelectQuery                                   = "select passwordHash from user where login = ? limit 1"
 	PermanentUserIdAndTemporaryUserIdCancelledFlagSelectQuery = "select permanentUserId, temporaryUserIdCancelled from user where temporaryUserId = ? limit 1"
 	UniqueUserAgentsSelectQuery                               = "select distinct userAgent FROM refresh_token WHERE permanentUserId = ?"
 	AllRefreshTokenKeysSelectQuery                            = "select refreshToken, userAgent, refreshTokenCancelled from refresh_token where permanentUserId = ? and userAgent = ? AND refreshTokenCancelled = FALSE limit 1"
 	ResetTokenCancelledFlagSelectQuery                        = "select cancelled from reset_token where token = ?"
 
-	UserInsertQuery                            = "insert into user (login, email, passwordHash, temporaryUserId, permanentUserId, temporaryUserIdCancelled) values (?, ?, ?, ?, ?, ?)"
-	YauthUserInsertQuery                       = "insert into user (login, email, temporaryUserId, permanentUserId, temporaryUserIdCancelled) values (?, ?, ?, ?, ?)"
-	UserRefreshTokenInsertQuery                = "insert into refresh_token (permanentUserId, refreshToken, userAgent, refreshTokenCancelled) values (?, ?, ?, ?)"
-	PasswordResetTokenInsertQuery              = "insert into reset_token (token, cancelled) values (?, ?)"
+	UserInsertQuery               = "insert into user (login, email, passwordHash, temporaryUserId, permanentUserId, temporaryUserIdCancelled) values (?, ?, ?, ?, ?, ?)"
+	YauthUserInsertQuery          = "insert into user (login, email, temporaryUserId, permanentUserId, temporaryUserIdCancelled) values (?, ?, ?, ?, ?)"
+	UserRefreshTokenInsertQuery   = "insert into refresh_token (permanentUserId, refreshToken, userAgent, refreshTokenCancelled) values (?, ?, ?, ?)"
+	PasswordResetTokenInsertQuery = "insert into reset_token (token, cancelled) values (?, ?)"
 
 	UserPasswordInDbByEmailUpdateQuery         = "update user set passwordHash = ? where email = ?"
 	UserPasswordInDbByPermanentIdUpdateQuery   = "update user set passwordHash = ? where temporaryUserId = ?"
@@ -100,6 +101,19 @@ func GetAllUsersKeysFromDb(temporaryUserId string) (string, string, string, bool
 		return "", "", "", false, errors.WithStack(err)
 	}
 	return login, email, permanentUserId, temporaryUserIdCancelled, nil
+}
+
+func GetPasswordHashFromDb(temporaryUserId string) (sql.NullString, error) {
+	var passwordHash sql.NullString
+	row := Db.QueryRow(PasswordHashSelectQuery, temporaryUserId)
+	err := row.Scan(&passwordHash)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return sql.NullString{}, errors.WithStack(err)
+		}
+		return sql.NullString{}, errors.WithStack(err)
+	}
+	return passwordHash, nil
 }
 
 func GetPasswordHashAndPermanentUserIdFromDb(userLogin, userPassword string) (sql.NullString, string, error) {

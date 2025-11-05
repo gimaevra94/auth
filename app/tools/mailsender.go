@@ -13,88 +13,85 @@ import (
 )
 
 var (
-	senderEmail            string
+	serverEmail            = os.Getenv("SERVER_EMAIL")
 	authCodeSubject        = "Auth code"
 	suspiciousLoginSubject = "Suspicious login alert!"
 	newDeviceLoginSubject  = "New device login"
 	passwordResetSubject   = "Password reset request"
 )
 
-func codeGenerate() string {
-	random := rand.New(rand.NewSource(time.Now().UnixNano()))
-	msCodeItn := random.Intn(9000) + 1000
-	msCode := strconv.Itoa(msCodeItn)
-	return msCode
+func serverAuthCodeGenerate() string {
+	randomState := rand.New(rand.NewSource(time.Now().UnixNano()))
+	AuthServerCodeItn := randomState.Intn(9000) + 1000
+	AuthServerCode := strconv.Itoa(AuthServerCodeItn)
+	return AuthServerCode
 }
 
-func SendNewDeviceLoginEmail(email, login, userAgent string) error {
-	senderEmail = os.Getenv("MAIL_SENDER_EMAIL")
-	auth := smtpAuth(senderEmail)
+func SendNewDeviceLoginEmail(userEmail, userLogin, userAgent string) error {
+	sMTPServerAuthSubject, sMTPServerAddr := sMTPServerAuth(serverEmail)
 	data := struct {
-		Login     string
+		userLogin string
 		userAgent string
-	}{Login: login, userAgent: userAgent}
+	}{userLogin: userLogin, userAgent: userAgent}
 
-	msg, err := executeTmpl(senderEmail, email, newDeviceLoginSubject, data)
+	msg, err := executeTmpl(serverEmail, userEmail, newDeviceLoginSubject, data)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	if err := mailSend(senderEmail, email, auth, msg); err != nil {
+	if err := mailSend(serverEmail, userEmail, sMTPServerAuthSubject, sMTPServerAddr, msg); err != nil {
 		return errors.WithStack(err)
 	}
 
 	return nil
 }
 
-func mailSend(senderEmail, email string, auth smtp.Auth, msg []byte) error {
-	from := senderEmail
-	to := []string{email}
-	addr := "smtp.yandex.ru:587"
+func sMTPServerAuth(serverEmail string) (smtp.Auth, string) {
+	serverPassword := os.Getenv("SERVER_EMAIL_PASSWORD")
+	sMTPServerAddr := "smtp.yandex.ru"
+	sMTPServerAuthSubject := smtp.PlainAuth("", serverEmail, serverPassword, sMTPServerAddr)
+	return sMTPServerAuthSubject, sMTPServerAddr
+}
 
-	if err := smtp.SendMail(addr, auth, from, to, msg); err != nil {
+func mailSend(serverEmail, userEmail string, sMTPServerAuthSubject smtp.Auth, sMTPServerAddr string, msg []byte) error {
+	from := serverEmail
+	to := []string{userEmail}
+	addr := sMTPServerAddr
+	if err := smtp.SendMail(addr, sMTPServerAuthSubject, from, to, msg); err != nil {
 		return errors.WithStack(err)
 	}
-
 	return nil
 }
 
-func smtpAuth(senderEmail string) smtp.Auth {
-	senderPassword := os.Getenv("MAIL_PASSWORD")
-	host := "smtp.yandex.ru"
-	auth := smtp.PlainAuth("", senderEmail, senderPassword, host)
-	return auth
-}
-
-func executeTmpl(senderEmail, email, subject string, data any) ([]byte, error) {
+func executeTmpl(serverEmail, userEmail, emailSubject string, data any) ([]byte, error) {
 	var body bytes.Buffer
 
-	switch subject {
+	switch emailSubject {
 	case authCodeSubject:
-		if err := BaseTmpl.ExecuteTemplate(&body, "mailCode", data); err != nil {
+		if err := BaseTmpl.ExecuteTemplate(&body, "authCodeEmail", data); err != nil {
 			return []byte{}, errors.WithStack(err)
 		}
 
 	case suspiciousLoginSubject:
-		if err := BaseTmpl.ExecuteTemplate(&body, "suspiciousLoginMail", data); err != nil {
+		if err := BaseTmpl.ExecuteTemplate(&body, "suspiciousLoginEmail", data); err != nil {
 			return []byte{}, errors.WithStack(err)
 		}
 
 	case newDeviceLoginSubject:
-		if err := BaseTmpl.ExecuteTemplate(&body, "newDeviceLoginMail", data); err != nil {
+		if err := BaseTmpl.ExecuteTemplate(&body, "newDeviceLoginEmail", data); err != nil {
 			return []byte{}, errors.WithStack(err)
 		}
 
 	case passwordResetSubject:
-		if err := BaseTmpl.ExecuteTemplate(&body, "PasswordResetEmail", data); err != nil {
+		if err := BaseTmpl.ExecuteTemplate(&body, "passwordResetEmail", data); err != nil {
 			return []byte{}, errors.WithStack(err)
 		}
 	}
 
 	msg := []byte(
-		"From: " + senderEmail + "\r\n" +
-			"To: " + email + "\r\n" +
-			"Subject: " + subject + "\r\n" +
+		"From: " + serverEmail + "\r\n" +
+			"To: " + userEmail + "\r\n" +
+			"Subject: " + emailSubject + "\r\n" +
 			"MIME-Version: 1.0\r\n" +
 			"Content-Type: text/html; charset=\"UTF-8\"\r\n" +
 			"\r\n" +
@@ -104,55 +101,49 @@ func executeTmpl(senderEmail, email, subject string, data any) ([]byte, error) {
 	return msg, nil
 }
 
-func AuthCodeSend(email string) (string, error) {
-	senderEmail = os.Getenv("MAIL_SENDER_EMAIL")
-	serverCode := codeGenerate()
-	auth := smtpAuth(senderEmail)
-	data := struct{ Code string }{Code: serverCode}
+func ServerAuthCodeSend(userEmail string) (string, error) {
+	authServerCode := serverAuthCodeGenerate()
+	sMTPServerAuthSubject, sMTPServerAddr := sMTPServerAuth(serverEmail)
+	data := struct{ Code string }{Code: authServerCode}
 
-	msg, err := executeTmpl(senderEmail, email, authCodeSubject, data)
+	msg, err := executeTmpl(serverEmail, userEmail, authCodeSubject, data)
 	if err != nil {
 		return "", err
 	}
-
-	if err := mailSend(senderEmail, email, auth, msg); err != nil {
+	if err := mailSend(serverEmail, userEmail, sMTPServerAuthSubject, sMTPServerAddr, msg); err != nil {
 		return "", err
 	}
 
-	return serverCode, nil
+	return authServerCode, nil
 }
 
-func SendSuspiciousLoginEmail(email, login, userAgent string) error {
-	senderEmail = os.Getenv("MAIL_SENDER_EMAIL")
-	auth := smtpAuth(senderEmail)
+func SendSuspiciousLoginEmail(userEmail, userLogin, userAgent string) error {
+	sMTPServerAuthSubject, sMTPServerAddr := sMTPServerAuth(serverEmail)
 	data := struct {
-		Login     string
+		userLogin string
 		userAgent string
-	}{Login: login, userAgent: userAgent}
+	}{userLogin: userLogin, userAgent: userAgent}
 
-	msg, err := executeTmpl(senderEmail, email, suspiciousLoginSubject, data)
+	msg, err := executeTmpl(serverEmail, userEmail, suspiciousLoginSubject, data)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-
-	if err := mailSend(senderEmail, email, auth, msg); err != nil {
+	if err := mailSend(serverEmail, userEmail, sMTPServerAuthSubject, sMTPServerAddr, msg); err != nil {
 		return errors.WithStack(err)
 	}
 
 	return nil
 }
 
-func SendPasswordResetEmail(email, resetLink string) error {
-	senderEmail = os.Getenv("MAIL_SENDER_EMAIL")
-	auth := smtpAuth(senderEmail)
+func SendPasswordResetEmail(userEmail, resetLink string) error {
+	sMTPServerAuthSubject, sMTPServerAddr := sMTPServerAuth(serverEmail)
 	data := struct{ ResetLink string }{ResetLink: resetLink}
 
-	msg, err := executeTmpl(senderEmail, email, passwordResetSubject, data)
+	msg, err := executeTmpl(serverEmail, userEmail, passwordResetSubject, data)
 	if err != nil {
 		return err
 	}
-
-	if err := mailSend(senderEmail, email, auth, msg); err != nil {
+	if err := mailSend(serverEmail, userEmail, sMTPServerAuthSubject, sMTPServerAddr, msg); err != nil {
 		return err
 	}
 

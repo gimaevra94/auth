@@ -58,7 +58,8 @@ func ValIdateSignUpInput(w http.ResponseWriter, r *http.Request) {
 	if ShowCaptcha {
 		if err := tools.ShowCaptcha(r); err != nil {
 			if strings.Contains(err.Error(), "captchaToken not exist") {
-				if err := tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", structs.SignUpPageData{Msg: tools.MessagesForUser["captchaRequired"].Msg, ShowCaptcha: ShowCaptcha, Regs: nil}); err != nil {
+				data := structs.SignUpPageData{Msg: consts.MessagesForUser["captchaRequired"].Msg, ShowCaptcha: ShowCaptcha, Regs: nil}
+				if err := tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", data); err != nil {
 					tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 					return
 				}
@@ -137,7 +138,7 @@ func CodeSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	serverCode, err := tools.AuthCodeSend(user.Email)
+	serverCode, err := tools.ServerAuthCodeSend(user.Email)
 	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
@@ -165,13 +166,15 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 	clientCode := r.FormValue("clientCode")
 	if err := tools.CodeValIdate(r, clientCode, user.ServerCode); err != nil {
 		if strings.Contains(err.Error(), "exist") {
-			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "CodeSend", tools.MessagesForUser["userCode"]); err != nil {
+			data := structs.MessagesForUser{Msg: consts.MessagesForUser["userCode"].Msg, Regs: nil}
+			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "CodeSend", data); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
 			return
 		} else if strings.Contains(err.Error(), "match") {
-			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "CodeSend", tools.MessagesForUser["serverCode"]); err != nil {
+			data := structs.MessagesForUser{Msg: consts.MessagesForUser["serverCode"].Msg, Regs: nil}
+			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "CodeSend", data); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
