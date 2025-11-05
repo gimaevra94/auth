@@ -10,10 +10,6 @@ import (
 	"github.com/gimaevra94/auth/app/tools"
 )
 
-const (
-	templatesPath = "../public"
-)
-
 func SignUp(w http.ResponseWriter, r *http.Request) {
 	err := tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", nil)
 	if err != nil {
@@ -122,5 +118,5 @@ func SetFirstTimePassword(w http.ResponseWriter, r *http.Request) {
 }
 
 func Err500(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, templatesPath+"/500.html")
+	http.ServeFile(w, r, "../public/500.html")
 }
