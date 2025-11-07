@@ -10,26 +10,26 @@ import (
 
 func AuthGuardForHomePath(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		Cookies, err := data.GetTemporaryUserIdFromCookies(r)
+		Cookies, err := data.GetTemporaryIdFromCookies(r)
 		if err != nil {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.SignUpURL)
 			return
 		}
-		temporaryUserId := Cookies.Value
+		temporaryId := Cookies.Value
 
-		login, email, permanentUserId, temporaryUserIdCancelled, err := data.GetAllUsersKeysFromDb(temporaryUserId)
+		login, email, permanentId, temporaryIdCancelled, err := data.GetAllUserKeysFromDb(temporaryId)
 		if err != nil {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 
-		if temporaryUserIdCancelled {
+		if temporaryIdCancelled {
 			Revocate(w, r, true, false, false)
 			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 			return
 		}
 
-		_, userAgent, refreshTokenCancelled, err := data.GetAllRefreshTokenKeysFromDb(permanentUserId, r.UserAgent())
+		_, userAgent, refreshTokenCancelled, err := data.GetAllRefreshTokenKeysFromDb(permanentId, r.UserAgent())
 		if err != nil {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
@@ -63,20 +63,20 @@ func AuthGuardForHomePath(next http.Handler) http.Handler {
 
 func AuthGuardForSignInPath(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		Cookies, err := data.GetTemporaryUserIdFromCookies(r)
+		Cookies, err := data.GetTemporaryIdFromCookies(r)
 		if err != nil {
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		temporaryUserId := Cookies.Value
-		permanentUserId, temporaryUserIdCancelled, err := data.GetPermanentUserIdAndTemporaryUserIdCancelledFlagFromDb(temporaryUserId)
-		if err != nil || temporaryUserIdCancelled {
+		temporaryId := Cookies.Value
+		permanentId, temporaryIdCancelled, err := data.GetpermanentIdAndTemporaryIdCancelledFromDb(temporaryId)
+		if err != nil || temporaryIdCancelled {
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		_, _, refreshTokenCancelled, err := data.GetAllRefreshTokenKeysFromDb(permanentUserId, r.UserAgent())
+		_, _, refreshTokenCancelled, err := data.GetAllRefreshTokenKeysFromDb(permanentId, r.UserAgent())
 		if err != nil || refreshTokenCancelled {
 			next.ServeHTTP(w, r)
 			return
@@ -111,12 +111,12 @@ func ResetTokenGuard(next http.Handler) http.Handler {
 			return
 		}
 
-		if _, err := tools.ValIdateResetToken(token); err != nil {
+		if _, err := tools.ResetTokenValidate(token); err != nil {
 			http.Redirect(w, r, consts.PasswordResetURL, http.StatusFound)
 			return
 		}
 
-		if cancelled, err := data.GetResetTokenCancelledFlagFromDb(token); err != nil || cancelled {
+		if cancelled, err := data.GetResetTokenCancelledFromDb(token); err != nil || cancelled {
 			http.Redirect(w, r, consts.PasswordResetURL, http.StatusFound)
 			return
 		}

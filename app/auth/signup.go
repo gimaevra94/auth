@@ -15,7 +15,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func ValIdateSignUpInput(w http.ResponseWriter, r *http.Request) {
+func ValidateSignUpInput(w http.ResponseWriter, r *http.Request) {
 	var user structs.User
 	var ShowCaptcha bool
 	login := r.FormValue("login")
@@ -70,7 +70,7 @@ func ValIdateSignUpInput(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := tools.InputValIdate(r, user.Login, user.Email, user.Password, false); err != nil {
+	if err := tools.InputValidate(r, user.Login, user.Email, user.Password, false); err != nil {
 		if strings.Contains(err.Error(), "login") || strings.Contains(err.Error(), "email") || strings.Contains(err.Error(), "password") {
 			if err := tools.UpdateAndRenderCaptchaState(w, r, captchaCounter, ShowCaptcha); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
@@ -108,7 +108,7 @@ func CheckSignUpUserInDb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = data.GetPermanentUserIdFromDb(user.Email)
+	_, err = data.GetPermanentIdFromDb(user.Email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			CodeSend(w, r)
@@ -164,7 +164,7 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 	}
 
 	clientCode := r.FormValue("clientCode")
-	if err := tools.CodeValIdate(r, clientCode, user.ServerCode); err != nil {
+	if err := tools.CodeValidate(r, clientCode, user.ServerCode); err != nil {
 		if strings.Contains(err.Error(), "exist") {
 			data := structs.MessagesForUser{Msg: consts.MessagesForUser["userCode"].Msg, Regs: nil}
 			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "CodeSend", data); err != nil {
@@ -183,7 +183,7 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rememberMe := r.FormValue("rememberMe") != ""
-	refreshToken, err := tools.GenerateUserRefreshToken(consts.RefreshTokenExp7Days, rememberMe)
+	refreshToken, err := tools.GeneraterefreshToken(consts.RefreshTokenExp7Days, rememberMe)
 	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
@@ -202,10 +202,10 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	temporaryUserId := uuid.New().String()
-	data.SetTemporaryUserIdInCookies(w, temporaryUserId)
-	permanentUserId := uuid.New().String()
-	temporaryUserIdCancelled := false
+	temporaryId := uuid.New().String()
+	data.SetTemporaryIdInCookies(w, temporaryId)
+	permanentId := uuid.New().String()
+	temporaryIdCancelled := false
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password),
 		bcrypt.DefaultCost)
@@ -213,13 +213,13 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := data.SetUserInDbTx(tx, user.Login, user.Email, permanentUserId, temporaryUserId, hashedPassword, temporaryUserIdCancelled); err != nil {
+	if err := data.SetUserInDbTx(tx, user.Login, user.Email, permanentId, temporaryId, hashedPassword, temporaryIdCancelled); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
 	refreshTokenCancelled := false
-	if err = data.SetUserRefreshTokenInDbTx(tx, permanentUserId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
+	if err = data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}

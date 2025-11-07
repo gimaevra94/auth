@@ -15,9 +15,9 @@ import (
 )
 
 const (
-	ValIdateSignUpInputURL       = "/valIdate-sign-up-input"
-	SetUserInDbURL               = "/set-user-in-Db"
-	ValIdateSignInInputURL       = "/valIdate-sign-in-input"
+	ValidateSignUpInputURL       = "/Validate-sign-up-input"
+	SetUserInDbURL               = "/set-user-in-db"
+	ValidateSignInInputURL       = "/Validate-sign-in-input"
 	GeneratePasswordResetLinkURL = "/generate-password-reset-link"
 	YandexCallbackURL            = "/ya_callback"
 	SetNewPasswordURL            = "/set-new-password"
@@ -80,12 +80,12 @@ func initRouter() *chi.Mux {
 	})
 
 	r.With(auth.AuthGuardForSignInPath).Get(consts.SignUpURL, tmpls.SignUp)
-	r.Post(ValIdateSignUpInputURL, auth.ValIdateSignUpInput)
+	r.Post(ValidateSignUpInputURL, auth.ValidateSignUpInput)
 	r.With(auth.AuthGuardForSignUpPath).Get(consts.CodeSendURL, tmpls.CodeSend)
 	r.Post(SetUserInDbURL, auth.SetUserInDb)
 
 	r.With(auth.AuthGuardForSignInPath).Get(consts.SignInURL, tmpls.SignIn)
-	r.Post(ValIdateSignInInputURL, auth.ValIdateSignInInput)
+	r.Post(ValidateSignInInputURL, auth.ValidateSignInInput)
 
 	r.Get("/yauth", auth.YandexAuthHandler)
 	r.Get(YandexCallbackURL, auth.YandexCallbackHandler)

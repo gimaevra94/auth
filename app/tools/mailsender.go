@@ -27,12 +27,12 @@ func serverAuthCodeGenerate() string {
 	return AuthServerCode
 }
 
-func SendNewDeviceLoginEmail(userEmail, userLogin, userAgent string) error {
+func SendNewDeviceLoginEmail(userEmail, login, userAgent string) error {
 	sMTPServerAuthSubject, sMTPServerAddr := sMTPServerAuth(serverEmail)
 	data := struct {
-		userLogin string
+		login     string
 		userAgent string
-	}{userLogin: userLogin, userAgent: userAgent}
+	}{login: login, userAgent: userAgent}
 
 	msg, err := executeTmpl(serverEmail, userEmail, newDeviceLoginSubject, data)
 	if err != nil {
@@ -117,12 +117,12 @@ func ServerAuthCodeSend(userEmail string) (string, error) {
 	return authServerCode, nil
 }
 
-func SendSuspiciousLoginEmail(userEmail, userLogin, userAgent string) error {
+func SendSuspiciousLoginEmail(userEmail, login, userAgent string) error {
 	sMTPServerAuthSubject, sMTPServerAddr := sMTPServerAuth(serverEmail)
 	data := struct {
-		userLogin string
+		login     string
 		userAgent string
-	}{userLogin: userLogin, userAgent: userAgent}
+	}{login: login, userAgent: userAgent}
 
 	msg, err := executeTmpl(serverEmail, userEmail, suspiciousLoginSubject, data)
 	if err != nil {

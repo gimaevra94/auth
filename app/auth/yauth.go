@@ -30,8 +30,8 @@ func YandexAuthHandler(w http.ResponseWriter, r *http.Request) {
 		"redirect_uri":  {YandexCallbackFullURL},
 		"scope":         {"login:email"},
 	}
-	authURLWithParams := authURL + "?" + authParams.Encode()
-	http.Redirect(w, r, authURLWithParams, http.StatusFound)
+	authUrlWithParams := authURL + "?" + authParams.Encode()
+	http.Redirect(w, r, authUrlWithParams, http.StatusFound)
 }
 
 func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
@@ -68,14 +68,14 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	temporaryUserId := uuid.New().String()
-	permanentUserId := uuid.New().String()
-	temporaryUserIdCancelled := false
+	temporaryId := uuid.New().String()
+	permanentId := uuid.New().String()
+	temporaryIdCancelled := false
 
-	permanentId, err := data.GetPermanentUserIdFromDb(yandexUser.Email)
+	permanentId, err = data.GetPermanentIdFromDb(yandexUser.Email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			if err = data.SetYauthUserInDbTx(tx, yandexUser.Login, yandexUser.Email, temporaryUserId, permanentUserId, temporaryUserIdCancelled); err != nil {
+			if err = data.SetYauthUserInDbTx(tx, yandexUser.Login, yandexUser.Email, temporaryId, permanentId, temporaryIdCancelled); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
@@ -86,23 +86,23 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if permanentId != "" {
-		permanentUserId = permanentId
+		permanentId = permanentId
 	}
-	data.SetTemporaryUserIdInCookies(w, temporaryUserId)
+	data.SetTemporaryIdInCookies(w, temporaryId)
 
-	if err = data.SetTemporaryUserIdInDbByEmailTx(tx, yandexUser.Login, temporaryUserId, temporaryUserIdCancelled); err != nil {
+	if err = data.SetTemporaryIdInDbByEmailTx(tx, yandexUser.Login, temporaryId, temporaryIdCancelled); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
 	rememberMe := r.FormValue("rememberMe") != ""
-	refreshToken, err := tools.GenerateUserRefreshToken(consts.RefreshTokenExp7Days, rememberMe)
+	refreshToken, err := tools.GeneraterefreshToken(consts.RefreshTokenExp7Days, rememberMe)
 	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
-	uniqueUserAgents, err := data.GetUniqueUserAgentsFromDb(permanentUserId)
+	uniqueUserAgents, err := data.GetUniqueUserAgentsFromDb(permanentId)
 	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 	} else {
@@ -122,7 +122,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	refreshTokenCancelled := false
-	if err = data.SetUserRefreshTokenInDbTx(tx, permanentUserId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
+	if err = data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}

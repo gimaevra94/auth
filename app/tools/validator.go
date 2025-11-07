@@ -17,7 +17,7 @@ var (
 	passwordRegex = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ\d!@#$%^&*\-\)]{4,30}$`)
 )
 
-func InputValIdate(r *http.Request, login, email, password string, IsSignIn bool) error {
+func InputValidate(r *http.Request, login, email, password string, IsSignIn bool) error {
 	if login == "" || !loginRegex.MatchString(login) {
 		err := errors.New("login invalid")
 		return errors.WithStack(err)
@@ -38,7 +38,7 @@ func InputValIdate(r *http.Request, login, email, password string, IsSignIn bool
 	return nil
 }
 
-func RefreshTokenValIdate(refreshToken string) error {
+func RefreshTokenValidate(refreshToken string) error {
 	signedToken, err := jwt.ParseWithClaims(refreshToken, &jwt.StandardClaims{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok || t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
 			err := errors.New("unexpected signing method")
@@ -59,7 +59,7 @@ func RefreshTokenValIdate(refreshToken string) error {
 	return nil
 }
 
-func CodeValIdate(r *http.Request, clientCode, serverCode string) error {
+func CodeValidate(r *http.Request, clientCode, serverCode string) error {
 	if clientCode == "" {
 		err := errors.New("clientCode not exist")
 		return errors.WithStack(err)
@@ -72,7 +72,7 @@ func CodeValIdate(r *http.Request, clientCode, serverCode string) error {
 	return nil
 }
 
-func EmailValIdate(email string) error {
+func EmailValidate(email string) error {
 	if email == "" || !emailRegex.MatchString(email) {
 		err := errors.New("email invalid")
 		return errors.WithStack(err)
@@ -80,7 +80,7 @@ func EmailValIdate(email string) error {
 	return nil
 }
 
-func PasswordValIdate(password string) error {
+func PasswordValidate(password string) error {
 	if password == "" || !passwordRegex.MatchString(password) {
 		err := errors.New("password invalid")
 		return errors.WithStack(err)
@@ -88,8 +88,8 @@ func PasswordValIdate(password string) error {
 	return nil
 }
 
-func ValIdateResetToken(signedToken string) (*structs.ResetClaims, error) {
-	claims := &structs.ResetClaims{}
+func ResetTokenValidate(signedToken string) (*structs.PasswordResetTokenClaims, error) {
+	claims := &structs.PasswordResetTokenClaims{}
 
 	tok, err := jwt.ParseWithClaims(signedToken, claims, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {

@@ -14,7 +14,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func ValIdateSignInInput(w http.ResponseWriter, r *http.Request) {
+func ValidateSignInInput(w http.ResponseWriter, r *http.Request) {
 	var user structs.User
 	var ShowCaptcha bool
 	login := r.FormValue("login")
@@ -67,7 +67,7 @@ func ValIdateSignInInput(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := tools.InputValIdate(r, user.Login, "", user.Password, true); err != nil {
+	if err := tools.InputValidate(r, user.Login, "", user.Password, true); err != nil {
 		if strings.Contains(err.Error(), "login") || strings.Contains(err.Error(), "password") {
 			if err := tools.UpdateAndRenderCaptchaState(w, r, captchaCounter, ShowCaptcha); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
@@ -104,7 +104,7 @@ func CheckSignInUserInDb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	passwordHash, permanentUserId, err := data.GetPasswordHashAndPermanentUserIdFromDb(user.Login, user.Password)
+	passwordHash, permanentId, err := data.GetPasswordHashAndpermanentIdFromDb(user.Login, user.Password)
 	if err != nil {
 		if strings.Contains(err.Error(), "password not found") || errors.Is(err, sql.ErrNoRows) || errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
 			if err := tools.UpdateAndRenderCaptchaState(w, r, captchaCounter, ShowCaptcha); err != nil {
@@ -133,17 +133,17 @@ func CheckSignInUserInDb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	temporaryUserId := uuid.New().String()
-	data.SetTemporaryUserIdInCookies(w, temporaryUserId)
+	temporaryId := uuid.New().String()
+	data.SetTemporaryIdInCookies(w, temporaryId)
 	rememberMe := r.FormValue("rememberMe") != ""
 
-	refreshToken, err := tools.GenerateUserRefreshToken(consts.RefreshTokenExp7Days, rememberMe)
+	refreshToken, err := tools.GeneraterefreshToken(consts.RefreshTokenExp7Days, rememberMe)
 	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
-	uniqueUserAgents, err := data.GetUniqueUserAgentsFromDb(permanentUserId)
+	uniqueUserAgents, err := data.GetUniqueUserAgentsFromDb(permanentId)
 	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 	} else {
@@ -175,14 +175,14 @@ func CheckSignInUserInDb(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	temporaryUserIdCancelled := false
-	if err = data.SetTemporaryUserIdInDbByEmailTx(tx, user.Login, temporaryUserId, temporaryUserIdCancelled); err != nil {
+	temporaryIdCancelled := false
+	if err = data.SetTemporaryIdInDbByEmailTx(tx, user.Login, temporaryId, temporaryIdCancelled); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
 	refreshTokenCancelled := false
-	if err = data.SetUserRefreshTokenInDbTx(tx, permanentUserId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
+	if err = data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}

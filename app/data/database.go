@@ -10,28 +10,28 @@ import (
 )
 
 const (
-	PermanentUserIdSelectQuery                                = "select permanentUserId from user where email = ?"
-	UserPasswordSelectQuery                                   = "select passwordHash from user where temporaryUserId = ?"
-	AllUsersKeysSelectQuery                                   = "select login, email, permanentUserId, temporaryUserIdCancelled from user where temporaryUserId = ? limit 1"
-	PasswordHashAndPermanentUserIdSelectQuery                 = "select passwordHash, permanentUserId from user where login = ? limit 1"
-	PasswordHashSelectQuery                                   = "select passwordHash from user where login = ? limit 1"
-	PermanentUserIdAndTemporaryUserIdCancelledFlagSelectQuery = "select permanentUserId, temporaryUserIdCancelled from user where temporaryUserId = ? limit 1"
-	UniqueUserAgentsSelectQuery                               = "select distinct userAgent FROM refresh_token WHERE permanentUserId = ?"
-	AllRefreshTokenKeysSelectQuery                            = "select refreshToken, userAgent, refreshTokenCancelled from refresh_token where permanentUserId = ? and userAgent = ? AND refreshTokenCancelled = FALSE limit 1"
-	ResetTokenCancelledFlagSelectQuery                        = "select cancelled from reset_token where token = ?"
+	permanentIdSelectQuery                        = "select permanentId from user where email = ?"
+	passwordSelectQuery                           = "select passwordHash from user where temporaryId = ?"
+	allUserKeysSelectQuery                        = "select login, email, permanentId, temporaryIdCancelled from user where temporaryId = ? limit 1"
+	passwordHashAndPermanentIdSelectQuery         = "select passwordHash, permanentId from user where login = ? limit 1"
+	passwordHashSelectQuery                       = "select passwordHash from user where login = ? limit 1"
+	permanentIdAndTemporaryIdCancelledSelectQuery = "select permanentId, temporaryIdCancelled from user where temporaryId = ? limit 1"
+	uniqueUserAgentsSelectQuery                   = "select distinct userAgent FROM refresh_token WHERE permanentId = ?"
+	allRefreshTokenKeysSelectQuery                = "select refreshToken, userAgent, refreshTokenCancelled from refresh_token where permanentId = ? and userAgent = ? AND refreshTokenCancelled = FALSE limit 1"
+	resetTokenCancelledSelectQuery                = "select cancelled from reset_token where token = ?"
 
-	UserInsertQuery               = "insert into user (login, email, passwordHash, temporaryUserId, permanentUserId, temporaryUserIdCancelled) values (?, ?, ?, ?, ?, ?)"
-	YauthUserInsertQuery          = "insert into user (login, email, temporaryUserId, permanentUserId, temporaryUserIdCancelled) values (?, ?, ?, ?, ?)"
-	UserRefreshTokenInsertQuery   = "insert into refresh_token (permanentUserId, refreshToken, userAgent, refreshTokenCancelled) values (?, ?, ?, ?)"
-	PasswordResetTokenInsertQuery = "insert into reset_token (token, cancelled) values (?, ?)"
+	userInsertQuery               = "insert into user (login, email, passwordHash, temporaryId, permanentId, temporaryIdCancelled) values (?, ?, ?, ?, ?, ?)"
+	yauthUserInsertQuery          = "insert into user (login, email, temporaryId, permanentId, temporaryIdCancelled) values (?, ?, ?, ?, ?)"
+	refreshTokenInsertQuery       = "insert into refresh_token (permanentId, refreshToken, userAgent, refreshTokenCancelled) values (?, ?, ?, ?)"
+	passwordResetTokenInsertQuery = "insert into reset_token (token, cancelled) values (?, ?)"
 
-	UserPasswordInDbByEmailUpdateQuery         = "update user set passwordHash = ? where email = ?"
-	UserPasswordInDbByPermanentIdUpdateQuery   = "update user set passwordHash = ? where temporaryUserId = ?"
-	TemporaryUserIdInDbByLoginUpdateQuery      = "update user set temporaryUserId = ?, temporaryUserIdCancelled = ? where login = ?"
-	TemporaryUserIdInDbByEmailUpdateQuery      = "update user set temporaryUserId = ?, temporaryUserIdCancelled = ? where email = ?"
-	RefreshTokenCancelledFlagUpdateQuery       = "update refresh_token set refreshTokenCancelled = ? where refreshToken = ? and userAgent = ?"
-	TemporaryUserIdCancelledFlagUpdateQuery    = "update user set temporaryUserIdCancelled = ? where temporaryUserId = ?"
-	PasswordResetTokenCancelledFlagUpdateQuery = "update reset_token set cancelled = TRUE where token = ?"
+	passwordInDbByEmailUpdateQuery         = "update user set passwordHash = ? where email = ?"
+	passwordInDbByPermanentIdUpdateQuery   = "update user set passwordHash = ? where temporaryId = ?"
+	temporaryIdInDbByLoginUpdateQuery      = "update user set temporaryId = ?, temporaryIdCancelled = ? where login = ?"
+	temporaryIdInDbByEmailUpdateQuery      = "update user set temporaryId = ?, temporaryIdCancelled = ? where email = ?"
+	refreshTokenCancelledUpdateQuery       = "update refresh_token set refreshTokenCancelled = ? where refreshToken = ? and userAgent = ?"
+	temporaryIdCancelledUpdateQuery        = "update user set temporaryIdCancelled = ? where temporaryId = ?"
+	passwordResetTokenCancelledUpdateQuery = "update reset_token set cancelled = TRUE where token = ?"
 )
 
 var Db *sql.DB
@@ -64,22 +64,22 @@ func DbClose() {
 	}
 }
 
-func GetPermanentUserIdFromDb(userEmail string) (string, error) {
-	var permanentUserId string
-	row := Db.QueryRow(PermanentUserIdSelectQuery, userEmail)
-	err := row.Scan(&permanentUserId)
+func GetPermanentIdFromDb(Email string) (string, error) {
+	var permanentId string
+	row := Db.QueryRow(permanentIdSelectQuery, Email)
+	err := row.Scan(&permanentId)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return "", errors.WithStack(err)
 		}
 		return "", errors.WithStack(err)
 	}
-	return permanentUserId, nil
+	return permanentId, nil
 }
 
-func GetUserPasswordFromDb(temporaryUserId string) (string, error) {
+func GetPasswordFromDb(temporaryId string) (string, error) {
 	var passwordHash sql.NullString
-	row := Db.QueryRow(UserPasswordSelectQuery, temporaryUserId)
+	row := Db.QueryRow(passwordInDbByPermanentIdUpdateQuery, temporaryId)
 	err := row.Scan(&passwordHash)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -90,22 +90,22 @@ func GetUserPasswordFromDb(temporaryUserId string) (string, error) {
 	return passwordHash.String, nil
 }
 
-func GetAllUsersKeysFromDb(temporaryUserId string) (string, string, string, bool, error) {
+func GetAllUserKeysFromDb(temporaryId string) (string, string, string, bool, error) {
 	var login string
 	var email string
-	var permanentUserId string
-	var temporaryUserIdCancelled bool
-	row := Db.QueryRow(AllUsersKeysSelectQuery, temporaryUserId)
-	err := row.Scan(&login, &email, &permanentUserId, &temporaryUserIdCancelled)
+	var permanentId string
+	var temporaryIdCancelled bool
+	row := Db.QueryRow(allUserKeysSelectQuery, temporaryId)
+	err := row.Scan(&login, &email, &permanentId, &temporaryIdCancelled)
 	if err != nil {
 		return "", "", "", false, errors.WithStack(err)
 	}
-	return login, email, permanentUserId, temporaryUserIdCancelled, nil
+	return login, email, permanentId, temporaryIdCancelled, nil
 }
 
-func GetPasswordHashFromDb(temporaryUserId string) (sql.NullString, error) {
+func GetPasswordHashFromDb(temporaryId string) (sql.NullString, error) {
 	var passwordHash sql.NullString
-	row := Db.QueryRow(PasswordHashSelectQuery, temporaryUserId)
+	row := Db.QueryRow(passwordHashSelectQuery, temporaryId)
 	err := row.Scan(&passwordHash)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -116,33 +116,33 @@ func GetPasswordHashFromDb(temporaryUserId string) (sql.NullString, error) {
 	return passwordHash, nil
 }
 
-func GetPasswordHashAndPermanentUserIdFromDb(userLogin, userPassword string) (sql.NullString, string, error) {
+func GetPasswordHashAndpermanentIdFromDb(login, password string) (sql.NullString, string, error) {
 	var passwordHash sql.NullString
-	var permanentUserId string
-	row := Db.QueryRow(PasswordHashAndPermanentUserIdSelectQuery, userLogin)
-	err := row.Scan(&passwordHash, &permanentUserId)
+	var permanentId string
+	row := Db.QueryRow(passwordHashAndPermanentIdSelectQuery, login)
+	err := row.Scan(&passwordHash, &permanentId)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return sql.NullString{}, "", errors.WithStack(err)
 		}
 		return sql.NullString{}, "", errors.WithStack(err)
 	}
-	return passwordHash, permanentUserId, nil
+	return passwordHash, permanentId, nil
 }
 
-func GetPermanentUserIdAndTemporaryUserIdCancelledFlagFromDb(temporaryUserId string) (string, bool, error) {
-	var permanentUserId string
-	var temporaryUserIdCancelled bool
-	row := Db.QueryRow(PermanentUserIdAndTemporaryUserIdCancelledFlagSelectQuery, temporaryUserId)
-	err := row.Scan(&permanentUserId, &temporaryUserIdCancelled)
+func GetpermanentIdAndTemporaryIdCancelledFromDb(temporaryId string) (string, bool, error) {
+	var permanentId string
+	var temporaryIdCancelled bool
+	row := Db.QueryRow(permanentIdAndTemporaryIdCancelledSelectQuery, temporaryId)
+	err := row.Scan(&permanentId, &temporaryIdCancelled)
 	if err != nil {
 		return "", false, errors.WithStack(err)
 	}
-	return permanentUserId, temporaryUserIdCancelled, nil
+	return permanentId, temporaryIdCancelled, nil
 }
 
-func GetUniqueUserAgentsFromDb(permanentUserId string) ([]string, error) {
-	rows, err := Db.Query(UniqueUserAgentsSelectQuery, permanentUserId)
+func GetUniqueUserAgentsFromDb(permanentId string) ([]string, error) {
+	rows, err := Db.Query(uniqueUserAgentsSelectQuery, permanentId)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -164,11 +164,11 @@ func GetUniqueUserAgentsFromDb(permanentUserId string) ([]string, error) {
 	return userAgents, nil
 }
 
-func GetAllRefreshTokenKeysFromDb(permanentUserId, userAgent string) (string, string, bool, error) {
+func GetAllRefreshTokenKeysFromDb(permanentId, userAgent string) (string, string, bool, error) {
 	var refreshToken string
 	var dbUserAgent string
 	var refreshTokenCancelled bool
-	row := Db.QueryRow(AllRefreshTokenKeysSelectQuery, permanentUserId, userAgent)
+	row := Db.QueryRow(allRefreshTokenKeysSelectQuery, permanentId, userAgent)
 	err := row.Scan(&refreshToken, &dbUserAgent, &refreshTokenCancelled)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -179,9 +179,9 @@ func GetAllRefreshTokenKeysFromDb(permanentUserId, userAgent string) (string, st
 	return refreshToken, dbUserAgent, refreshTokenCancelled, nil
 }
 
-func GetResetTokenCancelledFlagFromDb(signedToken string) (bool, error) {
+func GetResetTokenCancelledFromDb(signedToken string) (bool, error) {
 	var cancelled bool
-	row := Db.QueryRow(ResetTokenCancelledFlagSelectQuery, signedToken)
+	row := Db.QueryRow(resetTokenCancelledSelectQuery, signedToken)
 	err := row.Scan(&cancelled)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -192,61 +192,61 @@ func GetResetTokenCancelledFlagFromDb(signedToken string) (bool, error) {
 	return cancelled, nil
 }
 
-func SetUserInDbTx(tx *sql.Tx, login, email, temporaryUserId, permanentUserId string, hashedPassword []byte, temporaryUserIdCancelled bool) error {
-	_, err := tx.Exec(UserInsertQuery, login, email, hashedPassword, temporaryUserId, permanentUserId, temporaryUserIdCancelled)
+func SetUserInDbTx(tx *sql.Tx, login, email, temporaryId, permanentId string, hashedPassword []byte, temporaryIdCancelled bool) error {
+	_, err := tx.Exec(userInsertQuery, login, email, hashedPassword, temporaryId, permanentId, temporaryIdCancelled)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func SetYauthUserInDbTx(tx *sql.Tx, login, email, temporaryUserId, permanentUserId string, temporaryUserIdCancelled bool) error {
-	_, err := tx.Exec(YauthUserInsertQuery, login, email, temporaryUserId, permanentUserId, temporaryUserIdCancelled)
+func SetYauthUserInDbTx(tx *sql.Tx, login, email, temporaryId, permanentId string, temporaryIdCancelled bool) error {
+	_, err := tx.Exec(yauthUserInsertQuery, login, email, temporaryId, permanentId, temporaryIdCancelled)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func SetUserPasswordInDbByEmailTx(tx *sql.Tx, userEmail, newPassword string) error {
+func SetPasswordInDbByEmailTx(tx *sql.Tx, email, newPassword string) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword),
 		bcrypt.DefaultCost)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	_, err = tx.Exec(UserPasswordInDbByEmailUpdateQuery, hashedPassword, userEmail)
+	_, err = tx.Exec(passwordInDbByEmailUpdateQuery, hashedPassword, email)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func SetUserPasswordInDbByTemporaryUserId(temporaryUserId string, hashedPassword []byte) error {
-	_, err := Db.Exec(UserPasswordInDbByPermanentIdUpdateQuery, hashedPassword, temporaryUserId)
+func SetPasswordInDbByTemporaryId(temporaryId string, hashedPassword []byte) error {
+	_, err := Db.Exec(passwordInDbByPermanentIdUpdateQuery, hashedPassword, temporaryId)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func SetTemporaryUserIdInDbByLoginTx(tx *sql.Tx, login, temporaryUserId string, temporaryUserIdCancelled bool) error {
-	_, err := tx.Exec(TemporaryUserIdInDbByLoginUpdateQuery, temporaryUserId, temporaryUserIdCancelled, login)
+func SettemporaryIdInDbByLoginTx(tx *sql.Tx, login, temporaryId string, temporaryIdCancelled bool) error {
+	_, err := tx.Exec(temporaryIdInDbByLoginUpdateQuery, temporaryId, temporaryIdCancelled, login)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func SetTemporaryUserIdInDbByEmailTx(tx *sql.Tx, email, temporaryUserId string, temporaryUserIdCancelled bool) error {
-	_, err := tx.Exec(TemporaryUserIdInDbByEmailUpdateQuery, temporaryUserId, temporaryUserIdCancelled, email)
+func SetTemporaryIdInDbByEmailTx(tx *sql.Tx, email, temporaryId string, temporaryIdCancelled bool) error {
+	_, err := tx.Exec(temporaryIdInDbByEmailUpdateQuery, temporaryId, temporaryIdCancelled, email)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func SetUserRefreshTokenInDbTx(tx *sql.Tx, permanentUserId, refreshToken, userAgent string, refreshTokenCancelled bool) error {
-	_, err := tx.Exec(UserRefreshTokenInsertQuery, permanentUserId, refreshToken, userAgent, refreshTokenCancelled)
+func SetRefreshTokenInDbTx(tx *sql.Tx, permanentId, refreshToken, userAgent string, refreshTokenCancelled bool) error {
+	_, err := tx.Exec(refreshTokenInsertQuery, permanentId, refreshToken, userAgent, refreshTokenCancelled)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -254,31 +254,31 @@ func SetUserRefreshTokenInDbTx(tx *sql.Tx, permanentUserId, refreshToken, userAg
 }
 
 func SetPasswordResetTokenInDbTx(tx *sql.Tx, resetToken string) error {
-	_, err := tx.Exec(PasswordResetTokenInsertQuery, resetToken, false)
+	_, err := tx.Exec(passwordResetTokenInsertQuery, resetToken, false)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func SetRefreshTokenCancelledFlagFromDbTx(tx *sql.Tx, userRefreshToken, userAgent string) error {
-	_, err := tx.Exec(RefreshTokenCancelledFlagUpdateQuery, true, userRefreshToken, userAgent)
+func SetRefreshTokenCancelledInDbTx(tx *sql.Tx, refreshToken, userAgent string) error {
+	_, err := tx.Exec(refreshTokenCancelledUpdateQuery, true, refreshToken, userAgent)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func SetTemporaryUserIdCancelledFlagFromDbTx(tx *sql.Tx, temporaryUserId string) error {
-	_, err := tx.Exec(TemporaryUserIdCancelledFlagUpdateQuery, true, temporaryUserId)
+func SetTemporaryIdCancelledInDbTx(tx *sql.Tx, temporaryId string) error {
+	_, err := tx.Exec(temporaryIdCancelledUpdateQuery, true, temporaryId)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func SetPasswordResetTokenCancelledFlagFromDbTx(tx *sql.Tx, resetToken string) error {
-	_, err := tx.Exec(PasswordResetTokenCancelledFlagUpdateQuery, resetToken)
+func SetPasswordResetTokenCancelledInDbTx(tx *sql.Tx, resetToken string) error {
+	_, err := tx.Exec(passwordResetTokenCancelledUpdateQuery, resetToken)
 	if err != nil {
 		return errors.WithStack(err)
 	}

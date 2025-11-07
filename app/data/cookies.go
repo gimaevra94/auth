@@ -7,34 +7,34 @@ import (
 	"github.com/pkg/errors"
 )
 
-const TemporaryUserIdExp = 30 * 24 * 60 * 60
+const temporaryIdExp = 30 * 24 * 60 * 60
 
-func SetTemporaryUserIdInCookies(w http.ResponseWriter, v string) {
+func SetTemporaryIdInCookies(w http.ResponseWriter, v string) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     "temporaryUserId",
+		Name:     "temporaryId",
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   false,
 		SameSite: http.SameSiteLaxMode,
 		Value:    v,
-		MaxAge:   TemporaryUserIdExp,
+		MaxAge:   temporaryIdExp,
 	})
 }
 
-func GetTemporaryUserIdFromCookies(r *http.Request) (*http.Cookie, error) {
-	Cookies, err := r.Cookie("temporaryUserId")
+func GetTemporaryIdFromCookies(r *http.Request) (*http.Cookie, error) {
+	Cookies, err := r.Cookie("temporaryId")
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 	if Cookies.Value == "" {
-		return nil, errors.New("temporaryUserId not exist")
+		return nil, errors.New("temporaryId not exist")
 	}
 	return Cookies, nil
 }
 
-func ClearTemporaryUserIdFromCookies(w http.ResponseWriter) {
+func ClearTemporaryIdInCookies(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     "temporaryUserId",
+		Name:     "temporaryId",
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   false,
@@ -44,7 +44,7 @@ func ClearTemporaryUserIdFromCookies(w http.ResponseWriter) {
 }
 
 func ClearCookiesDev(w http.ResponseWriter, r *http.Request) {
-	ClearTemporaryUserIdFromCookies(w)
+	ClearTemporaryIdInCookies(w)
 	if err := EndAuthSession(w, r); err != nil {
 		errors.WithStack(err)
 	}

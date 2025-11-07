@@ -195,7 +195,7 @@ const (
 			{{end}}
 		</div>
 		{{end}}
-		<form method="POST" action="/sign-in-input-valIdate">
+		<form method="POST" action="/sign-in-input-Validate">
 			<div class="form-group">
 				<label for="login">Username</label>
 				<input type="text" Id="login" name="login">

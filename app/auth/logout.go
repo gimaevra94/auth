@@ -18,9 +18,9 @@ func SimpleLogout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, consts.SignInURL, http.StatusFound)
 }
 
-func Revocate(w http.ResponseWriter, r *http.Request, CookiesClear, temporaryUserIdCancel, refreshTokenCancel bool) {
+func Revocate(w http.ResponseWriter, r *http.Request, CookiesClear, temporaryIdCancel, refreshTokenCancel bool) {
 	if CookiesClear {
-		data.ClearTemporaryUserIdFromCookies(w)
+		data.ClearTemporaryIdInCookies(w)
 	}
 
 	tx, err := data.Db.Begin()
@@ -36,35 +36,35 @@ func Revocate(w http.ResponseWriter, r *http.Request, CookiesClear, temporaryUse
 		}
 	}()
 
-	Cookies, err := data.GetTemporaryUserIdFromCookies(r)
+	Cookies, err := data.GetTemporaryIdFromCookies(r)
 	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
-	temporaryUserId := Cookies.Value
+	temporaryId := Cookies.Value
 
-	if temporaryUserIdCancel {
-		if err := data.SetTemporaryUserIdCancelledFlagFromDbTx(tx, temporaryUserId); err != nil {
+	if temporaryIdCancel {
+		if err := data.SetTemporaryIdCancelledInDbTx(tx, temporaryId); err != nil {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 	}
 
 	if refreshTokenCancel {
-		_, _, permanentUserId, _, err := data.GetAllUsersKeysFromDb(temporaryUserId)
+		_, _, permanentId, _, err := data.GetAllUserKeysFromDb(temporaryId)
 		if err != nil {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 
-		refreshToken, userAgent, refreshTokenCancelled, err := data.GetAllRefreshTokenKeysFromDb(permanentUserId, r.UserAgent())
+		refreshToken, userAgent, refreshTokenCancelled, err := data.GetAllRefreshTokenKeysFromDb(permanentId, r.UserAgent())
 		if err != nil {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 
 		if !refreshTokenCancelled {
-			if err := data.SetRefreshTokenCancelledFlagFromDbTx(tx, refreshToken, userAgent); err != nil {
+			if err := data.SetRefreshTokenCancelledInDbTx(tx, refreshToken, userAgent); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}

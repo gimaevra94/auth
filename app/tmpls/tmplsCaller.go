@@ -32,14 +32,14 @@ func CodeSend(w http.ResponseWriter, r *http.Request) {
 
 func Home(w http.ResponseWriter, r *http.Request) {
 	showSetPasswordButton := true
-	cookies, err := data.GetTemporaryUserIdFromCookies(r)
+	cookies, err := data.GetTemporaryIdFromCookies(r)
 	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
-	temporaryUserId := cookies.Value
-	passwordHash, err := data.GetPasswordHashFromDb(temporaryUserId)
+	temporaryId := cookies.Value
+	passwordHash, err := data.GetPasswordHashFromDb(temporaryId)
 	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return

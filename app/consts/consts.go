@@ -14,26 +14,26 @@ const (
 const RefreshTokenExp7Days = 7 * 24 * 60 * 60
 
 const (
-	SuccessfulMailSendingStatus = "Mail sent successfully"
-	FailedMailSendingStatus     = "Failed to send mail"
+	successfulMailSendingStatus = "Mail sent successfully"
+	failedMailSendingStatus     = "Failed to send mail"
 	invalidLogin                = "Login is invalId"
 	invalidEmail                = "Email is invalId"
 	invalidPassword             = "Password is invalId"
-	UserAlreadyExist            = "User already exists"
-	UserNotExist                = "User does not exist"
-	ServerCodeMsg               = "Wrong code"
-	UserCodeMsg                 = "User code is empty"
-	CaptchaRequiredMsg          = "Pass the verification reCAPTCHA."
-	PasswordsDoNotMatch         = "Passwords do not match"
+	userAlreadyExist            = "User already exists"
+	userNotExist                = "User does not exist"
+	serverCodeMsg               = "Wrong code"
+	userCodeMsg                 = "User code is empty"
+	captchaRequiredMsg          = "Pass the verification reCAPTCHA."
+	passwordsNotMatch           = "Passwords do not match"
 )
 
 var (
-	LoginReqs = []string{
+	loginReqs = []string{
 		"3-30 characters long",
 		"Latin or Cyrillic letters",
 		"Numbers 0-9",
 	}
-	EmailReqs = []string{
+	emailReqs = []string{
 		"Must contain Latin letters, numbers and allowed special characters: . _ % + -",
 		"Must contain exactly one '@' symbol",
 		"Domain must be valId and end with .com, .org, etc.",
@@ -47,15 +47,15 @@ var (
 )
 
 var MessagesForUser = map[string]structs.MessagesForUser{
-	"login":                       {Msg: invalidLogin, Regs: LoginReqs},
-	"invalidEmail":                {Msg: invalidEmail, Regs: EmailReqs},
-	"captchaRequired":             {Msg: CaptchaRequiredMsg, Regs: nil},
+	"login":                       {Msg: invalidLogin, Regs: loginReqs},
+	"invalidEmail":                {Msg: invalidEmail, Regs: emailReqs},
+	"captchaRequired":             {Msg: captchaRequiredMsg, Regs: nil},
 	"invalidPassword":             {Msg: invalidPassword, Regs: PswrdReqs},
-	"passwordsDoNotMatch":         {Msg: PasswordsDoNotMatch, Regs: nil},
-	"serverCode":                  {Msg: ServerCodeMsg, Regs: nil},
-	"userCode":                    {Msg: UserCodeMsg, Regs: nil},
-	"userAlreadyExist":            {Msg: UserAlreadyExist, Regs: nil},
-	"userNotExist":                {Msg: UserNotExist, Regs: nil},
-	"successfulMailSendingStatus": {Msg: SuccessfulMailSendingStatus, Regs: nil},
-	"failedMailSendingStatus":     {Msg: FailedMailSendingStatus, Regs: nil},
+	"passwordsNotMatch":           {Msg: passwordsNotMatch, Regs: nil},
+	"serverCode":                  {Msg: serverCodeMsg, Regs: nil},
+	"userCode":                    {Msg: userCodeMsg, Regs: nil},
+	"userAlreadyExist":            {Msg: userAlreadyExist, Regs: nil},
+	"userNotExist":                {Msg: userNotExist, Regs: nil},
+	"successfulMailSendingStatus": {Msg: successfulMailSendingStatus, Regs: nil},
+	"failedMailSendingStatus":     {Msg: failedMailSendingStatus, Regs: nil},
 }

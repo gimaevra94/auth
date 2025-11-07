@@ -9,30 +9,30 @@ import (
 	"github.com/pkg/errors"
 )
 
-func GenerateUserRefreshToken(userRefreshTokenExp int, rememberMe bool) (string, error) {
-	userRefreshTokenExp24Hours := 24 * 60 * 60
+func GeneraterefreshToken(refreshTokenExp int, rememberMe bool) (string, error) {
+	refreshTokenExp24Hours := 24 * 60 * 60
 	if !rememberMe {
-		userRefreshTokenExp = userRefreshTokenExp24Hours
+		refreshTokenExp = refreshTokenExp24Hours
 	}
 
-	userRefreshTokenExpiresAt := time.Now().Unix() + int64(userRefreshTokenExp)
-	userRefreshTokenIssuedAt := time.Now().Unix()
+	refreshTokenExpiresAt := time.Now().Unix() + int64(refreshTokenExp)
+	refreshTokenIssuedAt := time.Now().Unix()
 	standardClaims := jwt.StandardClaims{
-		ExpiresAt: userRefreshTokenExpiresAt,
-		IssuedAt:  userRefreshTokenIssuedAt,
+		ExpiresAt: refreshTokenExpiresAt,
+		IssuedAt:  refreshTokenIssuedAt,
 	}
 
-	userRefreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, standardClaims)
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, standardClaims)
 	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
-	signedUserRefreshToken, err := userRefreshToken.SignedString(jwtSecret)
+	signedrefreshToken, err := refreshToken.SignedString(jwtSecret)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
 
-	return signedUserRefreshToken, nil
+	return signedrefreshToken, nil
 }
 
-func GeneratePasswordResetLink(userEmail, baseURL string) (string, error) {
+func GeneratePasswordResetLink(email, baseURL string) (string, error) {
 	passwordResetTokenExp15Minutes := time.Now().Add(15 * time.Minute)
 	passwordResetTokenExp15MinutesExpiresAt := passwordResetTokenExp15Minutes.Unix()
 	passwordResetTokenExp15MinutesIssuedAt := time.Now().Unix()
@@ -41,7 +41,7 @@ func GeneratePasswordResetLink(userEmail, baseURL string) (string, error) {
 			ExpiresAt: passwordResetTokenExp15MinutesExpiresAt,
 			IssuedAt:  passwordResetTokenExp15MinutesIssuedAt,
 		},
-		UserEmail: userEmail,
+		Email: email,
 	}
 
 	resetToken := jwt.NewWithClaims(jwt.SigningMethodHS256, passwordResetTokenClaims)
