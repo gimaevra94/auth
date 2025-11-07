@@ -64,7 +64,7 @@ func UpdateAndRenderCaptchaState(w http.ResponseWriter, r *http.Request, captcha
 	}
 
 	data := structs.SignUpPageData{Msg: consts.MessagesForUser["captchaRequired"].Msg, ShowCaptcha: ShowCaptcha, Regs: nil}
-	if err := TmplsRenderer(w, BaseTmpl, "SignUp", data); err != nil {
+	if err := TmplsRenderer(w, BaseTmpl, "signUp", data); err != nil {
 		return errors.WithStack(err)
 	}
 

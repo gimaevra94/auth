@@ -103,7 +103,7 @@ func ResetTokenValidate(signedToken string) (*structs.PasswordResetTokenClaims, 
 	}
 
 	if !tok.Valid {
-		return nil, errors.New("token invalId")
+		return nil, errors.New("token invalid")
 	}
 
 	return claims, nil

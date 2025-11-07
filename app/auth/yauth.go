@@ -72,7 +72,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	permanentId := uuid.New().String()
 	temporaryIdCancelled := false
 
-	permanentId, err = data.GetPermanentIdFromDb(yandexUser.Email)
+	bdPermanentId, err := data.GetPermanentIdFromDb(yandexUser.Email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			if err = data.SetYauthUserInDbTx(tx, yandexUser.Login, yandexUser.Email, temporaryId, permanentId, temporaryIdCancelled); err != nil {
@@ -85,8 +85,8 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if permanentId != "" {
-		permanentId = permanentId
+	if bdPermanentId != "" {
+		permanentId = bdPermanentId
 	}
 	data.SetTemporaryIdInCookies(w, temporaryId)
 
@@ -128,6 +128,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = tx.Commit(); err != nil {
+		tx.Rollback()
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}

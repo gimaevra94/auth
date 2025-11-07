@@ -16,9 +16,9 @@ const RefreshTokenExp7Days = 7 * 24 * 60 * 60
 const (
 	successfulMailSendingStatus = "Mail sent successfully"
 	failedMailSendingStatus     = "Failed to send mail"
-	invalidLogin                = "Login is invalId"
-	invalidEmail                = "Email is invalId"
-	invalidPassword             = "Password is invalId"
+	invalidLogin                = "Login is invalid"
+	invalidEmail                = "Email is invalid"
+	invalidPassword             = "Password is invalid"
 	userAlreadyExist            = "User already exists"
 	userNotExist                = "User does not exist"
 	serverCodeMsg               = "Wrong code"

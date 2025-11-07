@@ -68,13 +68,13 @@ const (
 		<h1>Sign Up</h1>
 		{{if .Msg}}<div class="error-message">{{.Msg}}</div>{{end}}
 		{{if .Regs}}
-		<div class="requirements-list {{if eq .Msg "Login is invalId"}}error-highlight{{end}}">
+		<div class="requirements-list {{if eq .Msg "Login is invalid"}}error-highlight{{end}}">
 			{{range .Regs}}
 			<div>{{.}}</div>
 			{{end}}
 		</div>
 		{{end}}
-		<form method="POST" action="/sign-up-input-check" Id="signup-form">
+		<form method="POST" action="/validate-sign-up-input" Id="signup-form">
 			<div class="form-group">
 				<label for="username">Username</label>
 				<input type="text" Id="username" name="login">
@@ -177,7 +177,7 @@ const (
 			</div>
 			{{else if eq .Msg "Pass the verification reCAPTCHA."}}
 			<div class="error-message">{{.Msg}}</div>
-			{{else if eq .Msg "Login is invalId"}}
+			{{else if eq .Msg "Login is invalid"}}
 			<div class="error error-highlight">{{.Msg}}</div>
 			{{else}}
 			<div class="error">{{.Msg}}</div>

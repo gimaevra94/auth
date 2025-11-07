@@ -1,13 +1,13 @@
 name: auth
 services:
-  Db:
-    container_name: Db
+  db:
+    container_name: db
     image: gimaevra94/Db:latest
     environment:
        MYSQL_ROOT_PASSWORD_FILE: /run/secrets/Db_password
-       MYSQL_DATABASE: Db
+       MYSQL_DATABASE: db
     volumes:
-      - Db:/var/lib/mysql
+      - db:/var/lib/mysql
       - C:/Users/gimaevra94/Documents/git/auth/certs/mysql_cert:/etc/mysql/certs:ro
     ports: 
       - 3306:3306
@@ -48,8 +48,8 @@ services:
 
 
 volumes:
-  Db:
+  db:
 
 secrets:
   Db_password: 
-    environment: Db_PASSWORD
+    environment: DB_PASSWORD

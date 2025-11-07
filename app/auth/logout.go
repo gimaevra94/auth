@@ -72,6 +72,7 @@ func Revocate(w http.ResponseWriter, r *http.Request, CookiesClear, temporaryIdC
 	}
 
 	if err := tx.Commit(); err != nil {
+		tx.Rollback()
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}

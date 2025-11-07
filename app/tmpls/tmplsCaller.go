@@ -10,21 +10,21 @@ import (
 )
 
 func SignUp(w http.ResponseWriter, r *http.Request) {
-	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", nil); err != nil {
+	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "signUp", nil); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 }
 
 func SignIn(w http.ResponseWriter, r *http.Request) {
-	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "SignIn", nil); err != nil {
+	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "signIn", nil); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 }
 
 func CodeSend(w http.ResponseWriter, r *http.Request) {
-	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "CodeSend", nil); err != nil {
+	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "codeSend", nil); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -50,14 +50,14 @@ func Home(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := struct{ ShowSetPasswordButton bool }{ShowSetPasswordButton: showSetPasswordButton}
-	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "Home", data); err != nil {
+	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "home", data); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 }
 
 func Logout(w http.ResponseWriter, r *http.Request) {
-	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "Logout", nil); err != nil {
+	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "logout", nil); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -66,7 +66,7 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 func PasswordReset(w http.ResponseWriter, r *http.Request) {
 	message := r.URL.Query().Get("msg")
 	data := structs.MessagesForUser{Msg: message}
-	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", data); err != nil {
+	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "passwordReset", data); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -77,7 +77,7 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 		Msg   string
 		Token string
 	}{Msg: r.URL.Query().Get("msg"), Token: r.URL.Query().Get("token")}
-	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "SetNewPassword", data); err != nil {
+	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "setNewPassword", data); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -91,7 +91,7 @@ func SetFirstTimePassword(w http.ResponseWriter, r *http.Request) {
 		Msg:  r.URL.Query().Get("msg"),
 		Regs: consts.PswrdReqs,
 	}
-	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "SetFirstTimePassword", data); err != nil {
+	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "setFirstTimePassword", data); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}

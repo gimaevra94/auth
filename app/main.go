@@ -15,15 +15,15 @@ import (
 )
 
 const (
-	ValidateSignUpInputURL       = "/Validate-sign-up-input"
-	SetUserInDbURL               = "/set-user-in-db"
-	ValidateSignInInputURL       = "/Validate-sign-in-input"
-	GeneratePasswordResetLinkURL = "/generate-password-reset-link"
-	YandexCallbackURL            = "/ya_callback"
-	SetNewPasswordURL            = "/set-new-password"
-	SetFirstTimePasswordURL      = "/set-first-time-password"
-	LogoutURL                    = "/logout"
-	SimpleLogoutURL              = "/simple-logout"
+	validateSignUpInputURL       = "/validate-sign-up-input"
+	setUserInDbURL               = "/set-user-in-db"
+	validateSignInInputURL       = "/validate-sign-in-input"
+	generatePasswordResetLinkURL = "/generate-password-reset-link"
+	yandexCallbackURL            = "/ya_callback"
+	setNewPasswordURL            = "/set-new-password"
+	setFirstTimePasswordURL      = "/set-first-time-password"
+	logoutURL                    = "/logout"
+	simpleLogoutURL              = "/simple-logout"
 )
 
 func main() {
@@ -46,7 +46,7 @@ func initEnv() {
 		"LOGIN_STORE_SESSION_AUTH_KEY",
 		"LOGIN_STORE_SESSION_ENCRYPTION_KEY",
 		"JWT_SECRET",
-		"Db_PASSWORD",
+		"DB_PASSWORD",
 		"SERVER_EMAIL",
 		"SERVER_EMAIL_PASSWORD",
 		"GOOGLE_CAPTCHA_SECRET",
@@ -80,27 +80,27 @@ func initRouter() *chi.Mux {
 	})
 
 	r.With(auth.AuthGuardForSignInPath).Get(consts.SignUpURL, tmpls.SignUp)
-	r.Post(ValidateSignUpInputURL, auth.ValidateSignUpInput)
+	r.Post(validateSignUpInputURL, auth.ValidateSignUpInput)
 	r.With(auth.AuthGuardForSignUpPath).Get(consts.CodeSendURL, tmpls.CodeSend)
-	r.Post(SetUserInDbURL, auth.SetUserInDb)
+	r.Post(setUserInDbURL, auth.SetUserInDb)
 
 	r.With(auth.AuthGuardForSignInPath).Get(consts.SignInURL, tmpls.SignIn)
-	r.Post(ValidateSignInInputURL, auth.ValidateSignInInput)
+	r.Post(validateSignInInputURL, auth.ValidateSignInInput)
 
 	r.Get("/yauth", auth.YandexAuthHandler)
-	r.Get(YandexCallbackURL, auth.YandexCallbackHandler)
+	r.Get(yandexCallbackURL, auth.YandexCallbackHandler)
 
 	r.Get(consts.PasswordResetURL, tmpls.PasswordReset)
-	r.Post(GeneratePasswordResetLinkURL, auth.GeneratePasswordResetLink)
-	r.With(auth.ResetTokenGuard).Get(SetNewPasswordURL, tmpls.SetNewPassword)
-	r.Post(SetNewPasswordURL, auth.SetNewPassword)
-	r.With(auth.AuthGuardForHomePath).Get(SetFirstTimePasswordURL, tmpls.SetFirstTimePassword)
-	r.Post(SetFirstTimePasswordURL, auth.SetFirstTimePassword)
+	r.Post(generatePasswordResetLinkURL, auth.GeneratePasswordResetLink)
+	r.With(auth.ResetTokenGuard).Get(setNewPasswordURL, tmpls.SetNewPassword)
+	r.Post(setNewPasswordURL, auth.SetNewPassword)
+	r.With(auth.AuthGuardForHomePath).Get(setFirstTimePasswordURL, tmpls.SetFirstTimePassword)
+	r.Post(setFirstTimePasswordURL, auth.SetFirstTimePassword)
 
 	r.With(auth.AuthGuardForHomePath).Get(consts.HomeURL, tmpls.Home)
 
-	r.With(auth.AuthGuardForHomePath).Get(LogoutURL, auth.Logout)
-	r.With(auth.AuthGuardForHomePath).Get(SimpleLogoutURL, auth.SimpleLogout)
+	r.With(auth.AuthGuardForHomePath).Get(logoutURL, auth.Logout)
+	r.With(auth.AuthGuardForHomePath).Get(simpleLogoutURL, auth.SimpleLogout)
 
 	r.Get("/clear", data.ClearCookiesDev)
 

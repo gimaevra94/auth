@@ -37,13 +37,13 @@ const (
 var Db *sql.DB
 
 func DbConn() error {
-	DbPassword := []byte(os.Getenv("Db_PASSWORD"))
+	DbPassword := []byte(os.Getenv("DB_PASSWORD"))
 	cfg := mysql.Config{
 		User:   "root",
 		Passwd: string(DbPassword),
 		Net:    "tcp",
 		Addr:   "localhost:3306",
-		DBName: "Db",
+		DBName: "db",
 	}
 	var err error
 
@@ -185,7 +185,7 @@ func GetResetTokenCancelledFromDb(signedToken string) (bool, error) {
 	err := row.Scan(&cancelled)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return false, errors.New("reset token not found or invalId")
+			return false, errors.New("reset token not found or invalid")
 		}
 		return false, errors.WithStack(err)
 	}

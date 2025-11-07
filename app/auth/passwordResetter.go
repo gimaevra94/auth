@@ -71,6 +71,7 @@ func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := tx.Commit(); err != nil {
+			tx.Rollback()
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
@@ -194,6 +195,7 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := tx.Commit(); err != nil {
+		tx.Rollback()
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}

@@ -59,7 +59,7 @@ func ValidateSignUpInput(w http.ResponseWriter, r *http.Request) {
 		if err := tools.ShowCaptcha(r); err != nil {
 			if strings.Contains(err.Error(), "captchaToken not exist") {
 				data := structs.SignUpPageData{Msg: consts.MessagesForUser["captchaRequired"].Msg, ShowCaptcha: ShowCaptcha, Regs: nil}
-				if err := tools.TmplsRenderer(w, tools.BaseTmpl, "SignUp", data); err != nil {
+				if err := tools.TmplsRenderer(w, tools.BaseTmpl, "signUp", data); err != nil {
 					tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 					return
 				}
@@ -225,6 +225,7 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = tx.Commit(); err != nil {
+		tx.Rollback()
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
