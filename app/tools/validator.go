@@ -17,25 +17,29 @@ var (
 	passwordRegex = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ\d!@#$%^&*\-\)]{4,30}$`)
 )
 
-func InputValidate(r *http.Request, login, email, password string, IsSignIn bool) error {
+func InputValidate(r *http.Request, login, email, password string, IsSignIn bool) (string, error) {
+	var errmsgKey string
 	if login == "" || !loginRegex.MatchString(login) {
-		err := errors.New("login invalid")
-		return errors.WithStack(err)
+		err := errors.New("loginInvalid")
+		errmsgKey = "loginInvalid"
+		return errmsgKey, errors.WithStack(err)
 	}
 
 	if password == "" || !passwordRegex.MatchString(password) {
-		err := errors.New("password invalid")
-		return errors.WithStack(err)
+		err := errors.New("passwordInvalid")
+		errmsgKey = "passwordInvalid"
+		return errmsgKey, errors.WithStack(err)
 	}
 
 	if !IsSignIn {
 		if email == "" || !emailRegex.MatchString(email) {
-			err := errors.New("email invalid")
-			return errors.WithStack(err)
+			err := errors.New("emailInvalid")
+			errmsgKey = "emailInvalid"
+			return errmsgKey, errors.WithStack(err)
 		}
 	}
 
-	return nil
+	return errmsgKey, nil
 }
 
 func RefreshTokenValidate(refreshToken string) error {

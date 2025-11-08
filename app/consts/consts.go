@@ -46,11 +46,11 @@ var (
 	}
 )
 
-var MessagesForUser = map[string]structs.MessagesForUser{
-	"login":                       {Msg: invalidLogin, Regs: loginReqs},
-	"invalidEmail":                {Msg: invalidEmail, Regs: emailReqs},
+var MsgForUser = map[string]structs.MsgForUser{
+	"loginInvalid":                {Msg: invalidLogin, Regs: loginReqs},
+	"emailInvalid":                {Msg: invalidEmail, Regs: emailReqs},
 	"captchaRequired":             {Msg: captchaRequiredMsg, Regs: nil},
-	"invalidPassword":             {Msg: invalidPassword, Regs: PswrdReqs},
+	"passwordInvalid":             {Msg: invalidPassword, Regs: PswrdReqs},
 	"passwordsNotMatch":           {Msg: passwordsNotMatch, Regs: nil},
 	"serverCode":                  {Msg: serverCodeMsg, Regs: nil},
 	"userCode":                    {Msg: userCodeMsg, Regs: nil},

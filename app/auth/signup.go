@@ -16,6 +16,7 @@ import (
 )
 
 func ValidateSignUpInput(w http.ResponseWriter, r *http.Request) {
+
 	var user structs.User
 	var ShowCaptcha bool
 	login := r.FormValue("login")
@@ -35,10 +36,7 @@ func ValidateSignUpInput(w http.ResponseWriter, r *http.Request) {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
-			return
 		}
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
 	}
 
 	ShowCaptcha, err = data.GetShowCaptchaFromSession(r)
@@ -49,16 +47,13 @@ func ValidateSignUpInput(w http.ResponseWriter, r *http.Request) {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
-			return
 		}
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
 	}
 
 	if ShowCaptcha {
 		if err := tools.ShowCaptcha(r); err != nil {
 			if strings.Contains(err.Error(), "captchaToken not exist") {
-				data := structs.SignUpPageData{Msg: consts.MessagesForUser["captchaRequired"].Msg, ShowCaptcha: ShowCaptcha, Regs: nil}
+				data := structs.SignUpPageData{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: ShowCaptcha, Regs: nil}
 				if err := tools.TmplsRenderer(w, tools.BaseTmpl, "signUp", data); err != nil {
 					tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 					return
@@ -70,13 +65,22 @@ func ValidateSignUpInput(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := tools.InputValidate(r, user.Login, user.Email, user.Password, false); err != nil {
+	errmsgKey, err := tools.InputValidate(r, user.Login, user.Email, user.Password, false)
+	if err != nil {
 		if strings.Contains(err.Error(), "login") || strings.Contains(err.Error(), "email") || strings.Contains(err.Error(), "password") {
-			if err := tools.UpdateAndRenderCaptchaState(w, r, captchaCounter, ShowCaptcha); err != nil {
+			if err := tools.UpdateAndRenderCaptchaState(w, r, captchaCounter-1, ShowCaptcha); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
-			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+
+			data := structs.SignUpPageData{
+				Msg:         consts.MsgForUser[errmsgKey].Msg,
+				ShowCaptcha: ShowCaptcha,
+				Regs:        consts.MsgForUser[errmsgKey].Regs,
+			}
+			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "signUp", data); err != nil {
+				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			}
 			return
 		}
 	}
@@ -90,6 +94,7 @@ func ValidateSignUpInput(w http.ResponseWriter, r *http.Request) {
 }
 
 func CheckSignUpUserInDb(w http.ResponseWriter, r *http.Request) {
+
 	user, err := data.GetUserFromSession(r)
 	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
@@ -166,14 +171,14 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 	clientCode := r.FormValue("clientCode")
 	if err := tools.CodeValidate(r, clientCode, user.ServerCode); err != nil {
 		if strings.Contains(err.Error(), "exist") {
-			data := structs.MessagesForUser{Msg: consts.MessagesForUser["userCode"].Msg, Regs: nil}
+			data := structs.MsgForUser{Msg: consts.MsgForUser["userCode"].Msg, Regs: nil}
 			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "CodeSend", data); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
 			return
 		} else if strings.Contains(err.Error(), "match") {
-			data := structs.MessagesForUser{Msg: consts.MessagesForUser["serverCode"].Msg, Regs: nil}
+			data := structs.MsgForUser{Msg: consts.MsgForUser["serverCode"].Msg, Regs: nil}
 			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "CodeSend", data); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return

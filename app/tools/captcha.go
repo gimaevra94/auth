@@ -50,11 +50,14 @@ func ShowCaptcha(r *http.Request) error {
 }
 
 func UpdateAndRenderCaptchaState(w http.ResponseWriter, r *http.Request, captchaCounter int64, ShowCaptcha bool) error {
-	if err := data.SetCaptchaDataInSession(w, r, "captchaCounter", captchaCounter); err != nil {
-		return errors.WithStack(err)
+	var msgData structs.SignUpPageData
+
+	if captchaCounter > 0 {
+		if err := data.SetCaptchaDataInSession(w, r, "captchaCounter", captchaCounter); err != nil {
+			return errors.WithStack(err)
+		}
 	}
 
-	captchaCounter -= 1
 	if captchaCounter == 0 {
 		ShowCaptcha = true
 	}
@@ -63,9 +66,16 @@ func UpdateAndRenderCaptchaState(w http.ResponseWriter, r *http.Request, captcha
 		return errors.WithStack(err)
 	}
 
-	data := structs.SignUpPageData{Msg: consts.MessagesForUser["captchaRequired"].Msg, ShowCaptcha: ShowCaptcha, Regs: nil}
-	if err := TmplsRenderer(w, BaseTmpl, "signUp", data); err != nil {
-		return errors.WithStack(err)
+	if ShowCaptcha {
+		captchaToken := r.FormValue("g-recaptcha-response")
+		if captchaToken == "" {
+			msgData = structs.SignUpPageData{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: ShowCaptcha, Regs: nil}
+		} else {
+			msgData = structs.SignUpPageData{Msg: "", ShowCaptcha: ShowCaptcha, Regs: nil}
+		}
+		if err := TmplsRenderer(w, BaseTmpl, "signUp", msgData); err != nil {
+			LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		}
 	}
 
 	return nil

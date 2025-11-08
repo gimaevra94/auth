@@ -17,13 +17,13 @@ var (
 	_        = Must(BaseTmpl.Parse(signInTMPL))
 	_        = Must(BaseTmpl.Parse(homeTMPL))
 	_        = Must(BaseTmpl.Parse(serverAuthCodeSendTMPL))
-	_        = Must(BaseTmpl.Parse(emailMessageWithServerAuthCodeTMPL))
-	_        = Must(BaseTmpl.Parse(emailMessageAboutSuspiciousLoginEmailTMPL))
+	_        = Must(BaseTmpl.Parse(emailmsgWithServerAuthCodeTMPL))
+	_        = Must(BaseTmpl.Parse(emailmsgAboutSuspiciousLoginEmailTMPL))
 	_        = Must(BaseTmpl.Parse(generatePasswordResetLinkTMPL))
-	_        = Must(BaseTmpl.Parse(emailMessageWithPasswordResetLinkTMPL))
+	_        = Must(BaseTmpl.Parse(emailmsgWithPasswordResetLinkTMPL))
 	_        = Must(BaseTmpl.Parse(setNewPasswordTMPL))
 	_        = Must(BaseTmpl.Parse(setFirstTimePasswordTMPL))
-	_        = Must(BaseTmpl.Parse(emailMessageAboutNewDeviceLoginEmailTMPL))
+	_        = Must(BaseTmpl.Parse(emailmsgAboutNewDeviceLoginEmailTMPL))
 )
 
 func TmplsRenderer(w http.ResponseWriter, tmpl *template.Template, templateName string, data interface{}) error {
@@ -66,7 +66,7 @@ const (
 <body>
 	<div class="container">
 		<h1>Sign Up</h1>
-		{{if .Msg}}<div class="error-message">{{.Msg}}</div>{{end}}
+		{{if .Msg}}<div class="error-msg">{{.Msg}}</div>{{end}}
 		{{if .Regs}}
 		<div class="requirements-list {{if eq .Msg "Login is invalid"}}error-highlight{{end}}">
 			{{range .Regs}}
@@ -130,8 +130,8 @@ const (
 <body>
 	<div class="container">
 		<h1>Verification</h1>
-		{{if .Msg}}<div class="error-message">{{.Msg}}</div>{{end}}
-		<p class="message">We've sent a verification code to your email. Please enter it below.</p>
+		{{if .Msg}}<div class="error-msg">{{.Msg}}</div>{{end}}
+		<p class="msg">We've sent a verification code to your email. Please enter it below.</p>
 		<form method="POST" action="/user-add">
 			<div class="form-group">
 				<label for="clientCode">Verification Code</label>
@@ -162,7 +162,7 @@ const (
 	<link rel="stylesheet" href="/public/styles.css">
 	<style>
 		.error-highlight {
-			color: #ff0000; /* Ярко-красный цвет */
+			color: #ff0000;
 			font-weight: bold;
 		}
 	</style>
@@ -176,7 +176,7 @@ const (
 				User does not exist
 			</div>
 			{{else if eq .Msg "Pass the verification reCAPTCHA."}}
-			<div class="error-message">{{.Msg}}</div>
+			<div class="error-msg">{{.Msg}}</div>
 			{{else if eq .Msg "Login is invalid"}}
 			<div class="error error-highlight">{{.Msg}}</div>
 			{{else}}
@@ -184,7 +184,7 @@ const (
 			{{end}}
 		{{end}}
 		{{if .NoPassword}}
-			<div class="error-message">
+			<div class="error-msg">
 				You signed up using Yandex. Please sign in with Yandex and set a password in your account settings.
 			</div>
 		{{end}}
@@ -216,7 +216,7 @@ const (
 			<button type="submit" class="oauth-btn">Sign in with Yandex</button>
 		</form>
 		{{if .ShowForgotPassword}}
-		<div class="error-message reset-hint">
+		<div class="error-msg reset-hint">
 			Forgot your password? <a href="/password-reset">Reset Password</a>
 		</div>
 		{{end}}
@@ -279,7 +279,7 @@ const (
 	<div class="container">
 		{{if not .Msg}}
 		<h1>Password Reset</h1>
-		<p class="message">Enter your email to reset your password.</p>
+		<p class="msg">Enter your email to reset your password.</p>
 		<form method="POST" action="/generate-password-reset-link">
 			<div class="form-group">
 				<label for="email">Email</label>
@@ -289,9 +289,9 @@ const (
 		</form>
 		{{else}}
 			{{if eq .Msg "Password reset link has been sent to your email."}}
-				<div class="message success-message" style="text-align:center; padding: 1.5rem 0;">{{.Msg}}</div>
+				<div class="msg success-msg" style="text-align:center; padding: 1.5rem 0;">{{.Msg}}</div>
 			{{else}}
-				<div class="error-message" style="text-align:center; padding: 1.5rem 0;">{{.Msg}}</div>
+				<div class="error-msg" style="text-align:center; padding: 1.5rem 0;">{{.Msg}}</div>
 			{{end}}
 		{{end}}
 	</div>
@@ -312,8 +312,8 @@ const (
 <body>
     <div class="container">
         <h1>Set Account Password</h1>
-        <p class="message">Your account was created via Yandex. To enable password login, set a password below.</p>
-        {{if .Msg}}<div class="error-message">{{.Msg}}</div>{{end}}
+        <p class="msg">Your account was created via Yandex. To enable password login, set a password below.</p>
+        {{if .Msg}}<div class="error-msg">{{.Msg}}</div>{{end}}
         {{if .Regs}}
         <div class="requirements-list">
             {{range .Regs}}
@@ -337,8 +337,8 @@ const (
 </html>
 {{ end }}
 `
-	emailMessageWithServerAuthCodeTMPL = `
-{{ define "emailMessageWithServerAuthCode" }}
+	emailmsgWithServerAuthCodeTMPL = `
+{{ define "emailmsgWithServerAuthCode" }}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -409,8 +409,8 @@ const (
 </html>
 {{ end }}
 `
-	emailMessageAboutSuspiciousLoginEmailTMPL = `
-{{ define "emailMessageAboutSuspiciousLoginEmail" }}
+	emailmsgAboutSuspiciousLoginEmailTMPL = `
+{{ define "emailmsgAboutSuspiciousLoginEmail" }}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -471,8 +471,8 @@ const (
 </html>
 {{ end }}
 `
-	emailMessageWithPasswordResetLinkTMPL = `
-{{ define "emailMessageWithPasswordResetLink" }}
+	emailmsgWithPasswordResetLinkTMPL = `
+{{ define "emailmsgWithPasswordResetLink" }}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -562,7 +562,7 @@ const (
 <body>
     <div class="container">
         <h1>Set New Password</h1>
-        {{if .Msg}}<div class="error-message">{{.Msg}}</div>{{end}}
+        {{if .Msg}}<div class="error-msg">{{.Msg}}</div>{{end}}
         <form method="POST" action="/set-new-password">
             <div class="form-group">
                 <label for="oldPassword">Old Password</label>
@@ -584,8 +584,8 @@ const (
 </html>
 {{ end }}
 `
-	emailMessageAboutNewDeviceLoginEmailTMPL = `
-{{ define "emailMessageAboutNewDeviceLoginEmail" }}
+	emailmsgAboutNewDeviceLoginEmailTMPL = `
+{{ define "emailmsgAboutNewDeviceLoginEmail" }}
 <!DOCTYPE html>
 <html lang="en">
 <head>

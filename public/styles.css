@@ -68,7 +68,7 @@ h1.error {
     color: var(--error-color);
 }
 
-.message {
+.msg {
     margin-bottom: 1.5rem;
     color: #9ca3af;
 }
@@ -274,7 +274,7 @@ input[type="email"]:focus {
     text-decoration: underline;
 }
 
-.error-message {
+.error-msg {
     color: var(--error-color);
     font-weight: bold;
     font-size: 1.1rem;
@@ -290,7 +290,7 @@ input[type="email"]:focus {
     margin-top: 0;
 }
 
-.success-message {
+.success-msg {
     color: var(--success-color);
     font-weight: 600;
     font-size: 1.05rem;

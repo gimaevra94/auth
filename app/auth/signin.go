@@ -55,7 +55,7 @@ func ValidateSignInInput(w http.ResponseWriter, r *http.Request) {
 	if ShowCaptcha {
 		if err := tools.ShowCaptcha(r); err != nil {
 			if strings.Contains(err.Error(), "captchaToken not exist") {
-				data := structs.SignInPageData{Msg: consts.MessagesForUser["captchaRequired"].Msg, ShowCaptcha: ShowCaptcha, Regs: nil}
+				data := structs.SignInPageData{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: ShowCaptcha, Regs: nil}
 				if err := tools.TmplsRenderer(w, tools.BaseTmpl, "signIn", data); err != nil {
 					tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 					return
@@ -67,7 +67,8 @@ func ValidateSignInInput(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := tools.InputValidate(r, user.Login, "", user.Password, true); err != nil {
+	_, err = tools.InputValidate(r, user.Login, "", user.Password, true)
+	if err != nil {
 		if strings.Contains(err.Error(), "login") || strings.Contains(err.Error(), "password") {
 			if err := tools.UpdateAndRenderCaptchaState(w, r, captchaCounter, ShowCaptcha); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
