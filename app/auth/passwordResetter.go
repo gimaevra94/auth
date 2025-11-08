@@ -77,7 +77,7 @@ func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := tools.SendPasswordResetEmail(email, passwordResetLink); err != nil {
+	if err := tools.PasswordResetEmailSend(email, passwordResetLink); err != nil {
 		data := structs.MsgForUser{Msg: consts.MsgForUser["failedMailSendingStatus"].Msg, Regs: nil}
 		if err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", data); err != nil {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)

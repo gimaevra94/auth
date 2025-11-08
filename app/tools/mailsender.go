@@ -68,22 +68,22 @@ func executeTmpl(serverEmail, userEmail, emailSubject string, data any) ([]byte,
 
 	switch emailSubject {
 	case authCodeSubject:
-		if err := BaseTmpl.ExecuteTemplate(&body, "authCodeEmail", data); err != nil {
+		if err := BaseTmpl.ExecuteTemplate(&body, "emailMsgWithServerAuthCode", data); err != nil {
 			return []byte{}, errors.WithStack(err)
 		}
 
 	case suspiciousLoginSubject:
-		if err := BaseTmpl.ExecuteTemplate(&body, "suspiciousLoginEmail", data); err != nil {
+		if err := BaseTmpl.ExecuteTemplate(&body, "emailMsgAboutSuspiciousLoginEmail", data); err != nil {
 			return []byte{}, errors.WithStack(err)
 		}
 
 	case newDeviceLoginSubject:
-		if err := BaseTmpl.ExecuteTemplate(&body, "newDeviceLoginEmail", data); err != nil {
+		if err := BaseTmpl.ExecuteTemplate(&body, "emailMsgAboutNewDeviceLoginEmail", data); err != nil {
 			return []byte{}, errors.WithStack(err)
 		}
 
 	case passwordResetSubject:
-		if err := BaseTmpl.ExecuteTemplate(&body, "passwordResetEmail", data); err != nil {
+		if err := BaseTmpl.ExecuteTemplate(&body, "generatePasswordResetLink", data); err != nil {
 			return []byte{}, errors.WithStack(err)
 		}
 	}
@@ -117,7 +117,7 @@ func ServerAuthCodeSend(userEmail string) (string, error) {
 	return authServerCode, nil
 }
 
-func SendSuspiciousLoginEmail(userEmail, login, userAgent string) error {
+func SuspiciousLoginEmailSend(userEmail, login, userAgent string) error {
 	sMTPServerAuthSubject, sMTPServerAddr := sMTPServerAuth(serverEmail)
 	data := struct {
 		login     string
@@ -135,7 +135,7 @@ func SendSuspiciousLoginEmail(userEmail, login, userAgent string) error {
 	return nil
 }
 
-func SendPasswordResetEmail(userEmail, resetLink string) error {
+func PasswordResetEmailSend(userEmail, resetLink string) error {
 	sMTPServerAuthSubject, sMTPServerAddr := sMTPServerAuth(serverEmail)
 	data := struct{ ResetLink string }{ResetLink: resetLink}
 

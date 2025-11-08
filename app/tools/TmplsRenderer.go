@@ -17,13 +17,13 @@ var (
 	_        = Must(BaseTmpl.Parse(signInTMPL))
 	_        = Must(BaseTmpl.Parse(homeTMPL))
 	_        = Must(BaseTmpl.Parse(serverAuthCodeSendTMPL))
-	_        = Must(BaseTmpl.Parse(emailmsgWithServerAuthCodeTMPL))
-	_        = Must(BaseTmpl.Parse(emailmsgAboutSuspiciousLoginEmailTMPL))
+	_        = Must(BaseTmpl.Parse(emailMsgWithServerAuthCodeTMPL))
+	_        = Must(BaseTmpl.Parse(emailMsgAboutSuspiciousLoginEmailTMPL))
 	_        = Must(BaseTmpl.Parse(generatePasswordResetLinkTMPL))
-	_        = Must(BaseTmpl.Parse(emailmsgWithPasswordResetLinkTMPL))
+	_        = Must(BaseTmpl.Parse(emailMsgWithPasswordResetLinkTMPL))
 	_        = Must(BaseTmpl.Parse(setNewPasswordTMPL))
 	_        = Must(BaseTmpl.Parse(setFirstTimePasswordTMPL))
-	_        = Must(BaseTmpl.Parse(emailmsgAboutNewDeviceLoginEmailTMPL))
+	_        = Must(BaseTmpl.Parse(emailMsgAboutNewDeviceLoginEmailTMPL))
 )
 
 func TmplsRenderer(w http.ResponseWriter, tmpl *template.Template, templateName string, data interface{}) error {
@@ -337,8 +337,8 @@ const (
 </html>
 {{ end }}
 `
-	emailmsgWithServerAuthCodeTMPL = `
-{{ define "emailmsgWithServerAuthCode" }}
+	emailMsgWithServerAuthCodeTMPL = `
+{{ define "emailMsgWithServerAuthCode" }}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -409,8 +409,8 @@ const (
 </html>
 {{ end }}
 `
-	emailmsgAboutSuspiciousLoginEmailTMPL = `
-{{ define "emailmsgAboutSuspiciousLoginEmail" }}
+	emailMsgAboutSuspiciousLoginEmailTMPL = `
+{{ define "emailMsgAboutSuspiciousLoginEmail" }}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -471,8 +471,8 @@ const (
 </html>
 {{ end }}
 `
-	emailmsgWithPasswordResetLinkTMPL = `
-{{ define "emailmsgWithPasswordResetLink" }}
+	emailMsgWithPasswordResetLinkTMPL = `
+{{ define "emailMsgWithPasswordResetLink" }}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -584,8 +584,8 @@ const (
 </html>
 {{ end }}
 `
-	emailmsgAboutNewDeviceLoginEmailTMPL = `
-{{ define "emailmsgAboutNewDeviceLoginEmail" }}
+	emailMsgAboutNewDeviceLoginEmailTMPL = `
+{{ define "emailMsgAboutNewDeviceLoginEmail" }}
 <!DOCTYPE html>
 <html lang="en">
 <head>

@@ -105,6 +105,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	uniqueUserAgents, err := data.GetUniqueUserAgentsFromDb(permanentId)
 	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
 	} else {
 		isNewDevice := true
 		for _, userAgent := range uniqueUserAgents {
@@ -117,6 +118,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		if isNewDevice {
 			if err := tools.SendNewDeviceLoginEmail(yandexUser.Login, yandexUser.Email, r.UserAgent()); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				return
 			}
 		}
 	}

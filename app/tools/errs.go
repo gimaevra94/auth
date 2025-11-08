@@ -15,6 +15,7 @@ func LogAndRedirectIfErrNotNill(w http.ResponseWriter, r *http.Request, err erro
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 			return
 		}
+	} else {
 		http.Redirect(w, r, url, http.StatusFound)
 		return
 	}

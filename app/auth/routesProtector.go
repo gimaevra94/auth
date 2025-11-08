@@ -36,7 +36,7 @@ func AuthGuardForHomePath(next http.Handler) http.Handler {
 		}
 
 		if userAgent != r.UserAgent() {
-			if err := tools.SendSuspiciousLoginEmail(email, login, r.UserAgent()); err != nil {
+			if err := tools.SuspiciousLoginEmailSend(email, login, r.UserAgent()); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.SignUpURL)
 				return
 			}
@@ -48,7 +48,7 @@ func AuthGuardForHomePath(next http.Handler) http.Handler {
 
 		if refreshTokenCancelled {
 			Revocate(w, r, true, true, false)
-			if err := tools.SendSuspiciousLoginEmail(email, login, userAgent); err != nil {
+			if err := tools.SuspiciousLoginEmailSend(email, login, userAgent); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}

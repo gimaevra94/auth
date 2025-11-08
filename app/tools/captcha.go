@@ -7,9 +7,7 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
-	"github.com/gimaevra94/auth/app/structs"
 	"github.com/pkg/errors"
 )
 
@@ -49,9 +47,7 @@ func ShowCaptcha(r *http.Request) error {
 	return nil
 }
 
-func UpdateAndRenderCaptchaState(w http.ResponseWriter, r *http.Request, captchaCounter int64, ShowCaptcha bool) error {
-	var msgData structs.SignUpPageData
-
+func UpdateCaptchaState(w http.ResponseWriter, r *http.Request, captchaCounter int64, showCaptcha bool) error {
 	if captchaCounter > 0 {
 		if err := data.SetCaptchaDataInSession(w, r, "captchaCounter", captchaCounter); err != nil {
 			return errors.WithStack(err)
@@ -59,23 +55,11 @@ func UpdateAndRenderCaptchaState(w http.ResponseWriter, r *http.Request, captcha
 	}
 
 	if captchaCounter == 0 {
-		ShowCaptcha = true
+		showCaptcha = true
 	}
 
-	if err := data.SetCaptchaDataInSession(w, r, "ShowCaptcha", ShowCaptcha); err != nil {
+	if err := data.SetCaptchaDataInSession(w, r, "showCaptcha", showCaptcha); err != nil {
 		return errors.WithStack(err)
-	}
-
-	if ShowCaptcha {
-		captchaToken := r.FormValue("g-recaptcha-response")
-		if captchaToken == "" {
-			msgData = structs.SignUpPageData{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: ShowCaptcha, Regs: nil}
-		} else {
-			msgData = structs.SignUpPageData{Msg: "", ShowCaptcha: ShowCaptcha, Regs: nil}
-		}
-		if err := TmplsRenderer(w, BaseTmpl, "signUp", msgData); err != nil {
-			LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		}
 	}
 
 	return nil

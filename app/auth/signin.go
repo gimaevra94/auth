@@ -16,7 +16,7 @@ import (
 
 func ValidateSignInInput(w http.ResponseWriter, r *http.Request) {
 	var user structs.User
-	var ShowCaptcha bool
+	var showCaptcha bool
 	login := r.FormValue("login")
 	password := r.FormValue("password")
 	user = structs.User{
@@ -38,11 +38,11 @@ func ValidateSignInInput(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ShowCaptcha, err = data.GetShowCaptchaFromSession(r)
+	showCaptcha, err = data.GetShowCaptchaFromSession(r)
 	if err != nil {
 		if strings.Contains(err.Error(), "exist") {
-			ShowCaptcha = false
-			if err := data.SetCaptchaDataInSession(w, r, "ShowCaptcha", ShowCaptcha); err != nil {
+			showCaptcha = false
+			if err := data.SetCaptchaDataInSession(w, r, "showCaptcha", showCaptcha); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
@@ -52,10 +52,10 @@ func ValidateSignInInput(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if ShowCaptcha {
+	if showCaptcha {
 		if err := tools.ShowCaptcha(r); err != nil {
 			if strings.Contains(err.Error(), "captchaToken not exist") {
-				data := structs.SignInPageData{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: ShowCaptcha, Regs: nil}
+				data := structs.SignInPageData{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha, Regs: nil}
 				if err := tools.TmplsRenderer(w, tools.BaseTmpl, "signIn", data); err != nil {
 					tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 					return
@@ -70,7 +70,7 @@ func ValidateSignInInput(w http.ResponseWriter, r *http.Request) {
 	_, err = tools.InputValidate(r, user.Login, "", user.Password, true)
 	if err != nil {
 		if strings.Contains(err.Error(), "login") || strings.Contains(err.Error(), "password") {
-			if err := tools.UpdateAndRenderCaptchaState(w, r, captchaCounter, ShowCaptcha); err != nil {
+			if err := tools.UpdateCaptchaState(w, r, captchaCounter, showCaptcha); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
@@ -99,7 +99,7 @@ func CheckSignInUserInDb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ShowCaptcha, err := data.GetShowCaptchaFromSession(r)
+	showCaptcha, err := data.GetShowCaptchaFromSession(r)
 	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
@@ -108,7 +108,7 @@ func CheckSignInUserInDb(w http.ResponseWriter, r *http.Request) {
 	passwordHash, permanentId, err := data.GetPasswordHashAndpermanentIdFromDb(user.Login, user.Password)
 	if err != nil {
 		if strings.Contains(err.Error(), "password not found") || errors.Is(err, sql.ErrNoRows) || errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-			if err := tools.UpdateAndRenderCaptchaState(w, r, captchaCounter, ShowCaptcha); err != nil {
+			if err := tools.UpdateCaptchaState(w, r, captchaCounter, showCaptcha); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
@@ -119,7 +119,7 @@ func CheckSignInUserInDb(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !passwordHash.Valid {
-		if err := tools.UpdateAndRenderCaptchaState(w, r, captchaCounter, ShowCaptcha); err != nil {
+		if err := tools.UpdateCaptchaState(w, r, captchaCounter, showCaptcha); err != nil {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
@@ -127,7 +127,7 @@ func CheckSignInUserInDb(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = bcrypt.CompareHashAndPassword([]byte(passwordHash.String), []byte(user.Password)); err != nil {
-		if err := tools.UpdateAndRenderCaptchaState(w, r, captchaCounter, ShowCaptcha); err != nil {
+		if err := tools.UpdateCaptchaState(w, r, captchaCounter, showCaptcha); err != nil {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
@@ -147,6 +147,7 @@ func CheckSignInUserInDb(w http.ResponseWriter, r *http.Request) {
 	uniqueUserAgents, err := data.GetUniqueUserAgentsFromDb(permanentId)
 	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
 	} else {
 		isNewDevice := true
 		for _, userAgent := range uniqueUserAgents {
@@ -159,6 +160,7 @@ func CheckSignInUserInDb(w http.ResponseWriter, r *http.Request) {
 		if isNewDevice {
 			if err := tools.SendNewDeviceLoginEmail(user.Login, user.Email, r.UserAgent()); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				return
 			}
 		}
 	}
@@ -201,8 +203,8 @@ func CheckSignInUserInDb(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	ShowCaptcha = false
-	if err = data.SetCaptchaDataInSession(w, r, "ShowCaptcha", ShowCaptcha); err != nil {
+	showCaptcha = false
+	if err = data.SetCaptchaDataInSession(w, r, "showCaptcha", showCaptcha); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
