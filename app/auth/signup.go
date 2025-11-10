@@ -49,7 +49,7 @@ func ValidateSignUpInput(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if ShowCaptcha {
+	if ShowCaptcha && r.Method == "POST" {
 		if err := tools.ShowCaptcha(r); err != nil {
 			if strings.Contains(err.Error(), "captchaToken not exist") {
 				data := structs.SignUpPageData{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: ShowCaptcha, Regs: nil}
