@@ -10,7 +10,7 @@ import (
 
 func LogAndRedirectIfErrNotNill(w http.ResponseWriter, r *http.Request, err error, url string) {
 	if err != nil {
-		log.Printf("%v", err)
+		log.Printf("%+v", err)
 		if url == "" || !strings.HasPrefix(r.URL.Path, "/") {
 			http.Redirect(w, r, consts.Err500URL, http.StatusFound)
 			return

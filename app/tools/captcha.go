@@ -48,13 +48,11 @@ func ShowCaptcha(r *http.Request) error {
 }
 
 func UpdateCaptchaState(w http.ResponseWriter, r *http.Request, captchaCounter int64, showCaptcha bool) error {
-	if captchaCounter > 0 {
-		if err := data.SetCaptchaDataInSession(w, r, "captchaCounter", captchaCounter); err != nil {
-			return errors.WithStack(err)
-		}
+	if err := data.SetCaptchaDataInSession(w, r, "captchaCounter", captchaCounter); err != nil {
+		return errors.WithStack(err)
 	}
 
-	if captchaCounter == 0 {
+	if captchaCounter <= 1 {
 		showCaptcha = true
 	}
 

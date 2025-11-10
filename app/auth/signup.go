@@ -76,6 +76,7 @@ func ValidateSignUpInput(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
+		return
 	}
 
 	if err := data.SetAuthSessionData(w, r, user); err != nil {
@@ -138,7 +139,6 @@ func CodeSend(w http.ResponseWriter, r *http.Request) {
 
 	serverCode, err := tools.ServerAuthCodeSend(user.Email)
 	if err != nil {
-		err := errors.WithStack(err)
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
