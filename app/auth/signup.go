@@ -114,12 +114,11 @@ func CheckSignUpUserInDb(w http.ResponseWriter, r *http.Request) {
 	_, err = data.GetPermanentIdFromDb(user.Email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			CodeSend(w, r)
-			return
-		} else {
-			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			ServerAuthCodeSend(w, r)
 			return
 		}
+		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
 	}
 
 	if err := tools.UpdateCaptchaState(w, r, captchaCounter-1, ShowCaptcha); err != nil {
@@ -128,7 +127,7 @@ func CheckSignUpUserInDb(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func CodeSend(w http.ResponseWriter, r *http.Request) {
+func ServerAuthCodeSend(w http.ResponseWriter, r *http.Request) {
 	user, err := data.GetUserFromSession(r)
 	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)

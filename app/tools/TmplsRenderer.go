@@ -126,14 +126,44 @@ const (
 	<meta charset="UTF-8">
 	<title>Verification Code</title>
 	<link rel="stylesheet" href="/public/styles.css">
+	<style>
+		.form-group-centered {
+			margin-bottom: 1rem;
+			text-align: center;
+		}
+		.form-group-centered label {
+			display: block;
+			margin-bottom: 0.5rem;
+			font-weight: 500;
+			color: var(--text-color);
+		}
+		.form-group-centered input[type="text"] {
+			wIdth: auto;
+			min-wIdth: 200px;
+			max-wIdth: 100%;
+			padding: 0.75rem;
+			border: 1px solId var(--border-color);
+			border-radius: 4px;
+			font-size: 1rem;
+			transition: border-color 0.2s;
+			background-color: var(--input-bg);
+			color: var(--text-color);
+			text-align: center;
+		}
+		.form-group-centered input[type="text"]:focus {
+			outline: none;
+			border-color: var(--primary-color);
+			box-shadow: 0 0 0 3px rgba(37,99,235,0.2);
+		}
+	</style>
 </head>
 <body>
 	<div class="container">
 		<h1>Verification</h1>
 		{{if .Msg}}<div class="error-msg">{{.Msg}}</div>{{end}}
 		<p class="msg">We've sent a verification code to your email. Please enter it below.</p>
-		<form method="POST" action="/user-add">
-			<div class="form-group">
+		<form method="POST" action="/set-user-in-db">
+			<div class="form-group-centered">
 				<label for="clientCode">Verification Code</label>
 				<input type="text" Id="clientCode" name="clientCode" required maxlength="6" pattern="[0-9]*" inputmode="numeric">
 			</div>
