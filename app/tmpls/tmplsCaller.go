@@ -24,7 +24,7 @@ func SignIn(w http.ResponseWriter, r *http.Request) {
 }
 
 func CodeSend(w http.ResponseWriter, r *http.Request) {
-	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "codeSend", nil); err != nil {
+	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "serverAuthCodeSend", nil); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -66,7 +66,7 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 func PasswordReset(w http.ResponseWriter, r *http.Request) {
 	msg := r.URL.Query().Get("msg")
 	data := structs.MsgForUser{Msg: msg}
-	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "passwordReset", data); err != nil {
+	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "generatePasswordResetLink", data); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}

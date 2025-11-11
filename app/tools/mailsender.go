@@ -13,7 +13,6 @@ import (
 )
 
 var (
-	serverEmail            = os.Getenv("SERVER_EMAIL")
 	authCodeSubject        = "Auth code"
 	suspiciousLoginSubject = "Suspicious login alert!"
 	newDeviceLoginSubject  = "New device login"
@@ -28,6 +27,7 @@ func serverAuthCodeGenerate() string {
 }
 
 func SendNewDeviceLoginEmail(userEmail, login, userAgent string) error {
+	serverEmail := os.Getenv("SERVER_EMAIL")
 	sMTPServerAuthSubject, sMTPServerAddr := sMTPServerAuth(serverEmail)
 	data := struct {
 		login     string
@@ -56,7 +56,7 @@ func sMTPServerAuth(serverEmail string) (smtp.Auth, string) {
 func mailSend(serverEmail, userEmail string, sMTPServerAuthSubject smtp.Auth, sMTPServerAddr string, msg []byte) error {
 	from := serverEmail
 	to := []string{userEmail}
-	addr := sMTPServerAddr
+	addr := sMTPServerAddr + ":587"
 	if err := smtp.SendMail(addr, sMTPServerAuthSubject, from, to, msg); err != nil {
 		return errors.WithStack(err)
 	}
@@ -103,6 +103,7 @@ func executeTmpl(serverEmail, userEmail, emailSubject string, data any) ([]byte,
 
 func ServerAuthCodeSend(userEmail string) (string, error) {
 	authServerCode := serverAuthCodeGenerate()
+	serverEmail := os.Getenv("SERVER_EMAIL")
 	sMTPServerAuthSubject, sMTPServerAddr := sMTPServerAuth(serverEmail)
 	data := struct{ Code string }{Code: authServerCode}
 
@@ -118,6 +119,7 @@ func ServerAuthCodeSend(userEmail string) (string, error) {
 }
 
 func SuspiciousLoginEmailSend(userEmail, login, userAgent string) error {
+	serverEmail := os.Getenv("SERVER_EMAIL")
 	sMTPServerAuthSubject, sMTPServerAddr := sMTPServerAuth(serverEmail)
 	data := struct {
 		login     string
@@ -136,6 +138,7 @@ func SuspiciousLoginEmailSend(userEmail, login, userAgent string) error {
 }
 
 func PasswordResetEmailSend(userEmail, resetLink string) error {
+	serverEmail := os.Getenv("SERVER_EMAIL")
 	sMTPServerAuthSubject, sMTPServerAddr := sMTPServerAuth(serverEmail)
 	data := struct{ ResetLink string }{ResetLink: resetLink}
 

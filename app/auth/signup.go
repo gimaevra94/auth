@@ -17,7 +17,7 @@ import (
 
 func ValidateSignUpInput(w http.ResponseWriter, r *http.Request) {
 	var user structs.User
-	var ShowCaptcha bool
+	var showCaptcha bool
 	login := r.FormValue("login")
 	email := r.FormValue("email")
 	password := r.FormValue("password")
@@ -38,26 +38,22 @@ func ValidateSignUpInput(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	ShowCaptcha, err = data.GetShowCaptchaFromSession(r)
+	showCaptcha, err = data.GetShowCaptchaFromSession(r)
 	if err != nil {
 		if strings.Contains(err.Error(), "exist") {
-			ShowCaptcha = false
-			if err := data.SetCaptchaDataInSession(w, r, "ShowCaptcha", ShowCaptcha); err != nil {
+			showCaptcha = false
+			if err := data.SetCaptchaDataInSession(w, r, "showCaptcha", showCaptcha); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
 		}
 	}
 
-	if ShowCaptcha && r.Method == "POST" {
+	var captchaMsgErr bool
+	if showCaptcha {
 		if err := tools.ShowCaptcha(r); err != nil {
 			if strings.Contains(err.Error(), "captchaToken not exist") {
-				data := structs.SignUpPageData{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: ShowCaptcha, Regs: nil}
-				if err := tools.TmplsRenderer(w, tools.BaseTmpl, "signUp", data); err != nil {
-					tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-					return
-				}
-				return
+				captchaMsgErr = true
 			}
 		}
 	}
@@ -65,12 +61,20 @@ func ValidateSignUpInput(w http.ResponseWriter, r *http.Request) {
 	errmsgKey, err := tools.InputValidate(r, user.Login, user.Email, user.Password, false)
 	if err != nil {
 		if strings.Contains(err.Error(), "login") || strings.Contains(err.Error(), "email") || strings.Contains(err.Error(), "password") {
-			data := structs.SignUpPageData{
-				Msg:         consts.MsgForUser[errmsgKey].Msg,
-				ShowCaptcha: ShowCaptcha,
-				Regs:        consts.MsgForUser[errmsgKey].Regs,
+			var data structs.SignUpPageData
+			if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
+				data = structs.SignUpPageData{
+					Msg:         consts.MsgForUser["captchaRequired"].Msg,
+					ShowCaptcha: showCaptcha,
+					Regs:        nil}
+			} else {
+				data = structs.SignUpPageData{
+					Msg:         consts.MsgForUser[errmsgKey].Msg,
+					ShowCaptcha: showCaptcha,
+					Regs:        consts.MsgForUser[errmsgKey].Regs,
+				}
 			}
-			tools.UpdateCaptchaState(w, r, captchaCounter-1, ShowCaptcha)
+			tools.UpdateCaptchaState(w, r, captchaCounter-1, showCaptcha)
 			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "signUp", data); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
@@ -112,9 +116,10 @@ func CheckSignUpUserInDb(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, sql.ErrNoRows) {
 			CodeSend(w, r)
 			return
+		} else {
+			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
 		}
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
 	}
 
 	if err := tools.UpdateCaptchaState(w, r, captchaCounter-1, ShowCaptcha); err != nil {
