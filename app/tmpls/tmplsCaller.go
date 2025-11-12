@@ -1,8 +1,6 @@
 package tmpls
 
 import (
-	"database/sql"
-	"errors"
 	"net/http"
 
 	"github.com/gimaevra94/auth/app/consts"
@@ -25,7 +23,7 @@ func SignIn(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func CodeSend(w http.ResponseWriter, r *http.Request) {
+func ServerAuthCodeSend(w http.ResponseWriter, r *http.Request) {
 	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "serverAuthCodeSend", nil); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
@@ -33,7 +31,6 @@ func CodeSend(w http.ResponseWriter, r *http.Request) {
 }
 
 func Home(w http.ResponseWriter, r *http.Request) {
-	showSetPasswordButton := false
 	cookies, err := data.GetTemporaryIdFromCookies(r)
 	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
@@ -41,11 +38,9 @@ func Home(w http.ResponseWriter, r *http.Request) {
 	}
 
 	temporaryId := cookies.Value
+	showSetPasswordButton := false
 	passwordHash, err := data.GetPasswordHashFromDb(temporaryId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			showSetPasswordButton = true
-		}
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -53,20 +48,6 @@ func Home(w http.ResponseWriter, r *http.Request) {
 	if passwordHash.String == "" {
 		showSetPasswordButton = true
 	}
-
-	/*passwordHash, err := data.GetPasswordHashFromDb(temporaryId)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			showSetPasswordButton = true
-		} else {
-			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-			return
-		}
-	} else {
-		if passwordHash.String == "" {
-			showSetPasswordButton = true
-		}
-	}*/
 
 	data := struct{ ShowSetPasswordButton bool }{ShowSetPasswordButton: showSetPasswordButton}
 	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "home", data); err != nil {
@@ -82,7 +63,7 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func PasswordReset(w http.ResponseWriter, r *http.Request) {
+func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
 	msg := r.URL.Query().Get("msg")
 	data := structs.MsgForUser{Msg: msg}
 	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "generatePasswordResetLink", data); err != nil {

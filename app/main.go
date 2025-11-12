@@ -79,18 +79,18 @@ func initRouter() *chi.Mux {
 		http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 	})
 
-	r.With(auth.AuthGuardForSignInPath).Get(consts.SignUpURL, tmpls.SignUp)
+	r.With(auth.AuthGuardForSignUpAndSignInPath).Get(consts.SignUpURL, tmpls.SignUp)
 	r.Post(validateSignUpInputURL, auth.ValidateSignUpInput)
-	r.With(auth.AuthGuardForSignUpPath).Get(consts.CodeSendURL, tmpls.CodeSend)
+	r.With(auth.AuthGuardForServerAuthCodeSendPath).Get(consts.ServerAuthCodeSendURL, tmpls.ServerAuthCodeSend)
 	r.Post(setUserInDbURL, auth.SetUserInDb)
 
-	r.With(auth.AuthGuardForSignInPath).Get(consts.SignInURL, tmpls.SignIn)
+	r.With(auth.AuthGuardForSignUpAndSignInPath).Get(consts.SignInURL, tmpls.SignIn)
 	r.Post(validateSignInInputURL, auth.ValidateSignInInput)
 
 	r.Get("/yauth", auth.YandexAuthHandler)
 	r.Get(yandexCallbackURL, auth.YandexCallbackHandler)
 
-	r.Get(consts.PasswordResetURL, tmpls.PasswordReset)
+	r.Get(consts.GeneratePasswordResetLinkURL, tmpls.GeneratePasswordResetLink)
 	r.Post(generatePasswordResetLinkURL, auth.GeneratePasswordResetLink)
 	r.With(auth.ResetTokenGuard).Get(setNewPasswordURL, tmpls.SetNewPassword)
 	r.Post(setNewPasswordURL, auth.SetNewPassword)

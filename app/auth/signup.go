@@ -143,7 +143,7 @@ func ServerAuthCodeSend(w http.ResponseWriter, r *http.Request) {
 	if user.ServerCode != "" {
 		err := errors.New("code already sent")
 		tracedErr := errors.WithStack(err)
-		tools.LogAndRedirectIfErrNotNill(w, r, tracedErr, consts.CodeSendURL)
+		tools.LogAndRedirectIfErrNotNill(w, r, tracedErr, consts.ServerAuthCodeSendURL)
 		return
 	}
 
@@ -159,8 +159,8 @@ func ServerAuthCodeSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.URL.Path != consts.CodeSendURL {
-		http.Redirect(w, r, consts.CodeSendURL, http.StatusFound)
+	if r.URL.Path != consts.ServerAuthCodeSendURL {
+		http.Redirect(w, r, consts.ServerAuthCodeSendURL, http.StatusFound)
 		return
 	}
 }

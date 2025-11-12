@@ -276,7 +276,7 @@ const (
 		<div class="header">
 			<h1>Welcome</h1>
 			<div class="header-buttons">
-				{{if .ShowSetPassword}}
+				{{if .ShowSetPasswordButton}}
 				<form method="GET" action="/set-password">
 					<button type="submit" class="btn btn-primary">Set Password</button>
 				</form>

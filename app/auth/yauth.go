@@ -37,9 +37,7 @@ func YandexAuthHandler(w http.ResponseWriter, r *http.Request) {
 func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	yauthCode := r.URL.Query().Get("code")
 	if yauthCode == "" {
-		err := errors.New("yauthCode not exist")
-		tracedErr := errors.WithStack(err)
-		tools.LogAndRedirectIfErrNotNill(w, r, tracedErr, consts.SignUpURL)
+		http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 		return
 	}
 
