@@ -138,11 +138,11 @@ const (
 			color: var(--text-color);
 		}
 		.form-group-centered input[type="text"] {
-			wIdth: auto;
-			min-wIdth: 200px;
-			max-wIdth: 100%;
+			width: auto;
+			min-width: 200px;
+			max-width: 100%;
 			padding: 0.75rem;
-			border: 1px solId var(--border-color);
+			border: 1px solid var(--border-color);
 			border-radius: 4px;
 			font-size: 1rem;
 			transition: border-color 0.2s;
@@ -165,13 +165,13 @@ const (
 		<form method="POST" action="/set-user-in-db">
 			<div class="form-group-centered">
 				<label for="clientCode">Verification Code</label>
-				<input type="text" Id="clientCode" name="clientCode" required maxlength="6" pattern="[0-9]*" inputmode="numeric">
+				<input type="text" id="clientCode" name="clientCode" required maxlength="6" pattern="[0-9]*" inputmode="numeric">
 			</div>
 			<button type="submit" class="btn">Verify</button>
 		</form>
 		{{if .Msg}}
 		<div class="resend">
-			DIdn't receive the code?
+			Didn't receive the code?
 			<form method="GET" action="/code-send">
 				<button type="submit" class="btn">Send again</button>
 			</form>
@@ -182,6 +182,7 @@ const (
 </html>
 {{ end }}
 `
+
 	signInTMPL = `
 {{ define "signIn" }}
 <!DOCTYPE html>

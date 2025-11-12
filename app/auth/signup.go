@@ -105,7 +105,7 @@ func CheckSignUpUserInDb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ShowCaptcha, err := data.GetShowCaptchaFromSession(r)
+	showCaptcha, err := data.GetShowCaptchaFromSession(r)
 	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
@@ -121,7 +121,13 @@ func CheckSignUpUserInDb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := tools.UpdateCaptchaState(w, r, captchaCounter-1, ShowCaptcha); err != nil {
+	if err := tools.UpdateCaptchaState(w, r, captchaCounter-1, showCaptcha); err != nil {
+		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	data := structs.SignUpPageData{Msg: consts.MsgForUser["userAlreadyExist"].Msg, ShowCaptcha: showCaptcha, Regs: nil}
+	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "signUp", data); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -176,7 +182,7 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		} else if strings.Contains(err.Error(), "match") {
-			data := structs.MsgForUser{Msg: consts.MsgForUser["serverCode"].Msg, Regs: nil}
+			data := structs.SignUpPageData{Msg: consts.MsgForUser["serverCode"].Msg, Regs: nil}
 			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "CodeSend", data); err != nil {
 				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return

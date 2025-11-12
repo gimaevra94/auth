@@ -192,7 +192,7 @@ func GetResetTokenCancelledFromDb(signedToken string) (bool, error) {
 	return cancelled, nil
 }
 
-func SetUserInDbTx(tx *sql.Tx, login, email, temporaryId, permanentId string, hashedPassword []byte, temporaryIdCancelled bool) error {
+func SetUserInDbTx(tx *sql.Tx, login, email, permanentId, temporaryId string, hashedPassword []byte, temporaryIdCancelled bool) error {
 	_, err := tx.Exec(userInsertQuery, login, email, hashedPassword, temporaryId, permanentId, temporaryIdCancelled)
 	if err != nil {
 		return errors.WithStack(err)
