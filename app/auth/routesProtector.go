@@ -54,7 +54,7 @@ func ResetTokenGuard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := r.URL.Query().Get("token")
 		if token == "" {
-			http.Redirect(w, r, consts.GeneratePasswordResetLinkURL, http.StatusFound)
+			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 			return
 		}
 
@@ -71,16 +71,15 @@ func ResetTokenGuard(next http.Handler) http.Handler {
 	})
 }
 
-
 func AuthGuardForHomePath(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		Cookies, err := data.GetTemporaryIdFromCookies(r)
 		if err != nil {
-			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.SignUpURL)
+			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 			return
 		}
+		
 		temporaryId := Cookies.Value
-
 		login, email, permanentId, temporaryIdCancelled, err := data.GetAllUserKeysFromDb(temporaryId)
 		if err != nil {
 			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)

@@ -88,7 +88,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	data.SetTemporaryIdInCookies(w, temporaryId)
 
-	if err = data.SetTemporaryIdInDbByEmailTx(tx, yandexUser.Login, temporaryId, temporaryIdCancelled); err != nil {
+	if err = data.SetTemporaryIdInDbByLoginTx(tx, yandexUser.Login, temporaryId, temporaryIdCancelled); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}

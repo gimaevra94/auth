@@ -11,10 +11,9 @@ import (
 
 const (
 	permanentIdSelectQuery                        = "select permanentId from user where email = ?"
-	passwordSelectQuery                           = "select passwordHash from user where temporaryId = ?"
 	allUserKeysSelectQuery                        = "select login, email, permanentId, temporaryIdCancelled from user where temporaryId = ? limit 1"
 	passwordHashAndPermanentIdSelectQuery         = "select passwordHash, permanentId from user where login = ? limit 1"
-	passwordHashSelectQuery                       = "select passwordHash from user where login = ? limit 1"
+	passwordHashSelectQuery                       = "select passwordHash from user where temporaryId = ? limit 1"
 	permanentIdAndTemporaryIdCancelledSelectQuery = "select permanentId, temporaryIdCancelled from user where temporaryId = ? limit 1"
 	uniqueUserAgentsSelectQuery                   = "select distinct userAgent FROM refresh_token WHERE permanentId = ?"
 	allRefreshTokenKeysSelectQuery                = "select refreshToken, userAgent, refreshTokenCancelled from refresh_token where permanentId = ? and userAgent = ? AND refreshTokenCancelled = FALSE limit 1"
@@ -229,7 +228,7 @@ func SetPasswordInDbByTemporaryId(temporaryId string, hashedPassword []byte) err
 	return nil
 }
 
-func SettemporaryIdInDbByLoginTx(tx *sql.Tx, login, temporaryId string, temporaryIdCancelled bool) error {
+func SetTemporaryIdInDbByLoginTx(tx *sql.Tx, login, temporaryId string, temporaryIdCancelled bool) error {
 	_, err := tx.Exec(temporaryIdInDbByLoginUpdateQuery, temporaryId, temporaryIdCancelled, login)
 	if err != nil {
 		return errors.WithStack(err)

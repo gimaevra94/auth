@@ -179,7 +179,7 @@ func CheckSignInUserInDb(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	temporaryIdCancelled := false
-	if err = data.SetTemporaryIdInDbByEmailTx(tx, user.Login, temporaryId, temporaryIdCancelled); err != nil {
+	if err = data.SetTemporaryIdInDbByLoginTx(tx, user.Login, temporaryId, temporaryIdCancelled); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}

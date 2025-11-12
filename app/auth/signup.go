@@ -198,6 +198,17 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	temporaryId := uuid.New().String()
+	data.SetTemporaryIdInCookies(w, temporaryId)
+	permanentId := uuid.New().String()
+	temporaryIdCancelled := false
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password),
+		bcrypt.DefaultCost)
+	if err != nil {
+		return
+	}
+
 	tx, err := data.Db.Begin()
 	if err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
@@ -210,17 +221,6 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 			panic(r)
 		}
 	}()
-
-	temporaryId := uuid.New().String()
-	data.SetTemporaryIdInCookies(w, temporaryId)
-	permanentId := uuid.New().String()
-	temporaryIdCancelled := false
-
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password),
-		bcrypt.DefaultCost)
-	if err != nil {
-		return
-	}
 
 	if err := data.SetUserInDbTx(tx, user.Login, user.Email, permanentId, temporaryId, hashedPassword, temporaryIdCancelled); err != nil {
 		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)

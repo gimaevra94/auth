@@ -6,7 +6,7 @@ const (
 	SignUpURL                    = "/sign-up"
 	ServerAuthCodeSendURL        = "/server-auth-code-send"
 	SignInURL                    = "/sign-in"
-	GeneratePasswordResetLinkURL = "/geberate-password-reset-link"
+	GeneratePasswordResetLinkURL = "/generate-password-reset-link"
 	HomeURL                      = "/home"
 	Err500URL                    = "/500"
 )
