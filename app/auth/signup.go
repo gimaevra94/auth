@@ -7,6 +7,7 @@ import (
 
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
+	"github.com/gimaevra94/auth/app/errs"
 	"github.com/gimaevra94/auth/app/structs"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/google/uuid"
@@ -32,7 +33,7 @@ func ValidateSignUpInput(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(err.Error(), "exist") {
 			captchaCounter = 3
 			if err := data.SetCaptchaDataInSession(w, r, "captchaCounter", captchaCounter); err != nil {
-				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
 		}
@@ -43,48 +44,50 @@ func ValidateSignUpInput(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(err.Error(), "exist") {
 			showCaptcha = false
 			if err := data.SetCaptchaDataInSession(w, r, "showCaptcha", showCaptcha); err != nil {
-				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
 		}
 	}
 
-	var captchaMsgErr bool
-	if showCaptcha {
-		if err := tools.ShowCaptcha(r); err != nil {
-			if strings.Contains(err.Error(), "captchaToken not exist") {
-				captchaMsgErr = true
-			}
-		}
+	captchaMsgErr, err := errs.ShowCaptchaMsg(r, showCaptcha)
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
 	}
 
+	var msgForUserdata structs.SignUpPageData
 	errmsgKey, err := tools.InputValidate(r, user.Login, user.Email, user.Password, false)
 	if err != nil {
 		if strings.Contains(err.Error(), "login") || strings.Contains(err.Error(), "email") || strings.Contains(err.Error(), "password") {
-			var data structs.SignUpPageData
 			if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
-				data = structs.SignUpPageData{
+				msgForUserdata = structs.SignUpPageData{
 					Msg:         consts.MsgForUser["captchaRequired"].Msg,
 					ShowCaptcha: showCaptcha,
 					Regs:        nil}
 			} else {
-				data = structs.SignUpPageData{
+				msgForUserdata = structs.SignUpPageData{
 					Msg:         consts.MsgForUser[errmsgKey].Msg,
 					ShowCaptcha: showCaptcha,
 					Regs:        consts.MsgForUser[errmsgKey].Regs,
 				}
 			}
-			tools.UpdateCaptchaState(w, r, captchaCounter-1, showCaptcha)
-			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "signUp", data); err != nil {
-				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-				return
-			}
 		}
-		return
+	}
+
+	if msgForUserdata.Msg != "" {
+		if err := tools.UpdateCaptchaState(w, r, captchaCounter-1, showCaptcha); err != nil {
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
+		}
+		if err := tools.TmplsRenderer(w, tools.BaseTmpl, "signUp", msgForUserdata); err != nil {
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
+		}
 	}
 
 	if err := data.SetAuthSessionData(w, r, user); err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
@@ -92,22 +95,27 @@ func ValidateSignUpInput(w http.ResponseWriter, r *http.Request) {
 }
 
 func CheckSignUpUserInDb(w http.ResponseWriter, r *http.Request) {
-
 	user, err := data.GetUserFromSession(r)
 	if err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
 	captchaCounter, err := data.GetCaptchaCounterFromSession(r)
 	if err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
 	showCaptcha, err := data.GetShowCaptchaFromSession(r)
 	if err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	captchaMsgErr, err := errs.ShowCaptchaMsg(r, showCaptcha)
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
@@ -117,45 +125,52 @@ func CheckSignUpUserInDb(w http.ResponseWriter, r *http.Request) {
 			ServerAuthCodeSend(w, r)
 			return
 		}
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
-	if err := tools.UpdateCaptchaState(w, r, captchaCounter-1, showCaptcha); err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
+	var msgForUserdata structs.SignUpPageData
+	if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
+		msgForUserdata = structs.SignUpPageData{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha, Regs: nil}
+	} else {
+		msgForUserdata = structs.SignUpPageData{Msg: consts.MsgForUser["userAlreadyExist"].Msg, ShowCaptcha: showCaptcha, Regs: nil}
 	}
 
-	data := structs.SignUpPageData{Msg: consts.MsgForUser["userAlreadyExist"].Msg, ShowCaptcha: showCaptcha, Regs: nil}
-	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "signUp", data); err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
+	if msgForUserdata.Msg != "" {
+		if err := tools.UpdateCaptchaState(w, r, captchaCounter-1, showCaptcha); err != nil {
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
+		}
+		if err := tools.TmplsRenderer(w, tools.BaseTmpl, "signUp", msgForUserdata); err != nil {
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
+		}
 	}
 }
 
 func ServerAuthCodeSend(w http.ResponseWriter, r *http.Request) {
 	user, err := data.GetUserFromSession(r)
 	if err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
 	if user.ServerCode != "" {
 		err := errors.New("code already sent")
 		tracedErr := errors.WithStack(err)
-		tools.LogAndRedirectIfErrNotNill(w, r, tracedErr, consts.ServerAuthCodeSendURL)
+		errs.LogAndRedirectIfErrNotNill(w, r, tracedErr, consts.ServerAuthCodeSendURL)
 		return
 	}
 
 	serverCode, err := tools.ServerAuthCodeSend(user.Email)
 	if err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 	user.ServerCode = serverCode
 
 	if err := data.SetAuthSessionData(w, r, user); err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
@@ -168,33 +183,54 @@ func ServerAuthCodeSend(w http.ResponseWriter, r *http.Request) {
 func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 	user, err := data.GetUserFromSession(r)
 	if err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
+	captchaCounter, err := data.GetCaptchaCounterFromSession(r)
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	showCaptcha, err := data.GetShowCaptchaFromSession(r)
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	captchaMsgErr, err := errs.ShowCaptchaMsg(r, showCaptcha)
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	var msgForUserdata structs.SignUpPageData
 	clientCode := r.FormValue("clientCode")
 	if err := tools.CodeValidate(r, clientCode, user.ServerCode); err != nil {
-		if strings.Contains(err.Error(), "exist") {
-			data := structs.MsgForUser{Msg: consts.MsgForUser["userCode"].Msg, Regs: nil}
-			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "CodeSend", data); err != nil {
-				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-				return
-			}
-			return
-		} else if strings.Contains(err.Error(), "match") {
-			data := structs.SignUpPageData{Msg: consts.MsgForUser["serverCode"].Msg, Regs: nil}
-			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "CodeSend", data); err != nil {
-				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-				return
-			}
+		if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
+			msgForUserdata = structs.SignUpPageData{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha, Regs: nil}
+		} else {
+			msgForUserdata = structs.SignUpPageData{Msg: consts.MsgForUser["emptyCode"].Msg, ShowCaptcha: showCaptcha, Regs: nil}
+		}
+	}
+
+	if msgForUserdata.Msg != "" {
+		if err := tools.UpdateCaptchaState(w, r, captchaCounter-1, showCaptcha); err != nil {
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
+		if err := tools.TmplsRenderer(w, tools.BaseTmpl, "signUp", msgForUserdata); err != nil {
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
+		}
+		return
 	}
 
 	rememberMe := r.FormValue("rememberMe") != ""
 	refreshToken, err := tools.GeneraterefreshToken(consts.RefreshTokenExp7Days, rememberMe)
 	if err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
@@ -211,7 +247,7 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 
 	tx, err := data.Db.Begin()
 	if err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 	defer func() {
@@ -223,40 +259,28 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	if err := data.SetUserInDbTx(tx, user.Login, user.Email, permanentId, temporaryId, hashedPassword, temporaryIdCancelled); err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
 	refreshTokenCancelled := false
 	if err = data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
 	if err = tx.Commit(); err != nil {
 		tx.Rollback()
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
-	if err = tools.SendNewDeviceLoginEmail(user.Email, user.Login, r.UserAgent()); err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+	if err = tools.SendNewDeviceLoginEmail(user.Login, user.Email, r.UserAgent()); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 	}
 
-	captchaCounter := 3
-	if err = data.SetCaptchaDataInSession(w, r, "captchaCounter", captchaCounter); err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
-	ShowCaptcha := false
-	if err = data.SetCaptchaDataInSession(w, r, "ShowCaptcha", ShowCaptcha); err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
-	if err = data.EndAuthSession(w, r); err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+	if err = data.EndAuthAndCaptchaSessions(w, r); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 

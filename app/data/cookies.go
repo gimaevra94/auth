@@ -45,10 +45,7 @@ func ClearTemporaryIdInCookies(w http.ResponseWriter) {
 
 func ClearCookiesDev(w http.ResponseWriter, r *http.Request) {
 	ClearTemporaryIdInCookies(w)
-	if err := EndAuthSession(w, r); err != nil {
-		errors.WithStack(err)
-	}
-	if err := EndCaptchaSession(w, r); err != nil {
+	if err := EndAuthAndCaptchaSessions(w, r); err != nil {
 		errors.WithStack(err)
 	}
 	http.Redirect(w, r, consts.SignUpURL, http.StatusFound)

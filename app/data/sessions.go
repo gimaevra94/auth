@@ -141,7 +141,7 @@ func GetUserFromSession(r *http.Request) (structs.User, error) {
 	return userData, nil
 }
 
-func EndAuthSession(w http.ResponseWriter, r *http.Request) error {
+func EndAuthAndCaptchaSessions(w http.ResponseWriter, r *http.Request) error {
 	session, err := loginStore.Get(r, "loginStore")
 	if err != nil {
 		return errors.WithStack(err)
@@ -152,17 +152,13 @@ func EndAuthSession(w http.ResponseWriter, r *http.Request) error {
 		return errors.WithStack(err)
 	}
 
-	return nil
-}
-
-func EndCaptchaSession(w http.ResponseWriter, r *http.Request) error {
-	session, err := captchaStore.Get(r, "captchaStore")
+	captchaSession, err := captchaStore.Get(r, "captchaStore")
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	session.Options.MaxAge = -1
-	if err = session.Save(r, w); err != nil {
+	captchaSession.Options.MaxAge = -1
+	if err = captchaSession.Save(r, w); err != nil {
 		return errors.WithStack(err)
 	}
 

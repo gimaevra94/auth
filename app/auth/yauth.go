@@ -10,6 +10,7 @@ import (
 
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
+	"github.com/gimaevra94/auth/app/errs"
 	"github.com/gimaevra94/auth/app/structs"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/google/uuid"
@@ -26,7 +27,7 @@ const (
 func YandexAuthHandler(w http.ResponseWriter, r *http.Request) {
 	authParams := url.Values{
 		"response_type": {"code"},
-		"client_Id":     {os.Getenv("clientId")},
+		"client_id":     {os.Getenv("clientId")},
 		"redirect_uri":  {YandexCallbackFullURL},
 		"scope":         {"login:email"},
 	}
@@ -43,19 +44,19 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	yandexAccessToken, err := getAccessToken(yauthCode)
 	if err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
 	yandexUser, err := getYandexUserInfo(yandexAccessToken)
 	if err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
 	tx, err := data.Db.Begin()
 	if err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
@@ -74,11 +75,11 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			if err = data.SetYauthUserInDbTx(tx, yandexUser.Login, yandexUser.Email, temporaryId, permanentId, temporaryIdCancelled); err != nil {
-				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
 		} else {
-			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 	}
@@ -89,20 +90,20 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	data.SetTemporaryIdInCookies(w, temporaryId)
 
 	if err = data.SetTemporaryIdInDbByLoginTx(tx, yandexUser.Login, temporaryId, temporaryIdCancelled); err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
 	rememberMe := r.FormValue("rememberMe") != ""
 	refreshToken, err := tools.GeneraterefreshToken(consts.RefreshTokenExp7Days, rememberMe)
 	if err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
 	uniqueUserAgents, err := data.GetUniqueUserAgentsFromDb(permanentId)
 	if err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	} else {
 		isNewDevice := true
@@ -115,7 +116,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 
 		if isNewDevice {
 			if err := tools.SendNewDeviceLoginEmail(yandexUser.Login, yandexUser.Email, r.UserAgent()); err != nil {
-				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
 		}
@@ -123,13 +124,13 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	refreshTokenCancelled := false
 	if err = data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
 	if err = tx.Commit(); err != nil {
 		tx.Rollback()
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
@@ -140,7 +141,7 @@ func getAccessToken(yauthCode string) (string, error) {
 	tokenParams := url.Values{
 		"grant_type":    {"authorization_code"},
 		"code":          {yauthCode},
-		"client_Id":     {os.Getenv("clientId")},
+		"client_id":     {os.Getenv("clientId")},
 		"client_secret": {os.Getenv("clientSecret")},
 		"redirect_uri":  {YandexCallbackFullURL},
 	}

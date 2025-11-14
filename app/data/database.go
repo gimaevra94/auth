@@ -115,7 +115,7 @@ func GetPasswordHashFromDb(temporaryId string) (sql.NullString, error) {
 	return passwordHash, nil
 }
 
-func GetPasswordHashAndpermanentIdFromDb(login, password string) (sql.NullString, string, error) {
+func GetPasswordHashAndPermanentIdFromDb(login, password string) (sql.NullString, string, error) {
 	var passwordHash sql.NullString
 	var permanentId string
 	row := Db.QueryRow(passwordHashAndPermanentIdSelectQuery, login)

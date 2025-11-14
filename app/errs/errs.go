@@ -1,10 +1,12 @@
-package tools
+package errs
 
 import (
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gimaevra94/auth/app/consts"
+	"github.com/gimaevra94/auth/app/tools"
 )
 
 func LogAndRedirectIfErrNotNill(w http.ResponseWriter, r *http.Request, err error, url string) {
@@ -16,4 +18,16 @@ func LogAndRedirectIfErrNotNill(w http.ResponseWriter, r *http.Request, err erro
 		http.Redirect(w, r, url, http.StatusFound)
 		return
 	}
+}
+
+func ShowCaptchaMsg(r *http.Request, showCaptcha bool) (bool, error) {
+	if showCaptcha {
+		if err := tools.ShowCaptcha(r); err != nil {
+			if strings.Contains(err.Error(), "captchaToken not exist") {
+				return true, nil
+			}
+			return false, err
+		}
+	}
+	return false, nil
 }

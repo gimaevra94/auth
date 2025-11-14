@@ -208,6 +208,8 @@ const (
 			</div>
 			{{else if eq .Msg "Pass the verification reCAPTCHA."}}
 			<div class="error-msg">{{.Msg}}</div>
+			{{else if eq .Msg "Please sign in by Yandex and set password"}}
+			<div class="yandex-hint">{{.Msg}}</div>
 			{{else if eq .Msg "Login is invalid"}}
 			<div class="error error-highlight">{{.Msg}}</div>
 			{{else}}

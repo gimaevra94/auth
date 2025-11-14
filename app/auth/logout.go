@@ -5,7 +5,7 @@ import (
 
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
-	"github.com/gimaevra94/auth/app/tools"
+	"github.com/gimaevra94/auth/app/errs"
 )
 
 func Logout(w http.ResponseWriter, r *http.Request) {
@@ -25,7 +25,7 @@ func Revocate(w http.ResponseWriter, r *http.Request, CookiesClear, temporaryIdC
 
 	tx, err := data.Db.Begin()
 	if err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
@@ -38,14 +38,14 @@ func Revocate(w http.ResponseWriter, r *http.Request, CookiesClear, temporaryIdC
 
 	Cookies, err := data.GetTemporaryIdFromCookies(r)
 	if err != nil {
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 	temporaryId := Cookies.Value
 
 	if temporaryIdCancel {
 		if err := data.SetTemporaryIdCancelledInDbTx(tx, temporaryId); err != nil {
-			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 	}
@@ -53,19 +53,19 @@ func Revocate(w http.ResponseWriter, r *http.Request, CookiesClear, temporaryIdC
 	if refreshTokenCancel {
 		_, _, permanentId, _, err := data.GetAllUserKeysFromDb(temporaryId)
 		if err != nil {
-			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 
 		refreshToken, userAgent, refreshTokenCancelled, err := data.GetAllRefreshTokenKeysFromDb(permanentId, r.UserAgent())
 		if err != nil {
-			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 
 		if !refreshTokenCancelled {
 			if err := data.SetRefreshTokenCancelledInDbTx(tx, refreshToken, userAgent); err != nil {
-				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
 		}
@@ -73,7 +73,7 @@ func Revocate(w http.ResponseWriter, r *http.Request, CookiesClear, temporaryIdC
 
 	if err := tx.Commit(); err != nil {
 		tx.Rollback()
-		tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 }

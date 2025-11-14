@@ -5,6 +5,7 @@ import (
 
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
+	"github.com/gimaevra94/auth/app/errs"
 	"github.com/gimaevra94/auth/app/tools"
 )
 
@@ -78,11 +79,11 @@ func AuthGuardForHomePath(next http.Handler) http.Handler {
 			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 			return
 		}
-		
+
 		temporaryId := Cookies.Value
 		login, email, permanentId, temporaryIdCancelled, err := data.GetAllUserKeysFromDb(temporaryId)
 		if err != nil {
-			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 
@@ -94,13 +95,13 @@ func AuthGuardForHomePath(next http.Handler) http.Handler {
 
 		_, userAgent, refreshTokenCancelled, err := data.GetAllRefreshTokenKeysFromDb(permanentId, r.UserAgent())
 		if err != nil {
-			tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 
 		if userAgent != r.UserAgent() {
 			if err := tools.SuspiciousLoginEmailSend(email, login, r.UserAgent()); err != nil {
-				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.SignUpURL)
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.SignUpURL)
 				return
 			}
 
@@ -112,7 +113,7 @@ func AuthGuardForHomePath(next http.Handler) http.Handler {
 		if refreshTokenCancelled {
 			Revocate(w, r, true, true, false)
 			if err := tools.SuspiciousLoginEmailSend(email, login, userAgent); err != nil {
-				tools.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
 

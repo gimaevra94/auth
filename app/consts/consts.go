@@ -24,7 +24,8 @@ const (
 	serverCodeMsg               = "Wrong code"
 	userCodeMsg                 = "User code is empty"
 	captchaRequiredMsg          = "Pass the verification reCAPTCHA."
-	passwordsNotMatch           = "Passwords do not match"
+	pleaseSignInByYandex        = "Please sign in by Yandex and set password"
+	emptyCodeMsg                = "Code is empty"
 )
 
 var (
@@ -51,11 +52,10 @@ var MsgForUser = map[string]structs.MsgForUser{
 	"emailInvalid":                {Msg: invalidEmail, Regs: emailReqs},
 	"captchaRequired":             {Msg: captchaRequiredMsg, Regs: nil},
 	"passwordInvalid":             {Msg: invalidPassword, Regs: PswrdReqs},
-	"passwordsNotMatch":           {Msg: passwordsNotMatch, Regs: nil},
-	"serverCode":                  {Msg: serverCodeMsg, Regs: nil},
-	"userCode":                    {Msg: userCodeMsg, Regs: nil},
 	"userAlreadyExist":            {Msg: userAlreadyExist, Regs: nil},
 	"userNotExist":                {Msg: userNotExist, Regs: nil},
 	"successfulMailSendingStatus": {Msg: successfulMailSendingStatus, Regs: nil},
 	"failedMailSendingStatus":     {Msg: failedMailSendingStatus, Regs: nil},
+	"pleaseSignInByYandex":        {Msg: pleaseSignInByYandex, Regs: nil},
+	"emptyCode":                   {Msg: emptyCodeMsg, Regs: nil},
 }

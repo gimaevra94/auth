@@ -14,7 +14,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-}
+}   
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -281,11 +281,18 @@ input[type="email"]:focus {
     margin-bottom: 1rem;
 }
 
+.yandex-hint {
+    color: var(--error-color);
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin: 0 0 1rem;
+}
+
 .reset-hint {
     margin-top: 1rem;
 }
 
-/* Helper to normalize spacing after reset hint on Sign In page */
+
 .signin-gap-fix {
     margin-top: 0;
 }
