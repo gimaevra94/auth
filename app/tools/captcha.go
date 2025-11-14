@@ -14,7 +14,9 @@ import (
 func ShowCaptcha(r *http.Request) error {
 	captchaToken := r.FormValue("g-recaptcha-response")
 	if captchaToken == "" {
-		return errors.WithStack(errors.New("captchaToken not exist"))
+		err := errors.New("captchaToken not exist")
+		wrappedErr := errors.WithStack(err)
+		return wrappedErr
 	}
 
 	captchaURL := "https://www.google.com/recaptcha/api/siteverify"
@@ -41,7 +43,9 @@ func ShowCaptcha(r *http.Request) error {
 
 	success, ok := result["success"].(bool)
 	if !ok || !success {
-		return errors.New("reCAPTCHA verification failed")
+		err := errors.New("reCAPTCHA verification failed")
+		wrappedErr := errors.WithStack(err)
+		return wrappedErr
 	}
 
 	return nil

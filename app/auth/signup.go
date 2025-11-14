@@ -84,6 +84,7 @@ func ValidateSignUpInput(w http.ResponseWriter, r *http.Request) {
 			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
+		return
 	}
 
 	if err := data.SetAuthSessionData(w, r, user); err != nil {
@@ -124,9 +125,10 @@ func CheckSignUpUserInDb(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, sql.ErrNoRows) {
 			ServerAuthCodeSend(w, r)
 			return
+		} else {
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
 		}
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
 	}
 
 	var msgForUserdata structs.SignUpPageData
@@ -145,6 +147,7 @@ func CheckSignUpUserInDb(w http.ResponseWriter, r *http.Request) {
 			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
+		return
 	}
 }
 
@@ -156,9 +159,7 @@ func ServerAuthCodeSend(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if user.ServerCode != "" {
-		err := errors.New("code already sent")
-		tracedErr := errors.WithStack(err)
-		errs.LogAndRedirectIfErrNotNill(w, r, tracedErr, consts.ServerAuthCodeSendURL)
+		http.Redirect(w, r, consts.ServerAuthCodeSendURL, http.StatusFound)
 		return
 	}
 
@@ -178,6 +179,33 @@ func ServerAuthCodeSend(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.ServerAuthCodeSendURL, http.StatusFound)
 		return
 	}
+}
+
+func ServerAuthCodeSendAgain(w http.ResponseWriter, r *http.Request) {
+	user, err := data.GetUserFromSession(r)
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	if user.ServerCode == "" {
+		http.Redirect(w, r, consts.ServerAuthCodeSendURL, http.StatusFound)
+		return
+	}
+
+	serverCode, err := tools.ServerAuthCodeSend(user.Email)
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+	user.ServerCode = serverCode
+
+	if err := data.SetAuthSessionData(w, r, user); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	http.Redirect(w, r, consts.ServerAuthCodeSendURL, http.StatusFound)
 }
 
 func SetUserInDb(w http.ResponseWriter, r *http.Request) {
@@ -207,12 +235,19 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 
 	var msgForUserdata structs.SignUpPageData
 	clientCode := r.FormValue("clientCode")
-	if err := tools.CodeValidate(r, clientCode, user.ServerCode); err != nil {
-		if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
-			msgForUserdata = structs.SignUpPageData{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha, Regs: nil}
-		} else {
-			msgForUserdata = structs.SignUpPageData{Msg: consts.MsgForUser["emptyCode"].Msg, ShowCaptcha: showCaptcha, Regs: nil}
+	if clientCode != "" {
+		if err := tools.CodeValidate(r, clientCode, user.ServerCode); err != nil {
+			if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
+				msgForUserdata = structs.SignUpPageData{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha, Regs: nil}
+			} else {
+				msgForUserdata = structs.SignUpPageData{Msg: consts.MsgForUser["wrongCode"].Msg, ShowCaptcha: showCaptcha, Regs: nil}
+			}
 		}
+	} else {
+		err := errors.New("empty code")
+		tracedErr := errors.WithStack(err)
+		errs.LogAndRedirectIfErrNotNill(w, r, tracedErr, consts.Err500URL)
+		return
 	}
 
 	if msgForUserdata.Msg != "" {
@@ -220,10 +255,18 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
-		if err := tools.TmplsRenderer(w, tools.BaseTmpl, "signUp", msgForUserdata); err != nil {
-			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-			return
+		if msgForUserdata.Msg == consts.MsgForUser["wrongCode"].Msg {
+			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "serverAuthCodeSend", msgForUserdata); err != nil {
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				return
+			}
+		} else {
+			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "signUp", msgForUserdata); err != nil {
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				return
+			}
 		}
+
 		return
 	}
 

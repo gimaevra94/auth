@@ -9,6 +9,7 @@ const (
 	GeneratePasswordResetLinkURL = "/generate-password-reset-link"
 	HomeURL                      = "/home"
 	Err500URL                    = "/500"
+	ServerAuthCodeSendAgainURL   = "/server-auth-code-send-again"
 )
 
 const RefreshTokenExp7Days = 7 * 24 * 60 * 60
@@ -21,11 +22,9 @@ const (
 	invalidPassword             = "Password is invalid"
 	userAlreadyExist            = "User already exists"
 	userNotExist                = "User does not exist"
-	serverCodeMsg               = "Wrong code"
-	userCodeMsg                 = "User code is empty"
 	captchaRequiredMsg          = "Pass the verification reCAPTCHA."
 	pleaseSignInByYandex        = "Please sign in by Yandex and set password"
-	emptyCodeMsg                = "Code is empty"
+	wrongCodeMsg                = "Wrong code"
 )
 
 var (
@@ -57,5 +56,5 @@ var MsgForUser = map[string]structs.MsgForUser{
 	"successfulMailSendingStatus": {Msg: successfulMailSendingStatus, Regs: nil},
 	"failedMailSendingStatus":     {Msg: failedMailSendingStatus, Regs: nil},
 	"pleaseSignInByYandex":        {Msg: pleaseSignInByYandex, Regs: nil},
-	"emptyCode":                   {Msg: emptyCodeMsg, Regs: nil},
+	"wrongCode":                   {Msg: wrongCodeMsg, Regs: nil},
 }

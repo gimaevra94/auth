@@ -17,6 +17,12 @@ import (
 
 func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
+		if email == "" {
+		err := errors.New("email not exist")
+		wrappedErr := errors.WithStack(err)
+		errs.LogAndRedirectIfErrNotNill(w, r, wrappedErr, consts.Err500URL)
+		return
+	}
 	if err := tools.EmailValidate(email); err != nil {
 		data := structs.MsgForUser{Msg: consts.MsgForUser["invalidEmail"].Msg, Regs: nil}
 		if err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", data); err != nil {
@@ -126,7 +132,19 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newPassword := r.FormValue("newPassword")
+	if newPassword == "" {
+		err := errors.New("new-password not exist")
+		wrappederr := errors.WithStack(err)
+		errs.LogAndRedirectIfErrNotNill(w, r, wrappederr, consts.Err500URL)
+		return
+	}
 	confirmPassword := r.FormValue("confirmPassword")
+	if confirmPassword == "" {
+		err := errors.New("confirm-password not exist")
+		wrappederr := errors.WithStack(err)
+		errs.LogAndRedirectIfErrNotNill(w, r, wrappederr, consts.Err500URL)
+		return
+	}
 
 	if newPassword != confirmPassword {
 		data := structs.MsgForUser{Msg: consts.MsgForUser["passwordsNotMatch"].Msg, Regs: nil}
@@ -231,7 +249,19 @@ func SetFirstTimePassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	password := r.FormValue("password")
+	if password == "" {
+		err := errors.New("password not exist")
+		wrappedErr := errors.WithStack(err)
+		errs.LogAndRedirectIfErrNotNill(w, r, wrappedErr, consts.Err500URL)
+		return
+	}
 	confirmPassword := r.FormValue("confirmPassword")
+	if confirmPassword == "" {
+		err := errors.New("confirm-password not exist")
+		wrappedErr := errors.WithStack(err)
+		errs.LogAndRedirectIfErrNotNill(w, r, wrappedErr, consts.Err500URL)
+		return
+	}
 
 	if password != confirmPassword {
 		data := structs.MsgForUser{Msg: consts.MsgForUser["passwordsNotMatch"].Msg,

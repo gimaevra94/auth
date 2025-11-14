@@ -172,7 +172,7 @@ const (
 		{{if .Msg}}
 		<div class="resend">
 			Didn't receive the code?
-			<form method="GET" action="/code-send">
+			<form method="GET" action="/server-auth-code-send-again">
 				<button type="submit" class="btn">Send again</button>
 			</form>
 		</div>
@@ -212,6 +212,8 @@ const (
 			<div class="yandex-hint">{{.Msg}}</div>
 			{{else if eq .Msg "Login is invalid"}}
 			<div class="error error-highlight">{{.Msg}}</div>
+			{{else if eq .Msg "Password is invalid"}}
+			<div class="error error-highlight">{{.Msg}}</div>
 			{{else}}
 			<div class="error">{{.Msg}}</div>
 			{{end}}
@@ -222,7 +224,7 @@ const (
 			</div>
 		{{end}}
 		{{if .Regs}}
-		<div class="requirements-list">
+		<div class="requirements-list error-highlight">
 			{{range .Regs}}
 			<div>{{.}}</div>
 			{{end}}

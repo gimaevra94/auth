@@ -82,6 +82,7 @@ func initRouter() *chi.Mux {
 	r.With(auth.AuthGuardForSignUpAndSignInPath).Get(consts.SignUpURL, tmpls.SignUp)
 	r.Post(validateSignUpInputURL, auth.ValidateSignUpInput)
 	r.With(auth.AuthGuardForServerAuthCodeSendPath).Get(consts.ServerAuthCodeSendURL, tmpls.ServerAuthCodeSend)
+	r.With(auth.AuthGuardForServerAuthCodeSendPath).Get(consts.ServerAuthCodeSendAgainURL, auth.ServerAuthCodeSendAgain)
 	r.Post(setUserInDbURL, auth.SetUserInDb)
 
 	r.With(auth.AuthGuardForSignUpAndSignInPath).Get(consts.SignInURL, tmpls.SignIn)
