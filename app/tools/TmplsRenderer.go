@@ -68,7 +68,7 @@ const (
 		<h1>Sign Up</h1>
 		{{if .Msg}}<div class="error-msg">{{.Msg}}</div>{{end}}
 		{{if .Regs}}
-		<div class="requirements-list {{if or (eq .Msg "Login is invalid") (eq .Msg "Email is invalid") (eq .Msg "Password is invalid")}}error-highlight{{end}}">
+		<div class="requirements-list">
 			{{range .Regs}}
 			<div>{{.}}</div>
 			{{end}}
@@ -193,7 +193,7 @@ const (
 	<link rel="stylesheet" href="/public/styles.css">
 	<style>
 		.error-highlight {
-			color: #ff0000;
+			color: #dc2626;
 			font-weight: bold;
 		}
 	</style>
@@ -203,23 +203,21 @@ const (
 		<h1>Sign In</h1>
 		{{if .Msg}}
 			{{if eq .Msg "User does not exist"}}
-			<div class="error error-highlight">
-				User does not exist
-			</div>
+			<div class="error-msg">User does not exist</div>
 			{{else if eq .Msg "Pass the verification reCAPTCHA."}}
 			<div class="error-msg">{{.Msg}}</div>
 			{{else if eq .Msg "Please sign in by Yandex and set password"}}
 			<div class="yandex-hint">{{.Msg}}</div>
 			{{else if eq .Msg "Login is invalid"}}
-			<div class="error error-highlight">{{.Msg}}</div>
+			<div class="error-msg">{{.Msg}}</div>
 			{{else if eq .Msg "Password is invalid"}}
-			<div class="error error-highlight">{{.Msg}}</div>
+			<div class="error-msg">{{.Msg}}</div>
 			{{else}}
-			<div class="error">{{.Msg}}</div>
+			<div class="error-msg">{{.Msg}}</div>
 			{{end}}
 		{{end}}
 		{{if .Regs}}
-		<div class="requirements-list error-highlight">
+		<div class="requirements-list">
 			{{range .Regs}}
 			<div>{{.}}</div>
 			{{end}}
@@ -247,7 +245,7 @@ const (
 		</form>
 		{{if .ShowForgotPassword}}
 		<div class="error-msg reset-hint">
-			Forgot your password? <a href="/password-reset">Reset Password</a>
+			Forgot your password? <a href="/generate-password-reset-link">Reset Password</a>
 		</div>
 		{{end}}
 		<div class="login-link signin-gap-fix">
@@ -276,7 +274,7 @@ const (
 			<h1>Welcome</h1>
 			<div class="header-buttons">
 				{{if .ShowSetPasswordButton}}
-				<form method="GET" action="/set-password">
+				<form method="GET" action="/set-first-time-password">
 					<button type="submit" class="btn btn-primary">Set Password</button>
 				</form>
 				{{end}}
@@ -318,7 +316,11 @@ const (
 			<button type="submit" class="btn">Submit</button>
 		</form>
 		{{else}}
-			{{if eq .Msg "Password reset link has been sent to your email."}}
+			{{if eq .Msg "Password reset link has been sent."}}
+				<div class="msg success-msg" style="text-align:center; padding: 1.5rem 0;">{{.Msg}}</div>
+			{{else if eq .Msg "Password reset link has been sent to your email."}}
+				<div class="msg success-msg" style="text-align:center; padding: 1.5rem 0;">{{.Msg}}</div>
+			{{else if eq .Msg "Password reset link has been sent"}}
 				<div class="msg success-msg" style="text-align:center; padding: 1.5rem 0;">{{.Msg}}</div>
 			{{else}}
 				<div class="error-msg" style="text-align:center; padding: 1.5rem 0;">{{.Msg}}</div>
@@ -329,6 +331,7 @@ const (
 </html>
 {{ end }}
 `
+
 	setFirstTimePasswordTMPL = `
 {{ define "setFirstTimePassword" }}
 <!DOCTYPE html>
@@ -351,7 +354,7 @@ const (
             {{end}}
         </div>
         {{end}}
-        <form method="POST" action="/submit-password">
+        <form method="POST" action="/set-first-time-password">
             <div class="form-group">
                 <label for="password">Password</label>
                 <input type="password" Id="password" name="password" required autocomplete="new-password">
@@ -495,7 +498,7 @@ const (
     <div class="container">
     <h1>Suspicious login attempt detected</h1>
     <p>Login attempt from: {{.UserAgent}}.</p>
-    <p>If unauthorized, change your password <a href="{{.ResetLink}}" target="_blank" rel="noopener">immediately</a>.</p>
+    <p>If unauthorized, change your password immediately.</p>
 </div>
 </body>
 </html>

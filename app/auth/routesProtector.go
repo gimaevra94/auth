@@ -2,7 +2,6 @@ package auth
 
 import (
 	"net/http"
-	"net/url"
 
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
@@ -101,47 +100,10 @@ func AuthGuardForHomePath(next http.Handler) http.Handler {
 		}
 
 		if userAgent != r.UserAgent() || userAgent == "" {
-			baseURL := "http://localhost:8080/set-new-password"
-			resetLink, err := tools.GeneratePasswordResetLink(email, baseURL)
-			if err != nil {
-				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-				return
-			}
-			u, err := url.Parse(resetLink)
-			if err != nil {
-				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-				return
-			}
-			resetToken := u.Query().Get("token")
-			if resetToken != "" {
-				tx, err := data.Db.Begin()
-				if err != nil {
-					errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-					return
-				}
-				defer func() {
-					if rec := recover(); rec != nil {
-						tx.Rollback()
-						panic(rec)
-					}
-				}()
-				if err := data.SetPasswordResetTokenInDbTx(tx, resetToken); err != nil {
-					tx.Rollback()
-					errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-					return
-				}
-				if err := tx.Commit(); err != nil {
-					tx.Rollback()
-					errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-					return
-				}
-			}
-
-			if err := tools.SuspiciousLoginEmailSend(email, login, r.UserAgent(), resetLink); err != nil {
+			if err := tools.SuspiciousLoginEmailSend(email, login, r.UserAgent()); err != nil {
 				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.SignUpURL)
 				return
 			}
-
 			Revocate(w, r, true, true, true)
 			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 			return
@@ -149,44 +111,8 @@ func AuthGuardForHomePath(next http.Handler) http.Handler {
 
 		if refreshTokenCancelled {
 			Revocate(w, r, true, true, false)
-
-			baseURL := "http://localhost:8080/set-new-password"
-			resetLink, err := tools.GeneratePasswordResetLink(email, baseURL)
-			if err != nil {
-				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-				return
-			}
-			u, err := url.Parse(resetLink)
-			if err != nil {
-				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-				return
-			}
-			resetToken := u.Query().Get("token")
-			if resetToken != "" {
-				tx, err := data.Db.Begin()
-				if err != nil {
-					errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-					return
-				}
-				defer func() {
-					if rec := recover(); rec != nil {
-						tx.Rollback()
-						panic(rec)
-					}
-				}()
-				if err := data.SetPasswordResetTokenInDbTx(tx, resetToken); err != nil {
-					tx.Rollback()
-					errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-					return
-				}
-				if err := tx.Commit(); err != nil {
-					tx.Rollback()
-					errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-					return
-				}
-			}
-
-			if err := tools.SuspiciousLoginEmailSend(email, login, userAgent, resetLink); err != nil {
+			userAgent := r.UserAgent()
+			if err := tools.SuspiciousLoginEmailSend(email, login, userAgent); err != nil {
 				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}

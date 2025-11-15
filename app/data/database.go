@@ -76,17 +76,17 @@ func GetPermanentIdFromDb(Email string) (string, error) {
 	return permanentId, nil
 }
 
-func GetPasswordFromDb(temporaryId string) (string, error) {
+func GetPasswordFromDb(temporaryId string) (sql.NullString, error) {
 	var passwordHash sql.NullString
-	row := Db.QueryRow(passwordInDbByPermanentIdUpdateQuery, temporaryId)
+	row := Db.QueryRow(passwordHashSelectQuery, temporaryId)
 	err := row.Scan(&passwordHash)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "", errors.WithStack(err)
+			return sql.NullString{}, errors.WithStack(err)
 		}
-		return "", errors.WithStack(err)
+		return sql.NullString{}, errors.WithStack(err)
 	}
-	return passwordHash.String, nil
+	return passwordHash, nil
 }
 
 func GetAllUserKeysFromDb(temporaryId string) (string, string, string, bool, error) {
@@ -251,8 +251,8 @@ func SetRefreshTokenInDbTx(tx *sql.Tx, permanentId, refreshToken, userAgent stri
 	return nil
 }
 
-func SetPasswordResetTokenInDbTx(tx *sql.Tx, resetToken string) error {
-	_, err := tx.Exec(passwordResetTokenInsertQuery, resetToken, false)
+func SetPasswordResetTokenInDb(resetToken string) error {
+	_, err := Db.Exec(passwordResetTokenInsertQuery, resetToken, false)
 	if err != nil {
 		return errors.WithStack(err)
 	}

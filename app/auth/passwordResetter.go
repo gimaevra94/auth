@@ -10,22 +10,22 @@ import (
 	"github.com/gimaevra94/auth/app/errs"
 	"github.com/gimaevra94/auth/app/structs"
 	"github.com/gimaevra94/auth/app/tools"
-	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 )
 
 func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
-		if email == "" {
+	if email == "" {
 		err := errors.New("email not exist")
 		wrappedErr := errors.WithStack(err)
 		errs.LogAndRedirectIfErrNotNill(w, r, wrappedErr, consts.Err500URL)
 		return
 	}
+
 	if err := tools.EmailValidate(email); err != nil {
 		data := structs.MsgForUser{Msg: consts.MsgForUser["invalidEmail"].Msg, Regs: nil}
-		if err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", data); err != nil {
+		if err := tools.TmplsRenderer(w, tools.BaseTmpl, "generatePasswordResetLink", data); err != nil {
 			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
@@ -34,7 +34,7 @@ func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
 	if _, err := data.GetPermanentIdFromDb(email); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			data := structs.MsgForUser{Msg: consts.MsgForUser["userNotExist"].Msg, Regs: nil}
-			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", data); err != nil {
+			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "generatePasswordResetLink", data); err != nil {
 				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
@@ -58,51 +58,27 @@ func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resetToken := url.Query().Get("token")
-	if resetToken != "" {
-		tx, err := data.Db.Begin()
-		if err != nil {
-			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-			return
-		}
-
-		defer func() {
-			if err := recover(); err != nil {
-				tx.Rollback()
-				panic(err)
-			}
-		}()
-
-		if err := data.SetPasswordResetTokenInDbTx(tx, resetToken); err != nil {
-			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-			return
-		}
-
-		if err := tx.Commit(); err != nil {
-			tx.Rollback()
-			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-			return
-		}
+	if err := data.SetPasswordResetTokenInDb(resetToken); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
 	}
 
+	var msgFromUserData structs.MsgForUser
 	if err := tools.PasswordResetEmailSend(email, passwordResetLink); err != nil {
-		data := structs.MsgForUser{Msg: consts.MsgForUser["failedMailSendingStatus"].Msg, Regs: nil}
-		if err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", data); err != nil {
-			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-			return
-		}
+		msgFromUserData = structs.MsgForUser{Msg: consts.MsgForUser["failedMailSendingStatus"].Msg, Regs: nil}
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	} else {
+		msgFromUserData = structs.MsgForUser{Msg: consts.MsgForUser["successfulMailSendingStatus"].Msg, Regs: nil}
+	}
+	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "generatePasswordResetLink", msgFromUserData); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 }
 
 func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 	resetToken := r.FormValue("token")
-	if resetToken == "" {
-		err := errors.New("reset-token not exist")
-		wrappederr := errors.WithStack(err)
-		errs.LogAndRedirectIfErrNotNill(w, r, wrappederr, consts.Err500URL)
-		return
-	}
-
 	claims, err := tools.ResetTokenValidate(resetToken)
 	if err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
@@ -155,12 +131,6 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	permanentId, err := data.GetPermanentIdFromDb(claims.Email)
-	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
 	tx, err := data.Db.Begin()
 	if err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
@@ -184,34 +154,14 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	temporaryId := uuid.New().String()
-	temporaryIdCancelled := false
-	if err := data.SetTemporaryIdInDbByEmailTx(tx, claims.Email, temporaryId, temporaryIdCancelled); err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
-	rememberMe := false
-	refreshToken, err := tools.GeneraterefreshToken(consts.RefreshTokenExp7Days, rememberMe)
-	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
-	refreshTokenCancelled := false
-	if err := data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
 	if err := tx.Commit(); err != nil {
 		tx.Rollback()
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
-	data.SetTemporaryIdInCookies(w, temporaryId)
-	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
+	successMsg := "Password has been set successfully."
+	http.Redirect(w, r, consts.SignInURL+"?msg="+url.QueryEscape(successMsg), http.StatusFound)
 }
 
 func SetFirstTimePassword(w http.ResponseWriter, r *http.Request) {
@@ -232,7 +182,7 @@ func SetFirstTimePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if passwordHash != "" {
+	if passwordHash.String != "" {
 		err := errors.New("password already set")
 		wrappedErr := errors.WithStack(err)
 		errs.LogAndRedirectIfErrNotNill(w, r, wrappedErr, consts.Err500URL)
@@ -285,6 +235,6 @@ func SetFirstTimePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	successmsg := "Password has been set successfully."
-	http.Redirect(w, r, consts.HomeURL+"?msg="+url.QueryEscape(successmsg), http.StatusFound)
+	successMsg := "Password has been set successfully."
+	http.Redirect(w, r, consts.HomeURL+"?msg="+url.QueryEscape(successMsg), http.StatusFound)
 }

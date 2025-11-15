@@ -50,15 +50,11 @@ func ValidateSignUpInput(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	captchaMsgErr, err := errs.ShowCaptchaMsg(r, showCaptcha)
-	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
+	var captchaMsgErr bool
 	var msgForUserdata structs.SignUpPageData
 	errmsgKey, err := tools.InputValidate(r, user.Login, user.Email, user.Password, false)
 	if err != nil {
+		captchaMsgErr = errs.ShowCaptchaMsg(r, showCaptcha)
 		if strings.Contains(err.Error(), "login") || strings.Contains(err.Error(), "email") || strings.Contains(err.Error(), "password") {
 			if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
 				msgForUserdata = structs.SignUpPageData{
@@ -114,11 +110,6 @@ func CheckSignUpUserInDb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	captchaMsgErr, err := errs.ShowCaptchaMsg(r, showCaptcha)
-	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
 
 	_, err = data.GetPermanentIdFromDb(user.Email)
 	if err != nil {
@@ -131,6 +122,7 @@ func CheckSignUpUserInDb(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	captchaMsgErr := errs.ShowCaptchaMsg(r, showCaptcha)
 	var msgForUserdata structs.SignUpPageData
 	if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
 		msgForUserdata = structs.SignUpPageData{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha, Regs: nil}
@@ -227,16 +219,12 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	captchaMsgErr, err := errs.ShowCaptchaMsg(r, showCaptcha)
-	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
+	var captchaMsgErr bool
 	var msgForUserdata structs.SignUpPageData
 	clientCode := r.FormValue("clientCode")
 	if clientCode != "" {
 		if err := tools.CodeValidate(r, clientCode, user.ServerCode); err != nil {
+			captchaMsgErr = errs.ShowCaptchaMsg(r, showCaptcha)
 			if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
 				msgForUserdata = structs.SignUpPageData{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha, Regs: nil}
 			} else {

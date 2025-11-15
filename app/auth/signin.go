@@ -48,15 +48,11 @@ func ValidateSignInInput(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	captchaMsgErr, err := errs.ShowCaptchaMsg(r, showCaptcha)
-	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
+	var captchaMsgErr bool
 	var msgForUserdata structs.SignInPageData
 	errmsgKey, err := tools.InputValidate(r, user.Login, "", user.Password, true)
 	if err != nil {
+		captchaMsgErr = errs.ShowCaptchaMsg(r, showCaptcha)
 		if strings.Contains(err.Error(), "login") || strings.Contains(err.Error(), "password") {
 			if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
 				msgForUserdata = structs.SignInPageData{
@@ -113,15 +109,11 @@ func CheckSignInUserInDb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	captchaMsgErr, err := errs.ShowCaptchaMsg(r, showCaptcha)
-	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
+	var captchaMsgErr bool
 	var msgForUserdata structs.SignInPageData
 	passwordHash, permanentId, err := data.GetPasswordHashAndPermanentIdFromDb(user.Login, user.Password)
 	if err != nil {
+		captchaMsgErr = errs.ShowCaptchaMsg(r, showCaptcha)
 		if errors.Is(err, sql.ErrNoRows) {
 			if err := tools.UpdateCaptchaState(w, r, captchaCounter-1, showCaptcha); err != nil {
 				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)

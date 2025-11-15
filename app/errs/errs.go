@@ -20,14 +20,14 @@ func LogAndRedirectIfErrNotNill(w http.ResponseWriter, r *http.Request, err erro
 	}
 }
 
-func ShowCaptchaMsg(r *http.Request, showCaptcha bool) (bool, error) {
+func ShowCaptchaMsg(r *http.Request, showCaptcha bool) bool {
 	if showCaptcha {
 		if err := tools.ShowCaptcha(r); err != nil {
 			if strings.Contains(err.Error(), "captchaToken not exist") || strings.Contains(err.Error(), "reCAPTCHA verification failed") {
-				return true, nil
+				return true
 			}
-			return false, err
+			return false
 		}
 	}
-	return false, nil
+	return false
 }

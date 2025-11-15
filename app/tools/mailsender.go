@@ -83,7 +83,7 @@ func executeTmpl(serverEmail, userEmail, emailSubject string, data any) ([]byte,
 		}
 
 	case passwordResetSubject:
-		if err := BaseTmpl.ExecuteTemplate(&body, "generatePasswordResetLink", data); err != nil {
+		if err := BaseTmpl.ExecuteTemplate(&body, "emailMsgWithPasswordResetLink", data); err != nil {
 			return []byte{}, errors.WithStack(err)
 		}
 	}
@@ -118,14 +118,13 @@ func ServerAuthCodeSend(userEmail string) (string, error) {
 	return authServerCode, nil
 }
 
-func SuspiciousLoginEmailSend(userEmail, login, userAgent, resetLink string) error {
+func SuspiciousLoginEmailSend(userEmail, login, userAgent string) error {
 	serverEmail := os.Getenv("SERVER_EMAIL")
 	sMTPServerAuthSubject, sMTPServerAddr := sMTPServerAuth(serverEmail)
 	data := struct {
 		Login     string
 		UserAgent string
-		ResetLink string
-	}{Login: login, UserAgent: userAgent, ResetLink: resetLink}
+	}{Login: login, UserAgent: userAgent}
 
 	msg, err := executeTmpl(serverEmail, userEmail, suspiciousLoginSubject, data)
 	if err != nil {

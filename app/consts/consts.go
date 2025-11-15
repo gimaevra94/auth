@@ -15,14 +15,16 @@ const (
 const RefreshTokenExp7Days = 7 * 24 * 60 * 60
 
 const (
-	invalidLogin                = "Login is invalid"
-	invalidEmail                = "Email is invalid"
-	invalidPassword             = "Password is invalid"
-	userAlreadyExist            = "User already exists"
-	userNotExist                = "User does not exist"
-	captchaRequiredMsg          = "Pass the verification reCAPTCHA."
-	pleaseSignInByYandex        = "Please sign in by Yandex and set password"
-	wrongCodeMsg                = "Wrong code"
+	invalidLogin                   = "Login is invalid"
+	invalidEmail                   = "Email is invalid"
+	invalidPassword                = "Password is invalid"
+	userAlreadyExist               = "User already exists"
+	userNotExist                   = "User does not exist"
+	captchaRequiredMsg             = "Pass the verification reCAPTCHA."
+	pleaseSignInByYandexMsg        = "Please sign in by Yandex and set password"
+	wrongCodeMsg                   = "Wrong code"
+	failedMailSendingStatusMsg     = "Failed to send password reset link"
+	successfulMailSendingStatusMsg = "Password reset link has been sent"
 )
 
 var (
@@ -51,6 +53,8 @@ var MsgForUser = map[string]structs.MsgForUser{
 	"passwordInvalid":             {Msg: invalidPassword, Regs: PswrdReqs},
 	"userAlreadyExist":            {Msg: userAlreadyExist, Regs: nil},
 	"userNotExist":                {Msg: userNotExist, Regs: nil},
-	"pleaseSignInByYandex":        {Msg: pleaseSignInByYandex, Regs: nil},
+	"pleaseSignInByYandex":        {Msg: pleaseSignInByYandexMsg, Regs: nil},
 	"wrongCode":                   {Msg: wrongCodeMsg, Regs: nil},
+	"failedMailSendingStatus":     {Msg: failedMailSendingStatusMsg, Regs: nil},
+	"successfulMailSendingStatus": {Msg: successfulMailSendingStatusMsg, Regs: nil},
 }
