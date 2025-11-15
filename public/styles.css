@@ -10,7 +10,6 @@
     --hover-bg: #4b5563;
 }
 
-/* Global error highlight utility */
 .error-highlight {
     color: var(--error-color);
     font-weight: bold;
