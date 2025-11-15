@@ -23,6 +23,13 @@ func Revocate(w http.ResponseWriter, r *http.Request, CookiesClear, temporaryIdC
 		data.ClearTemporaryIdInCookies(w)
 	}
 
+	Cookies, err := data.GetTemporaryIdFromCookies(r)
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+	temporaryId := Cookies.Value
+
 	tx, err := data.Db.Begin()
 	if err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
@@ -35,13 +42,6 @@ func Revocate(w http.ResponseWriter, r *http.Request, CookiesClear, temporaryIdC
 			panic(err)
 		}
 	}()
-
-	Cookies, err := data.GetTemporaryIdFromCookies(r)
-	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-	temporaryId := Cookies.Value
 
 	if temporaryIdCancel {
 		if err := data.SetTemporaryIdCancelledInDbTx(tx, temporaryId); err != nil {
@@ -57,14 +57,14 @@ func Revocate(w http.ResponseWriter, r *http.Request, CookiesClear, temporaryIdC
 			return
 		}
 
-		refreshToken, userAgent, refreshTokenCancelled, err := data.GetAllRefreshTokenKeysFromDb(permanentId, r.UserAgent())
+		refreshToken, _, refreshTokenCancelled, err := data.GetAllRefreshTokenKeysFromDb(permanentId, r.UserAgent())
 		if err != nil {
 			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 
 		if !refreshTokenCancelled {
-			if err := data.SetRefreshTokenCancelledInDbTx(tx, refreshToken, userAgent); err != nil {
+			if err := data.SetRefreshTokenCancelledInDbTx(tx, refreshToken); err != nil {
 				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}

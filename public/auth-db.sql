@@ -18,5 +18,5 @@ CREATE TABLE refresh_token (
 
 CREATE TABLE reset_token (
     resetToken VARCHAR(255) PRIMARY KEY,
-    resetrefreshTokenCancelled BOOLEAN NOT NULL DEFAULT FALSE
+    resetTokenCancelled BOOLEAN NOT NULL DEFAULT FALSE
 );
