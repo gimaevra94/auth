@@ -16,21 +16,21 @@ const (
 	passwordHashSelectQuery                       = "select passwordHash from user where temporaryId = ? limit 1"
 	permanentIdAndTemporaryIdCancelledSelectQuery = "select permanentId, temporaryIdCancelled from user where temporaryId = ? limit 1"
 	uniqueUserAgentsSelectQuery                   = "select distinct userAgent FROM refresh_token WHERE permanentId = ?"
-	allRefreshTokenKeysSelectQuery                = "select refreshToken, userAgent, refreshTokenCancelled from refresh_token where permanentId = ? and userAgent = ? AND refreshTokenCancelled = FALSE limit 1"
-	resetTokenCancelledSelectQuery                = "select cancelled from reset_token where token = ?"
+	allRefreshTokenKeysSelectQuery                = "select refreshToken, userAgent, refreshTokenCancelled from refresh_token where permanentId = ? AND userAgent = ? AND refreshTokenCancelled = FALSE limit 1"
+	resetTokenCancelledSelectQuery                = "select resetTokenCancelled from reset_token where resetToken = ?"
 
 	userInsertQuery               = "insert into user (login, email, passwordHash, temporaryId, permanentId, temporaryIdCancelled) values (?, ?, ?, ?, ?, ?)"
 	yauthUserInsertQuery          = "insert into user (login, email, temporaryId, permanentId, temporaryIdCancelled) values (?, ?, ?, ?, ?)"
 	refreshTokenInsertQuery       = "insert into refresh_token (permanentId, refreshToken, userAgent, refreshTokenCancelled) values (?, ?, ?, ?)"
-	passwordResetTokenInsertQuery = "insert into reset_token (token, cancelled) values (?, ?)"
+	passwordResetTokenInsertQuery = "insert into reset_token (resetToken, resetTokenCancelled) values (?, ?)"
 
 	passwordInDbByEmailUpdateQuery         = "update user set passwordHash = ? where email = ?"
 	passwordInDbByPermanentIdUpdateQuery   = "update user set passwordHash = ? where temporaryId = ?"
 	temporaryIdInDbByLoginUpdateQuery      = "update user set temporaryId = ?, temporaryIdCancelled = ? where login = ?"
 	temporaryIdInDbByEmailUpdateQuery      = "update user set temporaryId = ?, temporaryIdCancelled = ? where email = ?"
-	refreshTokenCancelledUpdateQuery       = "update refresh_token set refreshTokenCancelled = ? where refreshToken = ? and userAgent = ?"
+	refreshTokenCancelledUpdateQuery       = "update refresh_token set refreshTokenCancelled = ? where refreshToken = ?"
 	temporaryIdCancelledUpdateQuery        = "update user set temporaryIdCancelled = ? where temporaryId = ?"
-	passwordResetTokenCancelledUpdateQuery = "update reset_token set cancelled = TRUE where token = ?"
+	passwordResetTokenCancelledUpdateQuery = "update reset_token set resetTokenCancelled = TRUE where resetToken = ?"
 )
 
 var Db *sql.DB
@@ -170,10 +170,9 @@ func GetAllRefreshTokenKeysFromDb(permanentId, userAgent string) (string, string
 	row := Db.QueryRow(allRefreshTokenKeysSelectQuery, permanentId, userAgent)
 	err := row.Scan(&refreshToken, &dbUserAgent, &refreshTokenCancelled)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err != sql.ErrNoRows {
 			return "", "", false, errors.WithStack(err)
 		}
-		return "", "", false, errors.WithStack(err)
 	}
 	return refreshToken, dbUserAgent, refreshTokenCancelled, nil
 }
@@ -260,8 +259,8 @@ func SetPasswordResetTokenInDbTx(tx *sql.Tx, resetToken string) error {
 	return nil
 }
 
-func SetRefreshTokenCancelledInDbTx(tx *sql.Tx, refreshToken, userAgent string) error {
-	_, err := tx.Exec(refreshTokenCancelledUpdateQuery, true, refreshToken, userAgent)
+func SetRefreshTokenCancelledInDbTx(tx *sql.Tx, refreshToken string) error {
+	_, err := tx.Exec(refreshTokenCancelledUpdateQuery, true, refreshToken)
 	if err != nil {
 		return errors.WithStack(err)
 	}

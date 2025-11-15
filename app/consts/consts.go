@@ -15,8 +15,6 @@ const (
 const RefreshTokenExp7Days = 7 * 24 * 60 * 60
 
 const (
-	successfulMailSendingStatus = "Mail sent successfully"
-	failedMailSendingStatus     = "Failed to send mail"
 	invalidLogin                = "Login is invalid"
 	invalidEmail                = "Email is invalid"
 	invalidPassword             = "Password is invalid"
@@ -53,8 +51,6 @@ var MsgForUser = map[string]structs.MsgForUser{
 	"passwordInvalid":             {Msg: invalidPassword, Regs: PswrdReqs},
 	"userAlreadyExist":            {Msg: userAlreadyExist, Regs: nil},
 	"userNotExist":                {Msg: userNotExist, Regs: nil},
-	"successfulMailSendingStatus": {Msg: successfulMailSendingStatus, Regs: nil},
-	"failedMailSendingStatus":     {Msg: failedMailSendingStatus, Regs: nil},
 	"pleaseSignInByYandex":        {Msg: pleaseSignInByYandex, Regs: nil},
 	"wrongCode":                   {Msg: wrongCodeMsg, Regs: nil},
 }

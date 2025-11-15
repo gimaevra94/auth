@@ -65,9 +65,10 @@ func ValidateSignInInput(w http.ResponseWriter, r *http.Request) {
 					Regs:        nil}
 			} else {
 				msgForUserdata = structs.SignInPageData{
-					Msg:         consts.MsgForUser[errmsgKey].Msg,
-					ShowCaptcha: showCaptcha,
-					Regs:        consts.MsgForUser[errmsgKey].Regs,
+					Msg:                consts.MsgForUser[errmsgKey].Msg,
+					ShowForgotPassword: true,
+					ShowCaptcha:        showCaptcha,
+					Regs:               consts.MsgForUser[errmsgKey].Regs,
 				}
 			}
 		}
@@ -143,13 +144,22 @@ func CheckSignInUserInDb(w http.ResponseWriter, r *http.Request) {
 				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
-			msgForUserdata = structs.SignInPageData{Msg: consts.MsgForUser["passwordInvalid"].Msg, ShowCaptcha: showCaptcha, Regs: consts.MsgForUser["passwordInvalid"].Regs}
+			msgForUserdata = structs.SignInPageData{
+				Msg:                consts.MsgForUser["passwordInvalid"].Msg,
+				ShowForgotPassword: true,
+				ShowCaptcha:        showCaptcha,
+				Regs:               consts.MsgForUser["passwordInvalid"].Regs,
+			}
 		}
 	}
 
 	if msgForUserdata.Msg != "" {
 		if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
-			msgForUserdata = structs.SignInPageData{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha, Regs: nil}
+			msgForUserdata = structs.SignInPageData{
+				Msg:         consts.MsgForUser["captchaRequired"].Msg,
+				ShowCaptcha: showCaptcha,
+				Regs:        nil,
+			}
 		}
 		if err := tools.TmplsRenderer(w, tools.BaseTmpl, "signIn", msgForUserdata); err != nil {
 			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)

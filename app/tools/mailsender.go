@@ -118,13 +118,14 @@ func ServerAuthCodeSend(userEmail string) (string, error) {
 	return authServerCode, nil
 }
 
-func SuspiciousLoginEmailSend(userEmail, login, userAgent string) error {
+func SuspiciousLoginEmailSend(userEmail, login, userAgent, resetLink string) error {
 	serverEmail := os.Getenv("SERVER_EMAIL")
 	sMTPServerAuthSubject, sMTPServerAddr := sMTPServerAuth(serverEmail)
 	data := struct {
-		login     string
-		userAgent string
-	}{login: login, userAgent: userAgent}
+		Login     string
+		UserAgent string
+		ResetLink string
+	}{Login: login, UserAgent: userAgent, ResetLink: resetLink}
 
 	msg, err := executeTmpl(serverEmail, userEmail, suspiciousLoginSubject, data)
 	if err != nil {

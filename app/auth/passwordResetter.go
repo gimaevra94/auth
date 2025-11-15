@@ -92,15 +92,6 @@ func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
-	if r.Method == http.MethodPost {
-		data := structs.MsgForUser{Msg: consts.MsgForUser["successfulMailSendingStatus"].Msg, Regs: nil}
-		if err := tools.TmplsRenderer(w, tools.BaseTmpl, "PasswordReset", data); err != nil {
-			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-			return
-		}
-		return
-	}
 }
 
 func SetNewPassword(w http.ResponseWriter, r *http.Request) {

@@ -26,7 +26,6 @@ type SignInPageData struct {
 	ShowForgotPassword bool
 	ShowCaptcha        bool
 	Regs               []string
-	NoPassword         bool
 }
 
 type PasswordResetTokenClaims struct {

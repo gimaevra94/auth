@@ -68,7 +68,7 @@ const (
 		<h1>Sign Up</h1>
 		{{if .Msg}}<div class="error-msg">{{.Msg}}</div>{{end}}
 		{{if .Regs}}
-		<div class="requirements-list {{if eq .Msg "Login is invalid"}}error-highlight{{end}}">
+		<div class="requirements-list {{if or (eq .Msg "Login is invalid") (eq .Msg "Email is invalid") (eq .Msg "Password is invalid")}}error-highlight{{end}}">
 			{{range .Regs}}
 			<div>{{.}}</div>
 			{{end}}
@@ -217,11 +217,6 @@ const (
 			{{else}}
 			<div class="error">{{.Msg}}</div>
 			{{end}}
-		{{end}}
-		{{if .NoPassword}}
-			<div class="error-msg">
-				You signed up using Yandex. Please sign in with Yandex and set a password in your account settings.
-			</div>
 		{{end}}
 		{{if .Regs}}
 		<div class="requirements-list error-highlight">
@@ -499,8 +494,8 @@ const (
 <body>
     <div class="container">
     <h1>Suspicious login attempt detected</h1>
-    <p>Login attempt from: {{.userAgent}}.</p>
-    <p>If unauthorized, change your password immediately.</p>
+    <p>Login attempt from: {{.UserAgent}}.</p>
+    <p>If unauthorized, change your password <a href="{{.ResetLink}}" target="_blank" rel="noopener">immediately</a>.</p>
 </div>
 </body>
 </html>
