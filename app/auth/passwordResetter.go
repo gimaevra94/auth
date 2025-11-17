@@ -144,12 +144,30 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	if err := data.SetPasswordInDbByEmailTx(tx, claims.Email, newPassword); err != nil {
+	oldPasswordHashCancelled := true
+	newPasswordHashCancelled := false
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+	if err := data.SetPasswordInDbByEmailTx(tx, claims.Email, hashedPassword, oldPasswordHashCancelled, newPasswordHashCancelled); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
 	if err := data.SetPasswordResetTokenCancelledInDbTx(tx, resetToken); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	cookie, err := data.GetTemporaryIdFromCookies(r)
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+	temporaryId := cookie.Value
+	if err := data.SetTemporaryIdCancelledInDbTx(tx, temporaryId); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -224,13 +242,14 @@ func SetFirstTimePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	oldPasswordHashCancelled := true
+	newPasswordHashCancelled := false
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
-
-	if err := data.SetPasswordInDbByTemporaryId(temporaryId, hashedPassword); err != nil {
+	if err := data.SetPasswordInDbByTemporaryId(temporaryId, hashedPassword, oldPasswordHashCancelled, newPasswordHashCancelled); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}

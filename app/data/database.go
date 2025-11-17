@@ -6,7 +6,6 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -24,10 +23,10 @@ const (
 	refreshTokenInsertQuery       = "insert into refresh_token (permanentId, refreshToken, userAgent, refreshTokenCancelled) values (?, ?, ?, ?)"
 	passwordResetTokenInsertQuery = "insert into reset_token (resetToken, resetTokenCancelled) values (?, ?)"
 
-	passwordInDbByEmailUpdateQuery         = "update user set passwordHash = ? where email = ?"
-	passwordInDbByPermanentIdUpdateQuery   = "update user set passwordHash = ? where temporaryId = ?"
-	temporaryIdInDbByLoginUpdateQuery      = "update user set temporaryId = ?, temporaryIdCancelled = ? where login = ?"
-	temporaryIdInDbByEmailUpdateQuery      = "update user set temporaryId = ?, temporaryIdCancelled = ? where email = ?"
+	passwordInDbByEmailUpdateQuery         = "update user set passwordHashCancelled = ? where email = ? and passwordHashCancelled = false; insert into user (passwordHash, passwordHashCancelled) values (?,?)"
+	passwordInDbBytemporaryIdUpdateQuery   = "update user set passwordHashCancelled = ? where temporaryId = ? and passwordHashCancelled = false; insert into user (passwordHash, passwordHashCancelled) values (?,?)"
+	temporaryIdInDbByLoginUpdateQuery      = "update user set temporaryIdCancelled = ? where login = ? and temporaryIdCancelled = false; insert into user (temporaryId, temporaryIdCancelled) values (?,?)"
+	temporaryIdInDbByEmailUpdateQuery      = "update user set temporaryIdCancelled = ? where email = ? and temporaryIdCancelled = false; insert into user (temporaryId, temporaryIdCancelled) values (?,?)"
 	refreshTokenCancelledUpdateQuery       = "update refresh_token set refreshTokenCancelled = ? where refreshToken = ?"
 	temporaryIdCancelledUpdateQuery        = "update user set temporaryIdCancelled = ? where temporaryId = ?"
 	passwordResetTokenCancelledUpdateQuery = "update reset_token set resetTokenCancelled = TRUE where resetToken = ?"
@@ -206,37 +205,32 @@ func SetYauthUserInDbTx(tx *sql.Tx, login, email, temporaryId, permanentId strin
 	return nil
 }
 
-func SetPasswordInDbByEmailTx(tx *sql.Tx, email, newPassword string) error {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword),
-		bcrypt.DefaultCost)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	_, err = tx.Exec(passwordInDbByEmailUpdateQuery, hashedPassword, email)
+func SetPasswordInDbByEmailTx(tx *sql.Tx, email string, hashedPassword []byte, oldPasswordHashCancelled, newPasswordHashCancelled bool) error {
+	_, err := tx.Exec(passwordInDbByEmailUpdateQuery, oldPasswordHashCancelled, email, hashedPassword, newPasswordHashCancelled)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func SetPasswordInDbByTemporaryId(temporaryId string, hashedPassword []byte) error {
-	_, err := Db.Exec(passwordInDbByPermanentIdUpdateQuery, hashedPassword, temporaryId)
+func SetPasswordInDbByTemporaryId(temporaryId string, hashedPassword []byte, oldPasswordHashCancelled, newPasswordHashCancelled bool) error {
+	_, err := Db.Exec(passwordInDbBytemporaryIdUpdateQuery, oldPasswordHashCancelled, temporaryId, hashedPassword, newPasswordHashCancelled)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func SetTemporaryIdInDbByLoginTx(tx *sql.Tx, login, temporaryId string, temporaryIdCancelled bool) error {
-	_, err := tx.Exec(temporaryIdInDbByLoginUpdateQuery, temporaryId, temporaryIdCancelled, login)
+func SetTemporaryIdInDbByLoginTx(tx *sql.Tx, login, temporaryId string, oldTemporaryIdCancelled, newTemporaryIdCancelled bool) error {
+	_, err := tx.Exec(temporaryIdInDbByLoginUpdateQuery, oldTemporaryIdCancelled, login, temporaryId, newTemporaryIdCancelled)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func SetTemporaryIdInDbByEmailTx(tx *sql.Tx, email, temporaryId string, temporaryIdCancelled bool) error {
-	_, err := tx.Exec(temporaryIdInDbByEmailUpdateQuery, temporaryId, temporaryIdCancelled, email)
+func SetTemporaryIdInDbByEmailTx(tx *sql.Tx, login, temporaryId string, oldTemporaryIdCancelled, newTemporaryIdCancelled bool) error {
+	_, err := tx.Exec(temporaryIdInDbByEmailUpdateQuery, oldTemporaryIdCancelled, login, temporaryId, newTemporaryIdCancelled)
 	if err != nil {
 		return errors.WithStack(err)
 	}
