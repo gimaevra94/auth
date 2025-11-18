@@ -38,7 +38,7 @@ func CheckInDbAndValidateSignUpUserInput(w http.ResponseWriter, r *http.Request)
 		Password: password,
 	}
 
-	_, err = data.GetPermanentUserIdFromDb(user.Login)
+	err = data.IsPermanentUserIdExistFromDb(user.Email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			errMsgKey, err := tools.InputValidate(r, user.Login, user.Email, user.Password, false)

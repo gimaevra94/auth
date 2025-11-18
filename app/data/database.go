@@ -115,20 +115,6 @@ func GetPasswordHashFromDb(temporaryId string) (sql.NullString, error) {
 	return passwordHash, nil
 }
 
-func GetPasswordHashAndPermanentIdFromDb(login, password string) (sql.NullString, string, error) {
-	var passwordHash sql.NullString
-	var permanentId string
-	row := Db.QueryRow(passwordHashAndPermanentIdSelectQuery, login)
-	err := row.Scan(&passwordHash, &permanentId)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return sql.NullString{}, "", errors.WithStack(err)
-		}
-		return sql.NullString{}, "", errors.WithStack(err)
-	}
-	return passwordHash, permanentId, nil
-}
-
 func GetpermanentIdAndTemporaryIdCancelledFromDb(temporaryId string) (string, bool, error) {
 	var permanentId string
 	var temporaryIdCancelled bool
@@ -262,15 +248,29 @@ func SetPasswordResetTokenCancelledInDbTx(tx *sql.Tx, resetToken string) error {
 	return nil
 }
 
-/////////////////////////////////////////////////
-func GetPermanentUserIdFromDb(login string) (string, error) {
+// ///////////////////////////////////////////////
+func IsPermanentUserIdExistFromDb(email string) error {
 	var permanentId string
-	row := Db.QueryRow(permanentIdSelectQuery, login)
+	row := Db.QueryRow(permanentIdSelectQuery, email)
 	err := row.Scan(&permanentId)
 	if err != nil {
-		return "", errors.WithStack(err)
+		return errors.WithStack(err)
 	}
-	return permanentId, nil
+	return nil
+}
+
+func GetPasswordHashAndPermanentIdFromDb(login, password string) (sql.NullString, string, error) {
+	var passwordHash sql.NullString
+	var permanentId string
+	row := Db.QueryRow(passwordHashAndPermanentIdSelectQuery, login)
+	err := row.Scan(&passwordHash, &permanentId)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return sql.NullString{}, "", errors.WithStack(err)
+		}
+		return sql.NullString{}, "", errors.WithStack(err)
+	}
+	return passwordHash, permanentId, nil
 }
 
 func SetUserInDbTx(tx *sql.Tx, login, email, permanentId string, hashedPassword []byte) error {
