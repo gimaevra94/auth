@@ -3,7 +3,6 @@ package auth
 import (
 	"database/sql"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/gimaevra94/auth/app/consts"

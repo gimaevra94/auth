@@ -188,7 +188,7 @@ func ServerAuthCodeSendAgain(w http.ResponseWriter, r *http.Request) {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
-	if user.ServerCode != "" {
+	if user.ServerCode == "" {
 		http.Redirect(w, r, consts.ServerAuthCodeSendURL, http.StatusFound)
 		return
 	}
