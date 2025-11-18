@@ -1,4 +1,4 @@
-package tools
+package tmpls
 
 import (
 	"html/template"

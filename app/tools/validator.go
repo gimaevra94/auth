@@ -18,28 +18,28 @@ var (
 )
 
 func InputValidate(r *http.Request, login, email, password string, IsSignIn bool) (string, error) {
-	var errmsgKey string
+	var errMsgKey string
 	if login == "" || !loginRegex.MatchString(login) {
 		err := errors.New("loginInvalid")
-		errmsgKey = "loginInvalid"
-		return errmsgKey, errors.WithStack(err)
+		errMsgKey = "loginInvalid"
+		return errMsgKey, errors.WithStack(err)
 	}
 
 	if password == "" || !passwordRegex.MatchString(password) {
 		err := errors.New("passwordInvalid")
-		errmsgKey = "passwordInvalid"
-		return errmsgKey, errors.WithStack(err)
+		errMsgKey = "passwordInvalid"
+		return errMsgKey, errors.WithStack(err)
 	}
 
 	if !IsSignIn {
 		if email == "" || !emailRegex.MatchString(email) {
 			err := errors.New("emailInvalid")
-			errmsgKey = "emailInvalid"
-			return errmsgKey, errors.WithStack(err)
+			errMsgKey = "emailInvalid"
+			return errMsgKey, errors.WithStack(err)
 		}
 	}
 
-	return errmsgKey, nil
+	return errMsgKey, nil
 }
 
 func RefreshTokenValidate(refreshToken string) error {

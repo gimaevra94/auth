@@ -1,4 +1,4 @@
-package tools
+package captcha
 
 import (
 	"encoding/json"
@@ -52,7 +52,7 @@ func ShowCaptcha(r *http.Request) error {
 	return nil
 }
 
-func CaptchaShowAndCaptchaCounterInit(w http.ResponseWriter, r *http.Request) (captchaCounter int64, showCaptcha bool, err error) {
+func InitCaptchaState(w http.ResponseWriter, r *http.Request) (captchaCounter int64, showCaptcha bool, err error) {
 	captchaCounter, err = data.GetCaptchaCounterFromSession(r)
 	if err != nil {
 		if strings.Contains(err.Error(), "exist") {
@@ -91,4 +91,16 @@ func UpdateCaptchaState(w http.ResponseWriter, r *http.Request, captchaCounter i
 	}
 
 	return nil
+}
+
+func ShowCaptchaMsg(r *http.Request, showCaptcha bool) bool {
+	if showCaptcha {
+		if err := ShowCaptcha(r); err != nil {
+			if strings.Contains(err.Error(), "captchaToken not exist") || strings.Contains(err.Error(), "reCAPTCHA verification failed") {
+				return true
+			}
+			return false
+		}
+	}
+	return false
 }

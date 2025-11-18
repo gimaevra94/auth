@@ -12,21 +12,10 @@ type User struct {
 }
 
 type MsgForUser struct {
-	Msg  string
-	Regs []string
-}
-
-type SignUpPageData struct {
 	Msg         string
 	ShowCaptcha bool
-	Regs        []string
-}
-
-type SignInPageData struct {
-	Msg                string
 	ShowForgotPassword bool
-	ShowCaptcha        bool
-	Regs               []string
+	Regs        []string
 }
 
 type PasswordResetTokenClaims struct {

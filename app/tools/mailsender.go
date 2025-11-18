@@ -13,6 +13,7 @@ import (
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/errs"
+	"github.com/gimaevra94/auth/app/tmpls"
 	"github.com/pkg/errors"
 )
 
@@ -72,22 +73,22 @@ func executeTmpl(serverEmail, userEmail, emailSubject string, data any) ([]byte,
 
 	switch emailSubject {
 	case authCodeSubject:
-		if err := BaseTmpl.ExecuteTemplate(&body, "emailMsgWithServerAuthCode", data); err != nil {
+		if err := tmpls.BaseTmpl.ExecuteTemplate(&body, "emailMsgWithServerAuthCode", data); err != nil {
 			return []byte{}, errors.WithStack(err)
 		}
 
 	case suspiciousLoginSubject:
-		if err := BaseTmpl.ExecuteTemplate(&body, "emailMsgAboutSuspiciousLoginEmail", data); err != nil {
+		if err := tmpls.BaseTmpl.ExecuteTemplate(&body, "emailMsgAboutSuspiciousLoginEmail", data); err != nil {
 			return []byte{}, errors.WithStack(err)
 		}
 
 	case newDeviceLoginSubject:
-		if err := BaseTmpl.ExecuteTemplate(&body, "emailMsgAboutNewDeviceLoginEmail", data); err != nil {
+		if err := tmpls.BaseTmpl.ExecuteTemplate(&body, "emailMsgAboutNewDeviceLoginEmail", data); err != nil {
 			return []byte{}, errors.WithStack(err)
 		}
 
 	case passwordResetSubject:
-		if err := BaseTmpl.ExecuteTemplate(&body, "emailMsgWithPasswordResetLink", data); err != nil {
+		if err := tmpls.BaseTmpl.ExecuteTemplate(&body, "emailMsgWithPasswordResetLink", data); err != nil {
 			return []byte{}, errors.WithStack(err)
 		}
 	}

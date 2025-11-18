@@ -7,25 +7,24 @@ import (
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/errs"
 	"github.com/gimaevra94/auth/app/structs"
-	"github.com/gimaevra94/auth/app/tools"
 )
 
 func SignUp(w http.ResponseWriter, r *http.Request) {
-	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "signUp", nil); err != nil {
+	if err := TmplsRenderer(w, BaseTmpl, "signUp", nil); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 }
 
 func SignIn(w http.ResponseWriter, r *http.Request) {
-	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "signIn", nil); err != nil {
+	if err := TmplsRenderer(w, BaseTmpl, "signIn", nil); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 }
 
 func ServerAuthCodeSend(w http.ResponseWriter, r *http.Request) {
-	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "serverAuthCodeSend", nil); err != nil {
+	if err := TmplsRenderer(w, BaseTmpl, "serverAuthCodeSend", nil); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -51,14 +50,14 @@ func Home(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := struct{ ShowSetPasswordButton bool }{ShowSetPasswordButton: showSetPasswordButton}
-	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "home", data); err != nil {
+	if err := TmplsRenderer(w, BaseTmpl, "home", data); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 }
 
 func Logout(w http.ResponseWriter, r *http.Request) {
-	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "logout", nil); err != nil {
+	if err := TmplsRenderer(w, BaseTmpl, "logout", nil); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -67,7 +66,7 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
 	msg := r.URL.Query().Get("msg")
 	data := structs.MsgForUser{Msg: msg}
-	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "generatePasswordResetLink", data); err != nil {
+	if err := TmplsRenderer(w, BaseTmpl, "generatePasswordResetLink", data); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -78,7 +77,7 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 		Msg   string
 		Token string
 	}{Msg: r.URL.Query().Get("msg"), Token: r.URL.Query().Get("token")}
-	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "setNewPassword", data); err != nil {
+	if err := TmplsRenderer(w, BaseTmpl, "setNewPassword", data); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -92,7 +91,7 @@ func SetFirstTimePassword(w http.ResponseWriter, r *http.Request) {
 		Msg:  r.URL.Query().Get("msg"),
 		Regs: consts.PswrdReqs,
 	}
-	if err := tools.TmplsRenderer(w, tools.BaseTmpl, "setFirstTimePassword", data); err != nil {
+	if err := TmplsRenderer(w, BaseTmpl, "setFirstTimePassword", data); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
