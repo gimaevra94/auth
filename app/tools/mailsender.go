@@ -146,7 +146,15 @@ func ServerAuthCodeSend(w http.ResponseWriter, r *http.Request) {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
-	if user.ServerCode != "" {
+
+	if user.ServerAuthCodeMailSendedCounter == 0 {
+		if user.ServerCode != "" {
+			http.Redirect(w, r, consts.ServerAuthCodeSendURL, http.StatusFound)
+			return
+		}
+	}
+
+	if user.ServerCode == "" {
 		http.Redirect(w, r, consts.ServerAuthCodeSendURL, http.StatusFound)
 		return
 	}
@@ -174,47 +182,4 @@ func ServerAuthCodeSend(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, consts.ServerAuthCodeSendURL, http.StatusFound)
-	return
-}
-
-func ServerAuthCodeSendAgain(w http.ResponseWriter, r *http.Request) {
-	user, err := data.GetUserFromSession(r)
-	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-	if user.ServerCode == "" {
-		http.Redirect(w, r, consts.ServerAuthCodeSendURL, http.StatusFound)
-		return
-	}
-
-	authServerCode := serverAuthCodeGenerate()
-	serverEmail := os.Getenv("SERVER_EMAIL")
-	sMTPServerAuthSubject, sMTPServerAddr := sMTPServerAuth(serverEmail)
-	data_ := struct{ Code string }{Code: authServerCode}
-
-	msg, err := executeTmpl(serverEmail, user.Email, authCodeSubject, data_)
-	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-	if err := mailSend(serverEmail, user.Email, sMTPServerAuthSubject, sMTPServerAddr, msg); err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
-	user.ServerCode = authServerCode
-	if err := data.SetAuthSessionData(w, r, user); err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
-	if r.URL.Path != consts.ServerAuthCodeSendURL {
-		http.Redirect(w, r, consts.ServerAuthCodeSendURL, http.StatusFound)
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
-	errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-	return
 }

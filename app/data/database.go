@@ -18,9 +18,10 @@ const (
 	allRefreshTokenKeysSelectQuery                = "select refreshToken, userAgent, refreshTokenCancelled from refresh_token where permanentId = ? AND userAgent = ? AND refreshTokenCancelled = FALSE limit 1"
 	resetTokenCancelledSelectQuery                = "select resetTokenCancelled from reset_token where resetToken = ?"
 
-	userInsertQuery               = "insert into user (login, email, passwordHash, temporaryId, permanentId, temporaryIdCancelled) values (?, ?, ?, ?, ?, ?)"
+	userInsertQuery               = "insert into user (login, email, passwordHash, permanentId) values (?, ?, ?, ?)"
 	yauthUserInsertQuery          = "insert into user (login, email, temporaryId, permanentId, temporaryIdCancelled) values (?, ?, ?, ?, ?)"
 	refreshTokenInsertQuery       = "insert into refresh_token (permanentId, refreshToken, userAgent, refreshTokenCancelled) values (?, ?, ?, ?)"
+	temporaryIdInsertQuery        = "insert into temporary_id (permanentId, temporaryId, userAgent, temporaryIdCancelled) values (?, ?, ?, ?)"
 	passwordResetTokenInsertQuery = "insert into reset_token (resetToken, resetTokenCancelled) values (?, ?)"
 
 	passwordInDbByEmailUpdateQuery         = "update user set passwordHashCancelled = ? where email = ? and passwordHashCancelled = false; insert into user (passwordHash, passwordHashCancelled) values (?,?)"
@@ -189,8 +190,8 @@ func GetResetTokenCancelledFromDb(signedToken string) (bool, error) {
 	return cancelled, nil
 }
 
-func SetUserInDbTx(tx *sql.Tx, login, email, permanentId, temporaryId string, hashedPassword []byte, temporaryIdCancelled bool) error {
-	_, err := tx.Exec(userInsertQuery, login, email, hashedPassword, temporaryId, permanentId, temporaryIdCancelled)
+func SetUserInDbTx(tx *sql.Tx, login, email, permanentId string, hashedPassword []byte) error {
+	_, err := tx.Exec(userInsertQuery, login, email, hashedPassword, permanentId)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -239,6 +240,14 @@ func SetTemporaryIdInDbByEmailTx(tx *sql.Tx, login, temporaryId string, oldTempo
 
 func SetRefreshTokenInDbTx(tx *sql.Tx, permanentId, refreshToken, userAgent string, refreshTokenCancelled bool) error {
 	_, err := tx.Exec(refreshTokenInsertQuery, permanentId, refreshToken, userAgent, refreshTokenCancelled)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func SetTemporaryIdInDbTx(tx *sql.Tx, permanentId, temporaryId, userAgent string, temporaryIdCancelled bool) error {
+	_, err := tx.Exec(temporaryIdInsertQuery, permanentId, temporaryId, userAgent, temporaryIdCancelled)
 	if err != nil {
 		return errors.WithStack(err)
 	}

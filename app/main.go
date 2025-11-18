@@ -15,15 +15,16 @@ import (
 )
 
 const (
-	validateSignUpInputURL       = "/validate-sign-up-input"
-	setUserInDbURL               = "/set-user-in-db"
-	validateSignInInputURL       = "/validate-sign-in-input"
-	generatePasswordResetLinkURL = "/generate-password-reset-link"
-	yandexCallbackURL            = "/ya_callback"
-	setNewPasswordURL            = "/set-new-password"
-	setFirstTimePasswordURL      = "/set-first-time-password"
-	logoutURL                    = "/logout"
-	simpleLogoutURL              = "/simple-logout"
+	validateSignUpInputURL                 = "/validate-sign-up-input"
+	setUserInDbURL                         = "/set-user-in-db"
+	CheckInDbAndValidateSignUpUserInputURL = "/check-in-db-and-validate-sign-up-user-input"
+	CheckInDbAndValidateSignInUserInputURL = "/check-in-db-and-validate-sign-in-user-input"
+	generatePasswordResetLinkURL           = "/generate-password-reset-link"
+	yandexCallbackURL                      = "/ya_callback"
+	setNewPasswordURL                      = "/set-new-password"
+	setFirstTimePasswordURL                = "/set-first-time-password"
+	logoutURL                              = "/logout"
+	simpleLogoutURL                        = "/simple-logout"
 )
 
 func main() {
@@ -80,13 +81,12 @@ func initRouter() *chi.Mux {
 	})
 
 	r.With(auth.AuthGuardForSignUpAndSignInPath).Get(consts.SignUpURL, tmpls.SignUp)
-	r.Post(validateSignUpInputURL, auth.ValidateSignUpInput)
+	r.Post(CheckInDbAndValidateSignUpUserInputURL, auth.CheckInDbAndValidateSignUpUserInput)
 	r.With(auth.AuthGuardForServerAuthCodeSendPath).Get(consts.ServerAuthCodeSendURL, tmpls.ServerAuthCodeSend)
-	r.With(auth.AuthGuardForServerAuthCodeSendPath).Get(consts.ServerAuthCodeSendAgainURL, auth.ServerAuthCodeSendAgain)
 	r.Post(setUserInDbURL, auth.SetUserInDb)
 
 	r.With(auth.AuthGuardForSignUpAndSignInPath).Get(consts.SignInURL, tmpls.SignIn)
-	r.Post(validateSignInInputURL, auth.ValidateSignInInput)
+	r.Post(CheckInDbAndValidateSignInUserInputURL, auth.CheckInDbAndValidateSignInUserInput)
 
 	r.Get("/yauth", auth.YandexAuthHandler)
 	r.Get(yandexCallbackURL, auth.YandexCallbackHandler)

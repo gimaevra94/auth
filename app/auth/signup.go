@@ -17,7 +17,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func CheckAndValidateSignUpUserInDb(w http.ResponseWriter, r *http.Request) {
+func CheckInDbAndValidateSignUpUserInput(w http.ResponseWriter, r *http.Request) {
 	captchaCounter, showCaptcha, err := tools.CaptchaShowAndCaptchaCounterInit(w, r)
 	if err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
@@ -70,10 +70,7 @@ func CheckAndValidateSignUpUserInDb(w http.ResponseWriter, r *http.Request) {
 				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
-			if err := tools.ServerAuthCodeSend(w, r); err != nil {
-				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-				return
-			}
+			tools.ServerAuthCodeSend(w, r)
 		}
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
@@ -112,7 +109,7 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 	clientCode := r.FormValue("clientCode")
 	if clientCode != "" {
 		if err := tools.CodeValidate(r, clientCode, user.ServerCode); err != nil {
-			captchaMsgErr = errs.ShowCaptchaMsg(r, showCaptcha)
+			captchaMsgErr = showCaptchaMsg.ShowCaptchaMsg(r, showCaptcha)
 			if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
 				msgForUserdata = structs.SignUpPageData{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha, Regs: nil}
 			} else {
@@ -153,11 +150,6 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	temporaryId := uuid.New().String()
-	data.SetTemporaryIdInCookies(w, temporaryId)
-	permanentId := uuid.New().String()
-	temporaryIdCancelled := false
-
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password),
 		bcrypt.DefaultCost)
 	if err != nil {
@@ -177,13 +169,22 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	if err := data.SetUserInDbTx(tx, user.Login, user.Email, permanentId, temporaryId, hashedPassword, temporaryIdCancelled); err != nil {
+	permanentId := uuid.New().String()
+	if err := data.SetUserInDbTx(tx, user.Login, user.Email, permanentId, hashedPassword); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
 	refreshTokenCancelled := false
 	if err = data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	temporaryId := uuid.New().String()
+	data.SetTemporaryIdInCookies(w, temporaryId)
+	temporaryIdCancelled := false
+	if err = data.SetTemporaryIdInDbTx(tx, permanentId, temporaryId, r.UserAgent(), temporaryIdCancelled); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}

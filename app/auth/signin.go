@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/gimaevra94/auth/app/auth/showCaptchaMsg"
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/errs"
@@ -16,43 +17,56 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func ValidateSignInInput(w http.ResponseWriter, r *http.Request) {
-	var user structs.User
-	var showCaptcha bool
+func CheckInDbAndValidateSignInUserInput(w http.ResponseWriter, r *http.Request) {
+	captchaCounter, showCaptcha, err := tools.CaptchaShowAndCaptchaCounterInit(w, r)
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+	captchaMsgErr := showCaptchaMsg.ShowCaptchaMsg(r, showCaptcha)
+	var msgForUserdata structs.SignInPageData
+
 	login := r.FormValue("login")
+	email := r.FormValue("email")
 	password := r.FormValue("password")
+	var user structs.User
 	user = structs.User{
 		Login:    login,
+		Email:    email,
 		Password: password,
 	}
 
-	captchaCounter, err := data.GetCaptchaCounterFromSession(r)
+	_, err = data.GetPermanentIdFromDb(user.Email)
 	if err != nil {
-		if strings.Contains(err.Error(), "exist") {
-			captchaCounter = 3
-			if err := data.SetCaptchaDataInSession(w, r, "captchaCounter", captchaCounter); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			captchaMsgErr = showCaptchaMsg.ShowCaptchaMsg(r, showCaptcha)
+			if errors.Is(err, sql.ErrNoRows) {
+				if err := tools.UpdateCaptchaState(w, r, captchaCounter-1, showCaptcha); err != nil {
+					errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+					return
+				}
+				msgForUserdata = structs.SignInPageData{Msg: consts.MsgForUser["userNotExist"].Msg, ShowCaptcha: showCaptcha, Regs: nil}
+			} else {
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				return
+			}
+
+			if err := tools.UpdateCaptchaState(w, r, captchaCounter-1, showCaptcha); err != nil {
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				return
+			}
+			if err := tools.TmplsRenderer(w, tools.BaseTmpl, "signUp", msgForUserdata); err != nil {
 				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
 		}
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
 	}
 
-	showCaptcha, err = data.GetShowCaptchaFromSession(r)
-	if err != nil {
-		if strings.Contains(err.Error(), "exist") {
-			showCaptcha = false
-			if err := data.SetCaptchaDataInSession(w, r, "showCaptcha", showCaptcha); err != nil {
-				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-				return
-			}
-		}
-	}
-
-	var captchaMsgErr bool
-	var msgForUserdata structs.SignInPageData
 	errmsgKey, err := tools.InputValidate(r, user.Login, "", user.Password, true)
 	if err != nil {
-		captchaMsgErr = errs.ShowCaptchaMsg(r, showCaptcha)
+		captchaMsgErr = showCaptchaMsg.ShowCaptchaMsg(r, showCaptcha)
 		if strings.Contains(err.Error(), "login") || strings.Contains(err.Error(), "password") {
 			if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
 				msgForUserdata = structs.SignInPageData{
@@ -113,7 +127,7 @@ func CheckSignInUserInDb(w http.ResponseWriter, r *http.Request) {
 	var msgForUserdata structs.SignInPageData
 	passwordHash, permanentId, err := data.GetPasswordHashAndPermanentIdFromDb(user.Login, user.Password)
 	if err != nil {
-		captchaMsgErr = errs.ShowCaptchaMsg(r, showCaptcha)
+		captchaMsgErr = showCaptchaMsg.ShowCaptchaMsg(r, showCaptcha)
 		if errors.Is(err, sql.ErrNoRows) {
 			if err := tools.UpdateCaptchaState(w, r, captchaCounter-1, showCaptcha); err != nil {
 				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
@@ -199,7 +213,7 @@ func CheckSignInUserInDb(w http.ResponseWriter, r *http.Request) {
 
 	oldTemporaryIdCancelled := true
 	newTemporaryIdCancelled := false
-	if err = data.SetTemporaryIdInDbByLoginTx(tx, user.Login, temporaryId, oldTemporaryIdCancelled,newTemporaryIdCancelled); err != nil {
+	if err = data.SetTemporaryIdInDbByLoginTx(tx, user.Login, temporaryId, oldTemporaryIdCancelled, newTemporaryIdCancelled); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
