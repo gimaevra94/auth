@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gimaevra94/auth/app/auth/showCaptchaMsg"
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/errs"
@@ -22,7 +23,7 @@ func CheckAndValidateSignUpUserInDb(w http.ResponseWriter, r *http.Request) {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
-	captchaMsgErr := errs.ShowCaptchaMsg(r, showCaptcha)
+	captchaMsgErr := showCaptchaMsg.ShowCaptchaMsg(r, showCaptcha)
 	var msgForUserdata structs.SignUpPageData
 
 	login := r.FormValue("login")

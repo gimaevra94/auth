@@ -167,18 +167,13 @@ func ServerAuthCodeSend(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user.ServerCode = authServerCode
+	user.ServerAuthCodeMailSendedCounter++
 	if err := data.SetAuthSessionData(w, r, user); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
-	if r.URL.Path != consts.ServerAuthCodeSendURL {
-		http.Redirect(w, r, consts.ServerAuthCodeSendURL, http.StatusFound)
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
-	errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+	http.Redirect(w, r, consts.ServerAuthCodeSendURL, http.StatusFound)
 	return
 }
 

@@ -3,11 +3,12 @@ package structs
 import "github.com/golang-jwt/jwt"
 
 type User struct {
-	UserId     string `sql:"userId"`
-	Login      string `sql:"login" json:"login"`
-	Email      string `sql:"email" json:"default_email"`
-	Password   string `sql:"passwordHash"`
-	ServerCode string
+	UserId                          string `sql:"userId"`
+	Login                           string `sql:"login" json:"login"`
+	Email                           string `sql:"email" json:"default_email"`
+	Password                        string `sql:"passwordHash"`
+	ServerCode                      string
+	ServerAuthCodeMailSendedCounter int
 }
 
 type MsgForUser struct {
