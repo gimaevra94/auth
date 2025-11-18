@@ -142,7 +142,7 @@ func PasswordResetEmailSend(userEmail, resetLink string) error {
 }
 
 func ServerAuthCodeSend(w http.ResponseWriter, r *http.Request) {
-	user, err := data.GetUserFromSession(r)
+	user, err := data.GetAuthDataFromSession(r)
 	if err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
@@ -177,7 +177,7 @@ func ServerAuthCodeSend(w http.ResponseWriter, r *http.Request) {
 
 	user.ServerCode = authServerCode
 	user.ServerAuthCodeMailSendedCounter++
-	if err := data.SetAuthSessionData(w, r, user); err != nil {
+	if err := data.SetAuthDataInSession(w, r, user); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}

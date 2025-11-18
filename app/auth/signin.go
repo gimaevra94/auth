@@ -36,7 +36,7 @@ func CheckInDbAndValidateSignInUserInput(w http.ResponseWriter, r *http.Request)
 		Password: password,
 	}
 
-	_, err = data.GetPermanentIdFromDb(user.Email)
+	_, err = data.GetUserPermanentIdFromDb(user.Login)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
@@ -104,7 +104,7 @@ func CheckSignInUserInDb(w http.ResponseWriter, r *http.Request) {
 	data.SetTemporaryIdInCookies(w, temporaryId)
 
 	rememberMe := r.FormValue("rememberMe") != ""
-	refreshToken, err := tools.GeneraterefreshToken(consts.RefreshTokenExp7Days, rememberMe)
+	refreshToken, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe)
 	if err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return

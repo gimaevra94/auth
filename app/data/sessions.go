@@ -62,7 +62,7 @@ func SetCaptchaDataInSession(w http.ResponseWriter, r *http.Request, key string,
 	return nil
 }
 
-func SetAuthSessionData(w http.ResponseWriter, r *http.Request, consts any) error {
+func SetAuthDataInSession(w http.ResponseWriter, r *http.Request, consts any) error {
 	loginSession, err := loginStore.Get(r, "loginStore")
 	if err != nil {
 		return errors.WithStack(err)
@@ -121,7 +121,7 @@ func GetShowCaptchaFromSession(r *http.Request) (bool, error) {
 	return boolData, nil
 }
 
-func GetUserFromSession(r *http.Request) (structs.User, error) {
+func GetAuthDataFromSession(r *http.Request) (structs.User, error) {
 	session, err := loginStore.Get(r, "loginStore")
 	if err != nil {
 		return structs.User{}, errors.WithStack(err)

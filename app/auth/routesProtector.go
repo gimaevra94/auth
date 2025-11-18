@@ -36,7 +36,7 @@ func AuthGuardForSignUpAndSignInPath(next http.Handler) http.Handler {
 
 func AuthGuardForServerAuthCodeSendPath(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user, err := data.GetUserFromSession(r)
+		user, err := data.GetAuthDataFromSession(r)
 		if err != nil {
 			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 			return

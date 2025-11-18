@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func GeneraterefreshToken(refreshTokenExp int, rememberMe bool) (string, error) {
+func GenerateRefreshToken(refreshTokenExp int, rememberMe bool) (string, error) {
 	refreshTokenExp24Hours := 24 * 60 * 60
 	if !rememberMe {
 		refreshTokenExp = refreshTokenExp24Hours

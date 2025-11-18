@@ -95,7 +95,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rememberMe := r.FormValue("rememberMe") != ""
-	refreshToken, err := tools.GeneraterefreshToken(consts.RefreshTokenExp7Days, rememberMe)
+	refreshToken, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe)
 	if err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return

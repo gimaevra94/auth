@@ -190,14 +190,6 @@ func GetResetTokenCancelledFromDb(signedToken string) (bool, error) {
 	return cancelled, nil
 }
 
-func SetUserInDbTx(tx *sql.Tx, login, email, permanentId string, hashedPassword []byte) error {
-	_, err := tx.Exec(userInsertQuery, login, email, hashedPassword, permanentId)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	return nil
-}
-
 func SetYauthUserInDbTx(tx *sql.Tx, login, email, temporaryId, permanentId string, temporaryIdCancelled bool) error {
 	_, err := tx.Exec(yauthUserInsertQuery, login, email, temporaryId, permanentId, temporaryIdCancelled)
 	if err != nil {
@@ -238,22 +230,6 @@ func SetTemporaryIdInDbByEmailTx(tx *sql.Tx, login, temporaryId string, oldTempo
 	return nil
 }
 
-func SetRefreshTokenInDbTx(tx *sql.Tx, permanentId, refreshToken, userAgent string, refreshTokenCancelled bool) error {
-	_, err := tx.Exec(refreshTokenInsertQuery, permanentId, refreshToken, userAgent, refreshTokenCancelled)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	return nil
-}
-
-func SetTemporaryIdInDbTx(tx *sql.Tx, permanentId, temporaryId, userAgent string, temporaryIdCancelled bool) error {
-	_, err := tx.Exec(temporaryIdInsertQuery, permanentId, temporaryId, userAgent, temporaryIdCancelled)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	return nil
-}
-
 func SetPasswordResetTokenInDb(resetToken string) error {
 	_, err := Db.Exec(passwordResetTokenInsertQuery, resetToken, false)
 	if err != nil {
@@ -280,6 +256,41 @@ func SetTemporaryIdCancelledInDbTx(tx *sql.Tx, temporaryId string) error {
 
 func SetPasswordResetTokenCancelledInDbTx(tx *sql.Tx, resetToken string) error {
 	_, err := tx.Exec(passwordResetTokenCancelledUpdateQuery, resetToken)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+/////////////////////////////////////////////////
+func GetPermanentUserIdFromDb(login string) (string, error) {
+	var permanentId string
+	row := Db.QueryRow(permanentIdSelectQuery, login)
+	err := row.Scan(&permanentId)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	return permanentId, nil
+}
+
+func SetUserInDbTx(tx *sql.Tx, login, email, permanentId string, hashedPassword []byte) error {
+	_, err := tx.Exec(userInsertQuery, login, email, hashedPassword, permanentId)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func SetRefreshTokenInDbTx(tx *sql.Tx, permanentId, refreshToken, userAgent string, refreshTokenCancelled bool) error {
+	_, err := tx.Exec(refreshTokenInsertQuery, permanentId, refreshToken, userAgent, refreshTokenCancelled)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func SetTemporaryIdInDbTx(tx *sql.Tx, permanentId, temporaryId, userAgent string, temporaryIdCancelled bool) error {
+	_, err := tx.Exec(temporaryIdInsertQuery, permanentId, temporaryId, userAgent, temporaryIdCancelled)
 	if err != nil {
 		return errors.WithStack(err)
 	}

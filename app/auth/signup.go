@@ -38,7 +38,7 @@ func CheckInDbAndValidateSignUpUserInput(w http.ResponseWriter, r *http.Request)
 		Password: password,
 	}
 
-	_, err = data.GetPermanentIdFromDb(user.Email)
+	_, err = data.GetPermanentUserIdFromDb(user.Login)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			errMsgKey, err := tools.InputValidate(r, user.Login, user.Email, user.Password, false)
@@ -61,7 +61,7 @@ func CheckInDbAndValidateSignUpUserInput(w http.ResponseWriter, r *http.Request)
 				}
 			}
 
-			if err := data.SetAuthSessionData(w, r, user); err != nil {
+			if err := data.SetAuthDataInSession(w, r, user); err != nil {
 				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
@@ -88,7 +88,7 @@ func CheckInDbAndValidateSignUpUserInput(w http.ResponseWriter, r *http.Request)
 }
 
 func SetUserInDb(w http.ResponseWriter, r *http.Request) {
-	user, err := data.GetUserFromSession(r)
+	user, err := data.GetAuthDataFromSession(r)
 	if err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
@@ -141,7 +141,7 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rememberMe := r.FormValue("rememberMe") != ""
-	refreshToken, err := tools.GeneraterefreshToken(consts.RefreshTokenExp7Days, rememberMe)
+	refreshToken, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe)
 	if err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
