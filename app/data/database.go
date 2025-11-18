@@ -126,29 +126,6 @@ func GetpermanentIdAndTemporaryIdCancelledFromDb(temporaryId string) (string, bo
 	return permanentId, temporaryIdCancelled, nil
 }
 
-func GetUniqueUserAgentsFromDb(permanentId string) ([]string, error) {
-	rows, err := Db.Query(uniqueUserAgentsSelectQuery, permanentId)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	defer rows.Close()
-
-	var userAgents []string
-	for rows.Next() {
-		var userAgent string
-		if err := rows.Scan(&userAgent); err != nil {
-			return nil, errors.WithStack(err)
-		}
-		userAgents = append(userAgents, userAgent)
-	}
-
-	if err = rows.Err(); err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	return userAgents, nil
-}
-
 func GetAllRefreshTokenKeysFromDb(permanentId, userAgent string) (string, string, bool, error) {
 	var refreshToken string
 	var dbUserAgent string
@@ -194,14 +171,6 @@ func SetPasswordInDbByEmailTx(tx *sql.Tx, email string, hashedPassword []byte, o
 
 func SetPasswordInDbByTemporaryId(temporaryId string, hashedPassword []byte, oldPasswordHashCancelled, newPasswordHashCancelled bool) error {
 	_, err := Db.Exec(passwordInDbBytemporaryIdUpdateQuery, oldPasswordHashCancelled, temporaryId, hashedPassword, newPasswordHashCancelled)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	return nil
-}
-
-func SetTemporaryIdInDbByLoginTx(tx *sql.Tx, login, temporaryId string, oldTemporaryIdCancelled, newTemporaryIdCancelled bool) error {
-	_, err := tx.Exec(temporaryIdInDbByLoginUpdateQuery, oldTemporaryIdCancelled, login, temporaryId, newTemporaryIdCancelled)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -281,6 +250,14 @@ func SetUserInDbTx(tx *sql.Tx, login, email, permanentId string, hashedPassword 
 	return nil
 }
 
+func SetTemporaryIdInDbTx(tx *sql.Tx, permanentId, temporaryId, userAgent string, temporaryIdCancelled bool) error {
+	_, err := tx.Exec(temporaryIdInsertQuery, permanentId, temporaryId, userAgent, temporaryIdCancelled)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
 func SetRefreshTokenInDbTx(tx *sql.Tx, permanentId, refreshToken, userAgent string, refreshTokenCancelled bool) error {
 	_, err := tx.Exec(refreshTokenInsertQuery, permanentId, refreshToken, userAgent, refreshTokenCancelled)
 	if err != nil {
@@ -289,10 +266,25 @@ func SetRefreshTokenInDbTx(tx *sql.Tx, permanentId, refreshToken, userAgent stri
 	return nil
 }
 
-func SetTemporaryIdInDbTx(tx *sql.Tx, permanentId, temporaryId, userAgent string, temporaryIdCancelled bool) error {
-	_, err := tx.Exec(temporaryIdInsertQuery, permanentId, temporaryId, userAgent, temporaryIdCancelled)
+func GetUniqueUserAgentsFromDb(permanentId string) ([]string, error) {
+	rows, err := Db.Query(uniqueUserAgentsSelectQuery, permanentId)
 	if err != nil {
-		return errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
-	return nil
+	defer rows.Close()
+
+	var userAgents []string
+	for rows.Next() {
+		var userAgent string
+		if err := rows.Scan(&userAgent); err != nil {
+			return nil, errors.WithStack(err)
+		}
+		userAgents = append(userAgents, userAgent)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return userAgents, nil
 }

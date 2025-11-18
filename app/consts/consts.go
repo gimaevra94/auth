@@ -12,8 +12,6 @@ const (
 	ServerAuthCodeSendAgainURL   = "/server-auth-code-send-again"
 )
 
-const RefreshTokenExp7Days = 7 * 24 * 60 * 60
-
 const (
 	invalidLogin                   = "Login is invalid"
 	invalidEmail                   = "Email is invalid"
@@ -26,6 +24,8 @@ const (
 	failedMailSendingStatusMsg     = "Failed to send password reset link"
 	successfulMailSendingStatusMsg = "Password reset link has been sent"
 )
+
+const Exp7Days = 7 * 24 * 60 * 60
 
 var (
 	loginReqs = []string{

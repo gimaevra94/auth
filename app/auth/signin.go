@@ -59,9 +59,27 @@ func CheckInDbAndValidateSignInUserInput(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash.String), []byte(user.Password)); err != nil {
+	if !passwordHash.Valid {
 		if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
 			msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha, Regs: nil}
+		} else {
+			msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["pleaseSignInByYandex"].Msg, ShowCaptcha: showCaptcha}
+		}
+
+		if err := captcha.UpdateCaptchaState(w, r, captchaCounter-1, showCaptcha); err != nil {
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
+		}
+		if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "signIn", msgForUserdata); err != nil {
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
+		}
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash.String), []byte(user.Password)); err != nil {
+		if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
+			msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha}
 		} else {
 			msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["passwordInvalid"].Msg, ShowCaptcha: showCaptcha, ShowForgotPassword: true, Regs: consts.MsgForUser["passwordInvalid"].Regs}
 		}
@@ -77,33 +95,44 @@ func CheckInDbAndValidateSignInUserInput(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-}
+	rememberMe := r.FormValue("rememberMe") != ""
 
-func CheckSignInUserInDb(w http.ResponseWriter, r *http.Request) {
-	var captchaMsgErr bool
-	var msgForUserdata structs.SignInPageData
+	temporaryId := uuid.New().String()
+	data.SetTemporaryIdInCookies(w, temporaryId, consts.Exp7Days, rememberMe)
 
-	if msgForUserdata.Msg != "" {
-		if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
-			msgForUserdata = structs.SignInPageData{
-				Msg:         consts.MsgForUser["captchaRequired"].Msg,
-				ShowCaptcha: showCaptcha,
-				Regs:        nil,
-			}
-		}
-		if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "signIn", msgForUserdata); err != nil {
-			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-			return
-		}
+	refreshToken, err := tools.GenerateRefreshToken(consts.Exp7Days, rememberMe)
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
-	temporaryId := uuid.New().String()
-	data.SetTemporaryIdInCookies(w, temporaryId)
-
-	rememberMe := r.FormValue("rememberMe") != ""
-	refreshToken, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe)
+	tx, err := data.Db.Begin()
 	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	defer func() {
+		if err := recover(); err != nil {
+			tx.Rollback()
+			panic(err)
+		}
+	}()
+
+	temporaryIdCancelled := false
+	if err = data.SetTemporaryIdInDbTx(tx, permanentId, temporaryId, r.UserAgent(), temporaryIdCancelled); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	refreshTokenCancelled := false
+	if err = data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	if err = tx.Commit(); err != nil {
+		tx.Rollback()
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -120,38 +149,6 @@ func CheckSignInUserInDb(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-	}
-
-	tx, err := data.Db.Begin()
-	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
-	defer func() {
-		if err := recover(); err != nil {
-			tx.Rollback()
-			panic(err)
-		}
-	}()
-
-	oldTemporaryIdCancelled := true
-	newTemporaryIdCancelled := false
-	if err = data.SetTemporaryIdInDbByLoginTx(tx, user.Login, temporaryId, oldTemporaryIdCancelled, newTemporaryIdCancelled); err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
-	refreshTokenCancelled := false
-	if err = data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
-	if err = tx.Commit(); err != nil {
-		tx.Rollback()
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
 	}
 
 	if err = data.EndAuthAndCaptchaSessions(w, r); err != nil {

@@ -38,7 +38,7 @@ func CheckInDbAndValidateSignUpUserInput(w http.ResponseWriter, r *http.Request)
 		Password: password,
 	}
 
-	err = data.IsPermanentUserIdExistFromDb(user.Email)
+	_, err = data.GetPermanentIdFromDb(user.Email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			errMsgKey, err := tools.InputValidate(r, user.Login, user.Email, user.Password, false)
@@ -108,7 +108,7 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 
 	clientCode := r.FormValue("clientCode")
 	if clientCode == "" {
-		err := errors.New("invalid code")
+		err := errors.New("code invalid")
 		tracedErr := errors.WithStack(err)
 		errs.LogAndRedirectIfErrNotNill(w, r, tracedErr, consts.Err500URL)
 		return
@@ -141,7 +141,11 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rememberMe := r.FormValue("rememberMe") != ""
-	refreshToken, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe)
+
+	temporaryId := uuid.New().String()
+	data.SetTemporaryIdInCookies(w, temporaryId, consts.Exp7Days, rememberMe)
+
+	refreshToken, err := tools.GenerateRefreshToken(consts.Exp7Days, rememberMe)
 	if err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
@@ -178,8 +182,6 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	temporaryId := uuid.New().String()
-	data.SetTemporaryIdInCookies(w, temporaryId)
 	temporaryIdCancelled := false
 	if err = data.SetTemporaryIdInDbTx(tx, permanentId, temporaryId, r.UserAgent(), temporaryIdCancelled); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)

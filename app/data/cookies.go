@@ -7,16 +7,19 @@ import (
 	"github.com/pkg/errors"
 )
 
-const temporaryIdExp = 30 * 24 * 60 * 60
+func SetTemporaryIdInCookies(w http.ResponseWriter, value string, temporaryIdExp int, rememberMe bool) {
+	temporaryIdExp24Hours := 24 * 60 * 60
+	if !rememberMe {
+		temporaryIdExp = temporaryIdExp24Hours
+	}
 
-func SetTemporaryIdInCookies(w http.ResponseWriter, v string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "temporaryId",
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   false,
 		SameSite: http.SameSiteLaxMode,
-		Value:    v,
+		Value:    value,
 		MaxAge:   temporaryIdExp,
 	})
 }
