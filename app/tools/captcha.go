@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/pkg/errors"
@@ -49,6 +50,30 @@ func ShowCaptcha(r *http.Request) error {
 	}
 
 	return nil
+}
+
+func CaptchaShowAndCaptchaCounterInit(w http.ResponseWriter, r *http.Request) (captchaCounter int64, showCaptcha bool, err error) {
+	captchaCounter, err = data.GetCaptchaCounterFromSession(r)
+	if err != nil {
+		if strings.Contains(err.Error(), "exist") {
+			captchaCounter = 3
+			if err := data.SetCaptchaDataInSession(w, r, "captchaCounter", captchaCounter); err != nil {
+				return 0, false, errors.WithStack(err)
+			}
+		}
+	}
+
+	showCaptcha, err = data.GetShowCaptchaFromSession(r)
+	if err != nil {
+		if strings.Contains(err.Error(), "exist") {
+			showCaptcha = false
+			if err := data.SetCaptchaDataInSession(w, r, "showCaptcha", showCaptcha); err != nil {
+				return 0, false, errors.WithStack(err)
+			}
+		}
+	}
+
+	return captchaCounter, showCaptcha, nil
 }
 
 func UpdateCaptchaState(w http.ResponseWriter, r *http.Request, captchaCounter int64, showCaptcha bool) error {
