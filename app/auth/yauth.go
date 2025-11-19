@@ -7,11 +7,14 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"slices"
 
+	"github.com/gimaevra94/auth/app/captcha"
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/errs"
 	"github.com/gimaevra94/auth/app/structs"
+	"github.com/gimaevra94/auth/app/tmpls"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -54,87 +57,95 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx, err := data.Db.Begin()
-	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
-	defer func() {
-		if err := recover(); err != nil {
-			tx.Rollback()
-			panic(err)
-		}
-	}()
-
-	temporaryId := uuid.New().String()
-	permanentId := uuid.New().String()
-	temporaryIdCancelled := false
-
-	bdPermanentId, err := data.GetPermanentIdFromDb(yandexUser.Email)
+	_, err = data.GetPermanentIdFromDb(yandexUser.Email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			if err = data.SetYauthUserInDbTx(tx, yandexUser.Login, yandexUser.Email, temporaryId, permanentId, temporaryIdCancelled); err != nil {
+			tx, err := data.Db.Begin()
+			if err != nil {
 				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
-		} else {
-			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			defer func() {
+				if err := recover(); err != nil {
+					tx.Rollback()
+					panic(err)
+				}
+			}()
+
+			yauth := true
+			permanentId := uuid.New().String()
+			if err = data.SetUserInDbTx(tx, "", "", permanentId, []byte{}, yauth); err != nil {
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				return
+			}
+
+			rememberMe := r.FormValue("rememberMe") != ""
+			temporaryId := uuid.New().String()
+			data.SetTemporaryIdInCookies(w, temporaryId, consts.Exp7Days, rememberMe)
+			refreshToken, err := tools.GenerateRefreshToken(consts.Exp7Days, rememberMe)
+			if err != nil {
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				return
+			}
+			temporaryIdCancelled, refreshTokenCancelled := false, false
+			userAgent := r.UserAgent()
+			if err = data.SetTemporaryIdAndRefreshTokenInDbTx(tx, permanentId, temporaryId, refreshToken, userAgent, temporaryIdCancelled, refreshTokenCancelled); err != nil {
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				return
+			}
+
+			if err = tx.Commit(); err != nil {
+				tx.Rollback()
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				return
+			}
+
+			uniqueUserAgents, err := data.GetUniqueUserAgentsFromDb(permanentId)
+			if err != nil {
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				return
+			}
+			if !slices.Contains(uniqueUserAgents, r.UserAgent()) {
+				if err := tools.SendNewDeviceLoginEmail(yandexUser.Login, yandexUser.Email, r.UserAgent()); err != nil {
+					errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+					return
+				}
+			}
+
+			if err = data.EndAuthAndCaptchaSessions(w, r); err != nil {
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				return
+			}
+
+			http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 			return
 		}
-	}
-
-	if bdPermanentId != "" {
-		permanentId = bdPermanentId
-	}
-	data.SetTemporaryIdInCookies(w, temporaryId)
-
-	if err = data.SetTemporaryIdInDbByLoginTx(tx, yandexUser.Login, temporaryId, temporaryI	dCancelled); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
-	rememberMe := r.FormValue("rememberMe") != ""
-	refreshToken, err := tools.GenerateRefreshToken(consts.RefreshTokenExp7Days, rememberMe)
+	captchaCounter, showCaptcha, err := captcha.InitCaptchaState(w, r)
 	if err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
-	uniqueUserAgents, err := data.GetUniqueUserAgentsFromDb(permanentId)
-	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
+	captchaMsgErr := captcha.ShowCaptchaMsg(r, showCaptcha)
+	var msgForUserdata structs.MsgForUser
+	if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
+		msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha}
 	} else {
-		isNewDevice := true
-		for _, userAgent := range uniqueUserAgents {
-			if userAgent == r.UserAgent() {
-				isNewDevice = false
-				break
-			}
-		}
-
-		if isNewDevice {
-			if err := tools.SendNewDeviceLoginEmail(yandexUser.Login, yandexUser.Email, r.UserAgent()); err != nil {
-				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-				return
-			}
-		}
+		msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["userAlreadyExist"].Msg, ShowCaptcha: showCaptcha}
 	}
 
-	refreshTokenCancelled := false
-	if err = data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
+	if err := captcha.UpdateCaptchaState(w, r, captchaCounter-1, showCaptcha); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
-
-	if err = tx.Commit(); err != nil {
-		tx.Rollback()
+	if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "signUp", msgForUserdata); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
-
-	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }
 
 func getAccessToken(yauthCode string) (string, error) {

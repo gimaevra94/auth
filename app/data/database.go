@@ -63,19 +63,6 @@ func DbClose() {
 	}
 }
 
-func GetPermanentIdFromDb(Email string) (string, error) {
-	var permanentId string
-	row := Db.QueryRow(permanentIdSelectQuery, Email)
-	err := row.Scan(&permanentId)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return "", errors.WithStack(err)
-		}
-		return "", errors.WithStack(err)
-	}
-	return permanentId, nil
-}
-
 func GetPasswordFromDb(temporaryId string) (sql.NullString, error) {
 	var passwordHash sql.NullString
 	row := Db.QueryRow(passwordHashSelectQuery, temporaryId)
@@ -87,19 +74,6 @@ func GetPasswordFromDb(temporaryId string) (sql.NullString, error) {
 		return sql.NullString{}, errors.WithStack(err)
 	}
 	return passwordHash, nil
-}
-
-func GetAllUserKeysFromDb(temporaryId string) (string, string, string, bool, error) {
-	var login string
-	var email string
-	var permanentId string
-	var temporaryIdCancelled bool
-	row := Db.QueryRow(allUserKeysSelectQuery, temporaryId)
-	err := row.Scan(&login, &email, &permanentId, &temporaryIdCancelled)
-	if err != nil {
-		return "", "", "", false, errors.WithStack(err)
-	}
-	return login, email, permanentId, temporaryIdCancelled, nil
 }
 
 func GetPasswordHashFromDb(temporaryId string) (sql.NullString, error) {
@@ -115,17 +89,6 @@ func GetPasswordHashFromDb(temporaryId string) (sql.NullString, error) {
 	return passwordHash, nil
 }
 
-func GetpermanentIdAndTemporaryIdCancelledFromDb(temporaryId string) (string, bool, error) {
-	var permanentId string
-	var temporaryIdCancelled bool
-	row := Db.QueryRow(permanentIdAndTemporaryIdCancelledSelectQuery, temporaryId)
-	err := row.Scan(&permanentId, &temporaryIdCancelled)
-	if err != nil {
-		return "", false, errors.WithStack(err)
-	}
-	return permanentId, temporaryIdCancelled, nil
-}
-
 func GetAllRefreshTokenKeysFromDb(permanentId, userAgent string) (string, string, bool, error) {
 	var refreshToken string
 	var dbUserAgent string
@@ -138,27 +101,6 @@ func GetAllRefreshTokenKeysFromDb(permanentId, userAgent string) (string, string
 		}
 	}
 	return refreshToken, dbUserAgent, refreshTokenCancelled, nil
-}
-
-func GetResetTokenCancelledFromDb(signedToken string) (bool, error) {
-	var cancelled bool
-	row := Db.QueryRow(resetTokenCancelledSelectQuery, signedToken)
-	err := row.Scan(&cancelled)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return false, errors.New("reset token not found or invalid")
-		}
-		return false, errors.WithStack(err)
-	}
-	return cancelled, nil
-}
-
-func SetYauthUserInDbTx(tx *sql.Tx, login, email, temporaryId, permanentId string, temporaryIdCancelled bool) error {
-	_, err := tx.Exec(yauthUserInsertQuery, login, email, temporaryId, permanentId, temporaryIdCancelled)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	return nil
 }
 
 func SetPasswordInDbByEmailTx(tx *sql.Tx, email string, hashedPassword []byte, oldPasswordHashCancelled, newPasswordHashCancelled bool) error {
@@ -218,14 +160,17 @@ func SetPasswordResetTokenCancelledInDbTx(tx *sql.Tx, resetToken string) error {
 }
 
 // ///////////////////////////////////////////////
-func IsPermanentUserIdExistFromDb(email string) error {
+func GetPermanentIdFromDb(email string) (string, error) {
 	var permanentId string
 	row := Db.QueryRow(permanentIdSelectQuery, email)
 	err := row.Scan(&permanentId)
 	if err != nil {
-		return errors.WithStack(err)
+		if err == sql.ErrNoRows {
+			return "", errors.WithStack(err)
+		}
+		return "", errors.WithStack(err)
 	}
-	return nil
+	return permanentId, nil
 }
 
 func GetPasswordHashAndPermanentIdFromDb(login, password string) (sql.NullString, string, error) {
@@ -242,24 +187,16 @@ func GetPasswordHashAndPermanentIdFromDb(login, password string) (sql.NullString
 	return passwordHash, permanentId, nil
 }
 
-func SetUserInDbTx(tx *sql.Tx, login, email, permanentId string, hashedPassword []byte) error {
-	_, err := tx.Exec(userInsertQuery, login, email, hashedPassword, permanentId)
+func SetUserInDbTx(tx *sql.Tx, login, email, permanentId string, hashedPassword []byte, yauth bool) error {
+	_, err := tx.Exec(userInsertQuery, login, email, permanentId, hashedPassword, yauth)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func SetTemporaryIdInDbTx(tx *sql.Tx, permanentId, temporaryId, userAgent string, temporaryIdCancelled bool) error {
+func SetTemporaryIdAndRefreshTokenInDbTx(tx *sql.Tx, permanentId, temporaryId, refreshToken, userAgent string, temporaryIdCancelled, refreshTokenCancelled bool) error {
 	_, err := tx.Exec(temporaryIdInsertQuery, permanentId, temporaryId, userAgent, temporaryIdCancelled)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	return nil
-}
-
-func SetRefreshTokenInDbTx(tx *sql.Tx, permanentId, refreshToken, userAgent string, refreshTokenCancelled bool) error {
-	_, err := tx.Exec(refreshTokenInsertQuery, permanentId, refreshToken, userAgent, refreshTokenCancelled)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -287,4 +224,50 @@ func GetUniqueUserAgentsFromDb(permanentId string) ([]string, error) {
 	}
 
 	return userAgents, nil
+}
+
+func GetResetTokenCancelledFromDb(signedToken string) (bool, error) {
+	var cancelled bool
+	row := Db.QueryRow(resetTokenCancelledSelectQuery, signedToken)
+	err := row.Scan(&cancelled)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, errors.New("reset token not found or invalid")
+		}
+		return false, errors.WithStack(err)
+	}
+	return cancelled, nil
+}
+
+func GetAllUserKeysFromDb(temporaryId string) (string, string, string, error) {
+	var email string
+	var permanentId string
+	var userAgent string
+	row := Db.QueryRow(allUserKeysSelectQuery, temporaryId)
+	err := row.Scan(&email, &permanentId, &userAgent)
+	if err != nil {
+		return "", "", "", errors.WithStack(err)
+	}
+	return email, permanentId, userAgent, nil
+}
+
+func GetTemporaryIdRefreshTokenAndTheyCancelledFromDb(temporaryId, userAgent string) (bool, bool, error) {
+	var temporaryIdCancelled bool
+	var refreshTokenCancelled bool
+	var temporaryId string
+	var refreshToken string
+	row := Db.QueryRow(permanentIdAndTemporaryIdCancelledSelectQuery, temporaryId)
+	err := row.Scan(&temporaryIdCancelled, &refreshTokenCancelled)
+	if err != nil {
+		return false, false, errors.WithStack(err)
+	}
+	return temporaryIdCancelled, refreshTokenCancelled, nil
+}
+
+func SetTemporaryIdCancelledAndRefreshTokenCancelledInDb(permanentId, userAgent string, temporaryIdCancelled, refreshTokenCancelled bool) error {
+	_, err := Db.Exec(temporaryIdCancelledAndRefreshTokenCancelledUpdateQuery, temporaryIdCancelled, refreshTokenCancelled, permanentId, userAgent)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
 }

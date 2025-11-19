@@ -66,11 +66,11 @@ func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
 
 	var msgFromUserData structs.MsgForUser
 	if err := tools.PasswordResetEmailSend(email, passwordResetLink); err != nil {
-		msgFromUserData = structs.MsgForUser{Msg: consts.MsgForUser["failedMailSendingStatus"].Msg, Regs: nil}
+		msgFromUserData = structs.MsgForUser{Msg: consts.MsgForUser["failedMailSendingStatus"].Msg}
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	} else {
-		msgFromUserData = structs.MsgForUser{Msg: consts.MsgForUser["successfulMailSendingStatus"].Msg, Regs: nil}
+		msgFromUserData = structs.MsgForUser{Msg: consts.MsgForUser["successfulMailSendingStatus"].Msg}
 	}
 	if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "generatePasswordResetLink", msgFromUserData); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
@@ -183,78 +183,4 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, consts.SignInURL+"?msg="+url.QueryEscape(successMsg), http.StatusFound)
 }
 
-func SetFirstTimePassword(w http.ResponseWriter, r *http.Request) {
-	cookies, err := data.GetTemporaryIdFromCookies(r)
-	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
 
-	temporaryId := cookies.Value
-	passwordHash, err := data.GetPasswordFromDb(temporaryId)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-			return
-		}
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
-	if passwordHash.String != "" {
-		err := errors.New("password already set")
-		wrappedErr := errors.WithStack(err)
-		errs.LogAndRedirectIfErrNotNill(w, r, wrappedErr, consts.Err500URL)
-		return
-	}
-
-	password := r.FormValue("password")
-	if password == "" {
-		err := errors.New("password not exist")
-		wrappedErr := errors.WithStack(err)
-		errs.LogAndRedirectIfErrNotNill(w, r, wrappedErr, consts.Err500URL)
-		return
-	}
-	confirmPassword := r.FormValue("confirmPassword")
-	if confirmPassword == "" {
-		err := errors.New("confirm-password not exist")
-		wrappedErr := errors.WithStack(err)
-		errs.LogAndRedirectIfErrNotNill(w, r, wrappedErr, consts.Err500URL)
-		return
-	}
-
-	if password != confirmPassword {
-		data := structs.MsgForUser{Msg: consts.MsgForUser["passwordsNotMatch"].Msg,
-			Regs: nil}
-		if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "SetFirstTimePassword", data); err != nil {
-			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-			return
-		}
-		return
-	}
-
-	if err := tools.PasswordValidate(password); err != nil {
-		data := structs.MsgForUser{Msg: consts.MsgForUser["invalidPassword"].Msg,
-			Regs: nil}
-		if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "SetFirstTimePassword", data); err != nil {
-			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-			return
-		}
-		return
-	}
-
-	oldPasswordHashCancelled := true
-	newPasswordHashCancelled := false
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-	if err := data.SetPasswordInDbByTemporaryId(temporaryId, hashedPassword, oldPasswordHashCancelled, newPasswordHashCancelled); err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
-	successMsg := "Password has been set successfully."
-	http.Redirect(w, r, consts.HomeURL+"?msg="+url.QueryEscape(successMsg), http.StatusFound)
-}

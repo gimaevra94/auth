@@ -1,12 +1,14 @@
 package auth
 
 import (
+	"database/sql"
 	"net/http"
 
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/errs"
 	"github.com/gimaevra94/auth/app/tools"
+	"github.com/pkg/errors"
 )
 
 func AuthGuardForSignUpAndSignInPath(next http.Handler) http.Handler {
@@ -18,18 +20,16 @@ func AuthGuardForSignUpAndSignInPath(next http.Handler) http.Handler {
 		}
 
 		temporaryId := Cookies.Value
-		permanentId, temporaryIdCancelled, err := data.GetpermanentIdAndTemporaryIdCancelledFromDb(temporaryId)
-		if err != nil || temporaryIdCancelled {
-			next.ServeHTTP(w, r)
+		userAgent := r.UserAgent()
+		temporaryIdCancelled, _, err := data.GetTemporaryIdCancelledAndRefreshTokenCancelledFromDb(temporaryId, userAgent)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) || temporaryIdCancelled {
+				next.ServeHTTP(w, r)
+				return
+			}
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
-
-		_, _, refreshTokenCancelled, err := data.GetAllRefreshTokenKeysFromDb(permanentId, r.UserAgent())
-		if err != nil || refreshTokenCancelled {
-			next.ServeHTTP(w, r)
-			return
-		}
-
 		http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 	})
 }
@@ -68,6 +68,7 @@ func ResetTokenGuard(next http.Handler) http.Handler {
 			http.Redirect(w, r, consts.GeneratePasswordResetLinkURL, http.StatusFound)
 			return
 		}
+
 		next.ServeHTTP(w, r)
 	})
 }
@@ -80,46 +81,50 @@ func AuthGuardForHomePath(next http.Handler) http.Handler {
 			return
 		}
 
-		temporaryId := Cookies.Value
-		login, email, permanentId, temporaryIdCancelled, err := data.GetAllUserKeysFromDb(temporaryId)
+		email, permanentId, userAgent, err := data.GetAllUserKeysFromDb(Cookies.Value)
 		if err != nil {
-			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-			return
-		}
-
-		if temporaryIdCancelled {
-			Revocate(w, r, true, false, false)
-			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
-			return
-		}
-
-		_, userAgent, refreshTokenCancelled, err := data.GetAllRefreshTokenKeysFromDb(permanentId, r.UserAgent())
-		if err != nil {
-			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-			return
-		}
-
-		if userAgent != r.UserAgent() || userAgent == "" {
-			if err := tools.SuspiciousLoginEmailSend(email, login, r.UserAgent()); err != nil {
-				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.SignUpURL)
+			if errors.Is(err, sql.ErrNoRows) {
+				http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 				return
 			}
-			Revocate(w, r, true, true, true)
-			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 
-		if refreshTokenCancelled {
-			Revocate(w, r, true, true, false)
-			userAgent := r.UserAgent()
-			if err := tools.SuspiciousLoginEmailSend(email, login, userAgent); err != nil {
+		temporaryId := Cookies.Value
+		if userAgent != r.UserAgent() {
+			data.ClearTemporaryIdInCookies(w)
+			temporaryIdCancelled, refreshTokenCancelled := true, true
+			if err := data.SetTemporaryIdCancelledAndRefreshTokenCancelledInDb(permanentId, userAgent, temporaryIdCancelled, refreshTokenCancelled); err != nil {
 				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
-
+			if err := tools.SuspiciousLoginEmailSend(email, r.UserAgent()); err != nil {
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				return
+			}
 			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 			return
 		}
+
+		temporaryIdCancelled, refreshTokenCancelled, err := data.GetTemporaryIdRefreshTokenAndTheyCancelledFromDb(temporaryId, userAgent)
+		if err != nil {
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
+		}
+
+		if temporaryIdCancelled || refreshTokenCancelled {
+			data.ClearTemporaryIdInCookies(w)
+			temporaryIdCancelled, refreshTokenCancelled := true, true
+			if err := data.SetTemporaryIdCancelledAndRefreshTokenCancelledInDb(permanentId, userAgent, temporaryIdCancelled, refreshTokenCancelled); err != nil {
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				return
+			}
+			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+			return
+		}
+
+
 
 		next.ServeHTTP(w, r)
 	})

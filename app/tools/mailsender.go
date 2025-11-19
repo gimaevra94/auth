@@ -106,13 +106,12 @@ func executeTmpl(serverEmail, userEmail, emailSubject string, data any) ([]byte,
 	return msg, nil
 }
 
-func SuspiciousLoginEmailSend(userEmail, login, userAgent string) error {
+func SuspiciousLoginEmailSend(userEmail, userAgent string) error {
 	serverEmail := os.Getenv("SERVER_EMAIL")
 	sMTPServerAuthSubject, sMTPServerAddr := sMTPServerAuth(serverEmail)
 	data := struct {
-		Login     string
 		UserAgent string
-	}{Login: login, UserAgent: userAgent}
+	}{UserAgent: userAgent}
 
 	msg, err := executeTmpl(serverEmail, userEmail, suspiciousLoginSubject, data)
 	if err != nil {

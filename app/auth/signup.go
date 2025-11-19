@@ -140,17 +140,6 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rememberMe := r.FormValue("rememberMe") != ""
-
-	temporaryId := uuid.New().String()
-	data.SetTemporaryIdInCookies(w, temporaryId, consts.Exp7Days, rememberMe)
-
-	refreshToken, err := tools.GenerateRefreshToken(consts.Exp7Days, rememberMe)
-	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
 	tx, err := data.Db.Begin()
 	if err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
@@ -171,22 +160,28 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
-	if err := data.SetUserInDbTx(tx, user.Login, user.Email, permanentId, hashedPassword); err != nil {
+
+	yauth := false
+	if err := data.SetUserInDbTx(tx, user.Login, user.Email, permanentId, hashedPassword, yauth); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
-	refreshTokenCancelled := false
-	if err = data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken, r.UserAgent(), refreshTokenCancelled); err != nil {
+	rememberMe := r.FormValue("rememberMe") != ""
+	temporaryId := uuid.New().String()
+	data.SetTemporaryIdInCookies(w, temporaryId, consts.Exp7Days, rememberMe)
+	refreshToken, err := tools.GenerateRefreshToken(consts.Exp7Days, rememberMe)
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+	temporaryIdCancelled, refreshTokenCancelled := false, false
+	userAgent := r.UserAgent()
+	if err = data.SetTemporaryIdAndRefreshTokenInDbTx(tx, permanentId, temporaryId, refreshToken, userAgent, temporaryIdCancelled, refreshTokenCancelled); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
-	temporaryIdCancelled := false
-	if err = data.SetTemporaryIdInDbTx(tx, permanentId, temporaryId, r.UserAgent(), temporaryIdCancelled); err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
 
 	if err = tx.Commit(); err != nil {
 		tx.Rollback()
