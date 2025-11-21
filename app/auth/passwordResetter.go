@@ -32,7 +32,7 @@ func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if _, err := data.GetPermanentIdFromDb(email); err != nil {
+	if _, err := data.GetPermanentIdFromDbByEmail(email); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			data := structs.MsgForUser{Msg: consts.MsgForUser["userNotExist"].Msg, Regs: nil}
 			if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "generatePasswordResetLink", data); err != nil {
@@ -59,7 +59,8 @@ func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resetToken := url.Query().Get("token")
-	if err := data.SetPasswordResetTokenInDb(resetToken); err != nil {
+	resetTokenCancelled := false
+	if err := data.SetPasswordResetTokenCancelledInDb(resetToken, resetTokenCancelled); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -80,12 +81,6 @@ func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
 
 func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 	resetToken := r.FormValue("token")
-	claims, err := tools.ResetTokenValidate(resetToken)
-	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
 	cancelled, err := data.GetResetTokenCancelledFromDb(resetToken)
 	if err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
@@ -96,6 +91,12 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 		err := errors.New("reset-token invalid")
 		wrappederr := errors.WithStack(err)
 		errs.LogAndRedirectIfErrNotNill(w, r, wrappederr, consts.Err500URL)
+		return
+	}
+
+	claims, err := tools.ResetTokenValidate(resetToken)
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
@@ -145,30 +146,42 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	oldPasswordHashCancelled := true
-	newPasswordHashCancelled := false
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
-	if err := data.SetPasswordInDbByEmailTx(tx, claims.Email, hashedPassword, oldPasswordHashCancelled, newPasswordHashCancelled); err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
 
-	if err := data.SetPasswordResetTokenCancelledInDbTx(tx, resetToken); err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
-	cookie, err := data.GetTemporaryIdFromCookies(r)
+	oldPasswordHash, permanentId, err := data.GetOldPasswordHashAndPermanentIdFromUserTx(tx, claims.Email)
 	if err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
-	temporaryId := cookie.Value
-	if err := data.SetTemporaryIdCancelledInDbTx(tx, temporaryId); err != nil {
+
+	if err := data.SetOldPasswordHashInHistoryTx(tx, permanentId, oldPasswordHash); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+	if err := data.SetNewPasswordHashInUserTx(tx, hashedPassword, claims.Email); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	passwordResetTokenCancelled := true
+	if err := data.SetPasswordResetTokenCancelledInDbTx(tx, resetToken, passwordResetTokenCancelled); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	userAgent := r.UserAgent()
+	rememberMe := false
+	refreshToken, err := tools.GenerateRefreshToken(consts.Exp7Days, rememberMe)
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+	temporaryIdCancelled, refreshTokenCancelled := true, true
+	if err := data.SetTemporaryIdAndRefreshTokenInDbTx(tx, permamentId, temporaryId, userAgent, refreshToken, temporaryIdCancelled, refreshTokenCancelled); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -182,5 +195,3 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 	successMsg := "Password has been set successfully."
 	http.Redirect(w, r, consts.SignInURL+"?msg="+url.QueryEscape(successMsg), http.StatusFound)
 }
-
-

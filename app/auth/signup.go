@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"database/sql"
 	"net/http"
 	"strings"
 
@@ -38,9 +37,9 @@ func CheckInDbAndValidateSignUpUserInput(w http.ResponseWriter, r *http.Request)
 		Password: password,
 	}
 
-	_, err = data.GetPermanentIdFromDb(user.Email)
+	_, err = data.GetPermanentIdFromEmailDb(user.Email)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if strings.Contains(err.Error(), "user not found") {
 			errMsgKey, err := tools.InputValidate(r, user.Login, user.Email, user.Password, false)
 			if err != nil {
 				if strings.Contains(err.Error(), "login") || strings.Contains(err.Error(), "email") || strings.Contains(err.Error(), "password") {
@@ -154,9 +153,17 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	permanentId := uuid.New().String()
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password),
-		bcrypt.DefaultCost)
-	if err != nil {
+	if err := data.SetLoginInDbTx(tx, permanentId, user.Login); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	if err := data.SetEmailInDbTx(tx, permanentId, user.Email); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	if err := data.SetPasswordInDbTx(tx, permanentId, user.Password); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -168,7 +175,6 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rememberMe := r.FormValue("rememberMe") != ""
-	temporaryId := uuid.New().String()
 	data.SetTemporaryIdInCookies(w, temporaryId, consts.Exp7Days, rememberMe)
 	refreshToken, err := tools.GenerateRefreshToken(consts.Exp7Days, rememberMe)
 	if err != nil {
@@ -181,7 +187,6 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
-
 
 	if err = tx.Commit(); err != nil {
 		tx.Rollback()

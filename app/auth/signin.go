@@ -100,7 +100,7 @@ func CheckInDbAndValidateSignInUserInput(w http.ResponseWriter, r *http.Request)
 	}
 	temporaryIdCancelled, refreshTokenCancelled := false, false
 	userAgent := r.UserAgent()
-	if err = data.SetTemporaryIdAndRefreshTokenInDbTx(tx, permanentId, temporaryId, refreshToken, userAgent, temporaryIdCancelled, refreshTokenCancelled); err != nil {
+	if err = data.SetTemporaryIdAndRefreshTokenInDbTx(tx, permanentId, userAgent, temporaryId, refreshToken, temporaryIdCancelled, refreshTokenCancelled); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}

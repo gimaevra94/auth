@@ -98,11 +98,8 @@ func initRouter() *chi.Mux {
 	r.Post(setNewPasswordURL, auth.SetNewPassword)
 
 	r.With(auth.AuthGuardForHomePath).Get(consts.HomeURL, tmpls.Home)
-
 	r.With(auth.AuthGuardForHomePath).Get(logoutURL, auth.Logout)
-
 	r.Get("/clear", data.ClearCookiesDev)
-
 	r.Get(consts.Err500URL, tmpls.Err500)
 
 	return r
