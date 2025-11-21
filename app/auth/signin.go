@@ -59,24 +59,6 @@ func CheckInDbAndValidateSignInUserInput(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if !passwordHash.Valid {
-		if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
-			msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha, Regs: nil}
-		} else {
-			msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["pleaseSignInByYandex"].Msg, ShowCaptcha: showCaptcha}
-		}
-
-		if err := captcha.UpdateCaptchaState(w, r, captchaCounter-1, showCaptcha); err != nil {
-			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-			return
-		}
-		if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "signIn", msgForUserdata); err != nil {
-			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-			return
-		}
-		return
-	}
-
 	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash.String), []byte(user.Password)); err != nil {
 		if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
 			msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha}

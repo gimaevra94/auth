@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/gimaevra94/auth/app/consts"
-	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/errs"
 	"github.com/gimaevra94/auth/app/structs"
 )
@@ -31,26 +30,7 @@ func ServerAuthCodeSend(w http.ResponseWriter, r *http.Request) {
 }
 
 func Home(w http.ResponseWriter, r *http.Request) {
-	cookies, err := data.GetTemporaryIdFromCookies(r)
-	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
-	temporaryId := cookies.Value
-	showSetPasswordButton := false
-	passwordHash, err := data.GetPasswordHashFromDb(temporaryId)
-	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
-	if passwordHash.String == "" {
-		showSetPasswordButton = true
-	}
-
-	data := struct{ ShowSetPasswordButton bool }{ShowSetPasswordButton: showSetPasswordButton}
-	if err := TmplsRenderer(w, BaseTmpl, "home", data); err != nil {
+	if err := TmplsRenderer(w, BaseTmpl, "home", nil); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -78,20 +58,6 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 		Token string
 	}{Msg: r.URL.Query().Get("msg"), Token: r.URL.Query().Get("token")}
 	if err := TmplsRenderer(w, BaseTmpl, "setNewPassword", data); err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-}
-
-func SetFirstTimePassword(w http.ResponseWriter, r *http.Request) {
-	data := struct {
-		Msg  string
-		Regs []string
-	}{
-		Msg:  r.URL.Query().Get("msg"),
-		Regs: consts.PswrdReqs,
-	}
-	if err := TmplsRenderer(w, BaseTmpl, "setFirstTimePassword", data); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}

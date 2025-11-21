@@ -239,29 +239,29 @@ func GetResetTokenCancelledFromDb(signedToken string) (bool, error) {
 	return cancelled, nil
 }
 
-func GetAllUserKeysFromDb(temporaryId string) (string, string, string, error) {
+func GetAllUserKeysFromDb(temporaryId string) (string, string, string, bool, error) {
 	var email string
 	var permanentId string
 	var userAgent string
+	var yauth bool
 	row := Db.QueryRow(allUserKeysSelectQuery, temporaryId)
-	err := row.Scan(&email, &permanentId, &userAgent)
+	err := row.Scan(&email, &permanentId, &userAgent, &yauth)
 	if err != nil {
-		return "", "", "", errors.WithStack(err)
+		return "", "", "", false, errors.WithStack(err)
 	}
-	return email, permanentId, userAgent, nil
+	return email, permanentId, userAgent, yauth, nil
 }
 
-func GetTemporaryIdRefreshTokenAndTheyCancelledFromDb(temporaryId, userAgent string) (bool, bool, error) {
+func GetTemporaryIdCancelledAndRefreshTokenCancelledFromDb(permanentId, userAgent string) (string, bool, bool, error) {
 	var temporaryIdCancelled bool
 	var refreshTokenCancelled bool
-	var temporaryId string
 	var refreshToken string
-	row := Db.QueryRow(permanentIdAndTemporaryIdCancelledSelectQuery, temporaryId)
-	err := row.Scan(&temporaryIdCancelled, &refreshTokenCancelled)
+	row := Db.QueryRow(permanentIdAndTemporaryIdCancelledSelectQuery, permanentId, userAgent)
+	err := row.Scan(&refreshToken, &temporaryIdCancelled, &refreshTokenCancelled)
 	if err != nil {
-		return false, false, errors.WithStack(err)
+		return "", false, false, errors.WithStack(err)
 	}
-	return temporaryIdCancelled, refreshTokenCancelled, nil
+	return refreshToken, temporaryIdCancelled, refreshTokenCancelled, nil
 }
 
 func SetTemporaryIdCancelledAndRefreshTokenCancelledInDb(permanentId, userAgent string, temporaryIdCancelled, refreshTokenCancelled bool) error {
@@ -270,4 +270,14 @@ func SetTemporaryIdCancelledAndRefreshTokenCancelledInDb(permanentId, userAgent 
 		return errors.WithStack(err)
 	}
 	return nil
+}
+
+func GetYauthFromDb(yauth bool) (string,error) {
+	var permanentId string
+	row := Db.QueryRow(yauthSelectQuery, yauth)
+	err := row.Scan(&permanentId)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	return permanentId, nil
 }

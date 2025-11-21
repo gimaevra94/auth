@@ -25,6 +25,7 @@ const (
 	setFirstTimePasswordURL                = "/set-first-time-password"
 	logoutURL                              = "/logout"
 	simpleLogoutURL                        = "/simple-logout"
+
 )
 
 func main() {
@@ -91,17 +92,14 @@ func initRouter() *chi.Mux {
 	r.Get("/yauth", auth.YandexAuthHandler)
 	r.Get(yandexCallbackURL, auth.YandexCallbackHandler)
 
-	r.Get(consts.GeneratePasswordResetLinkURL, tmpls.GeneratePasswordResetLink)
+	r.Get(generatePasswordResetLinkURL, tmpls.GeneratePasswordResetLink)
 	r.Post(generatePasswordResetLinkURL, auth.GeneratePasswordResetLink)
 	r.With(auth.ResetTokenGuard).Get(setNewPasswordURL, tmpls.SetNewPassword)
 	r.Post(setNewPasswordURL, auth.SetNewPassword)
-	r.With(auth.AuthGuardForHomePath).Get(setFirstTimePasswordURL, tmpls.SetFirstTimePassword)
-	r.Post(setFirstTimePasswordURL, auth.SetFirstTimePassword)
 
 	r.With(auth.AuthGuardForHomePath).Get(consts.HomeURL, tmpls.Home)
 
 	r.With(auth.AuthGuardForHomePath).Get(logoutURL, auth.Logout)
-	r.With(auth.AuthGuardForHomePath).Get(simpleLogoutURL, auth.SimpleLogout)
 
 	r.Get("/clear", data.ClearCookiesDev)
 

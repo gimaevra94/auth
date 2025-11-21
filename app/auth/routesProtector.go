@@ -21,7 +21,7 @@ func AuthGuardForSignUpAndSignInPath(next http.Handler) http.Handler {
 
 		temporaryId := Cookies.Value
 		userAgent := r.UserAgent()
-		temporaryIdCancelled, _, err := data.GetTemporaryIdCancelledAndRefreshTokenCancelledFromDb(temporaryId, userAgent)
+		_, temporaryIdCancelled, _, err := data.GetTemporaryIdCancelledAndRefreshTokenCancelledFromDb(temporaryId, userAgent)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) || temporaryIdCancelled {
 				next.ServeHTTP(w, r)
@@ -60,12 +60,12 @@ func ResetTokenGuard(next http.Handler) http.Handler {
 		}
 
 		if _, err := tools.ResetTokenValidate(token); err != nil {
-			http.Redirect(w, r, consts.GeneratePasswordResetLinkURL, http.StatusFound)
+			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 			return
 		}
 
 		if cancelled, err := data.GetResetTokenCancelledFromDb(token); err != nil || cancelled {
-			http.Redirect(w, r, consts.GeneratePasswordResetLinkURL, http.StatusFound)
+			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 			return
 		}
 
@@ -81,7 +81,8 @@ func AuthGuardForHomePath(next http.Handler) http.Handler {
 			return
 		}
 
-		email, permanentId, userAgent, err := data.GetAllUserKeysFromDb(Cookies.Value)
+		temporaryId := Cookies.Value
+		email, permanentId, userAgent, yauth, err := data.GetAllUserKeysFromDb(temporaryId)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
@@ -91,11 +92,13 @@ func AuthGuardForHomePath(next http.Handler) http.Handler {
 			return
 		}
 
-		temporaryId := Cookies.Value
+		if yauth {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		if userAgent != r.UserAgent() {
-			data.ClearTemporaryIdInCookies(w)
-			temporaryIdCancelled, refreshTokenCancelled := true, true
-			if err := data.SetTemporaryIdCancelledAndRefreshTokenCancelledInDb(permanentId, userAgent, temporaryIdCancelled, refreshTokenCancelled); err != nil {
+			if err := Logout(w, r, permanentId, userAgent); err != nil {
 				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
@@ -103,29 +106,41 @@ func AuthGuardForHomePath(next http.Handler) http.Handler {
 				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
-			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 			return
 		}
 
-		temporaryIdCancelled, refreshTokenCancelled, err := data.GetTemporaryIdRefreshTokenAndTheyCancelledFromDb(temporaryId, userAgent)
+		refreshToken, temporaryIdCancelled, refreshTokenCancelled, err := data.GetTemporaryIdCancelledAndRefreshTokenCancelledFromDb(permanentId, userAgent)
 		if err != nil {
 			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 
 		if temporaryIdCancelled || refreshTokenCancelled {
-			data.ClearTemporaryIdInCookies(w)
-			temporaryIdCancelled, refreshTokenCancelled := true, true
-			if err := data.SetTemporaryIdCancelledAndRefreshTokenCancelledInDb(permanentId, userAgent, temporaryIdCancelled, refreshTokenCancelled); err != nil {
+			if err := Logout(w, r, permanentId, userAgent); err != nil {
 				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
-			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 			return
 		}
 
-
+		if err := tools.RefreshTokenValidate(refreshToken); err != nil {
+			if err := Logout(w, r, permanentId, userAgent); err != nil {
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				return
+			}
+			return
+		}
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func Logout(w http.ResponseWriter, r *http.Request) error {
+	data.ClearTemporaryIdInCookies(w)
+	temporaryIdCancelled, refreshTokenCancelled := true, true
+	if err := data.SetTemporaryIdCancelledAndRefreshTokenCancelledInDb(permanentId, userAgent, temporaryIdCancelled, refreshTokenCancelled); err != nil {
+		return errors.WithStack(err)
+	}
+	http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+	return nil
 }

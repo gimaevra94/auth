@@ -22,7 +22,6 @@ var (
 	_        = Must(BaseTmpl.Parse(generatePasswordResetLinkTMPL))
 	_        = Must(BaseTmpl.Parse(emailMsgWithPasswordResetLinkTMPL))
 	_        = Must(BaseTmpl.Parse(setNewPasswordTMPL))
-	_        = Must(BaseTmpl.Parse(setFirstTimePasswordTMPL))
 	_        = Must(BaseTmpl.Parse(emailMsgAboutNewDeviceLoginEmailTMPL))
 )
 
@@ -327,45 +326,6 @@ const (
 			{{end}}
 		{{end}}
 	</div>
-</body>
-</html>
-{{ end }}
-`
-
-	setFirstTimePasswordTMPL = `
-{{ define "setFirstTimePassword" }}
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <title>Set Password</title>
-    <link rel="stylesheet" href="/public/styles.css">
-    <meta name="viewport" content="wIdth=device-wIdth, initial-scale=1" />
-    </head>
-<body>
-    <div class="container">
-        <h1>Set Account Password</h1>
-        <p class="msg">Your account was created via Yandex. To enable password login, set a password below.</p>
-        {{if .Msg}}<div class="error-msg">{{.Msg}}</div>{{end}}
-        {{if .Regs}}
-        <div class="requirements-list">
-            {{range .Regs}}
-            <div>{{.}}</div>
-            {{end}}
-        </div>
-        {{end}}
-        <form method="POST" action="/set-first-time-password">
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" Id="password" name="password" required autocomplete="new-password">
-            </div>
-            <div class="form-group">
-                <label for="confirmPassword">Confirm Password</label>
-                <input type="password" Id="confirmPassword" name="confirmPassword" required autocomplete="new-password">
-            </div>
-            <button type="submit" class="btn">Set Password</button>
-        </form>
-    </div>
 </body>
 </html>
 {{ end }}

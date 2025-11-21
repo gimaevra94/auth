@@ -18,7 +18,6 @@ func InitStore() *sessions.CookieStore {
 	sessionEncryptionKey := []byte(os.Getenv("LOGIN_STORE_SESSION_ENCRYPTION_KEY"))
 	loginStore = sessions.NewCookieStore(sessionAuthKey, sessionEncryptionKey)
 	loginStoreLifeTime := 30 * 60
-
 	loginStore.Options = &sessions.Options{
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
@@ -30,7 +29,6 @@ func InitStore() *sessions.CookieStore {
 	sessionSecret := []byte(os.Getenv("CAPTCHA_STORE_SESSION_SECRET_KEY"))
 	captchaStore = sessions.NewCookieStore(sessionSecret)
 	captchaStoreLifeTime := 30 * 24 * 60 * 60
-
 	captchaStore.Options = &sessions.Options{
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
