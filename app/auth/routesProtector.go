@@ -3,6 +3,7 @@ package auth
 import (
 	"database/sql"
 	"net/http"
+	"strings"
 
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
@@ -20,16 +21,15 @@ func AuthGuardForSignUpAndSignInPath(next http.Handler) http.Handler {
 		}
 
 		temporaryId := Cookies.Value
-		userAgent := r.UserAgent()
-		temporaryIdCancelled, err := data.IsTemporaryIdCancelled(temporaryId, userAgent)
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) || temporaryIdCancelled {
+		if err := data.IsTemporaryIdCancelled(temporaryId); err != nil {
+			if strings.Contains(err.Error(), "temporaryId cancelled") {
 				next.ServeHTTP(w, r)
 				return
 			}
 			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
+
 		http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 	})
 }
@@ -64,9 +64,8 @@ func ResetTokenGuard(next http.Handler) http.Handler {
 			return
 		}
 
-		isResetTokenCancelled, err := data.IsResetTokenCancelled(token, r.UserAgent())
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) || isResetTokenCancelled {
+		if err := data.IsPasswordResetTokenCancelled(token); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
 				http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 				return
 			}
@@ -86,10 +85,19 @@ func AuthGuardForHomePath(next http.Handler) http.Handler {
 			return
 		}
 
-		temporaryId := Cookies.Value
-		permanentId, userAgent, cancelled, yauth, err := data.GetTemporaryIdKeys(temporaryId)
+		permanentId, userAgent, err := data.GetTemporaryIdKeysFromDb(Cookies.Value)
 		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) || cancelled {
+			if errors.Is(err, sql.ErrNoRows) {
+				http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+				return
+			}
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
+		}
+
+		email, yauth, err := data.GetEmailFromDb(permanentId)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
 				http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 				return
 			}
@@ -103,16 +111,6 @@ func AuthGuardForHomePath(next http.Handler) http.Handler {
 		}
 
 		if userAgent != r.UserAgent() {
-			email, err := data.GetEmailFromDb(permanentId)
-			if err != nil {
-				if errors.Is(err, sql.ErrNoRows) {
-					http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
-					return
-				}
-				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-				return
-			}
-
 			if err := tools.SuspiciousLoginEmailSend(email, r.UserAgent()); err != nil {
 				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
@@ -123,19 +121,13 @@ func AuthGuardForHomePath(next http.Handler) http.Handler {
 
 		refreshToken, refreshTokenCancelled, err := data.GetRefreshTokenFromDb(permanentId, userAgent)
 		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) || refreshTokenCancelled {
-				Logout(w, r)
-				return
-			}
 			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
-
 		if refreshTokenCancelled {
 			Logout(w, r)
 			return
 		}
-
 		if err := tools.RefreshTokenValidate(refreshToken); err != nil {
 			Logout(w, r)
 			return
@@ -153,7 +145,7 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	temporaryId := cookie.Value
-	permanentId, yauth, err := data.GetPermanentIdFromDbByTemporaryId(temporaryId)
+	permanentId, err := data.GetPermanentIdFromDbByTemporaryId(temporaryId)
 	if err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
@@ -165,7 +157,6 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
-
 	defer func() {
 		if err := recover(); err != nil {
 			tx.Rollback()
@@ -173,8 +164,12 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	cancelled := true
-	if err := data.SetTemporaryIdInDbTx(tx, permanentId, temporaryId, userAgent, cancelled, yauth); err != nil {
+	if err := data.SetTemporaryIdCancelledInDbTx(tx, permanentId, userAgent); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	if err := data.SetRefreshTokenCancelledInDbTx(tx, permanentId, userAgent); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}

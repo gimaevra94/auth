@@ -36,7 +36,7 @@ func CheckInDbAndValidateSignInUserInput(w http.ResponseWriter, r *http.Request)
 		Password: password,
 	}
 
-	permanentId, err := data.GetPermanentIdAndPasswordHashFromDb(user.Login, user.Password)
+	permanentId, err := data.GetPermanentIdAndCheckPasswordFromDb(user.Login, user.Password)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
@@ -83,9 +83,7 @@ func CheckInDbAndValidateSignInUserInput(w http.ResponseWriter, r *http.Request)
 	data.SetTemporaryIdInCookies(w, temporaryId, consts.Exp7Days, rememberMe)
 
 	userAgent := r.UserAgent()
-	cancelled := false
-	yauth := false
-	if err := data.SetTemporaryIdInDbTx(tx, permanentId, temporaryId, userAgent, cancelled, yauth); err != nil {
+	if err := data.SetTemporaryIdInDbTx(tx, permanentId, temporaryId, userAgent); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -95,7 +93,7 @@ func CheckInDbAndValidateSignInUserInput(w http.ResponseWriter, r *http.Request)
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
-	if err := data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken,userAgent,cancelled); err != nil {
+	if err := data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken,userAgent); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}

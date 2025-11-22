@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"database/sql"
 	"net/http"
 	"strings"
 
@@ -36,9 +37,10 @@ func CheckInDbAndValidateSignUpUserInput(w http.ResponseWriter, r *http.Request)
 		Password: password,
 	}
 
-	_, err = data.GetPermanentIdFromDbByEmail(user.Email)
+	yauth := false
+	_, err = data.GetPermanentIdFromDbByEmail(user.Email, yauth)
 	if err != nil {
-		if strings.Contains(err.Error(), "user not found") {
+		if errors.Is(err, sql.ErrNoRows) {
 			errMsgKey, err := tools.InputValidate(r, user.Login, user.Email, user.Password, false)
 			if err != nil {
 				if strings.Contains(err.Error(), "login") || strings.Contains(err.Error(), "email") || strings.Contains(err.Error(), "password") {
@@ -157,7 +159,8 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := data.SetEmailInDbTx(tx, permanentId, user.Email); err != nil {
+	yauth := false
+	if err := data.SetEmailInDbTx(tx, permanentId, user.Email, yauth); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -172,9 +175,7 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 	data.SetTemporaryIdInCookies(w, temporaryId, consts.Exp7Days, rememberMe)
 
 	userAgent := r.UserAgent()
-	cancelled := false
-	yauth := false
-	if err := data.SetTemporaryIdInDbTx(tx, permanentId, temporaryId, userAgent, cancelled, yauth); err != nil {
+	if err := data.SetTemporaryIdInDbTx(tx, permanentId, temporaryId, userAgent); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -184,7 +185,7 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
-	if err := data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken,userAgent,cancelled); err != nil {
+	if err := data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken, userAgent); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}

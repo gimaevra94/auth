@@ -12,7 +12,6 @@ import (
 	"github.com/gimaevra94/auth/app/tmpls"
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/bcrypt"
 )
 
 func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
@@ -32,7 +31,8 @@ func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if _, err := data.GetPermanentIdFromDbByEmail(email); err != nil {
+	yauth := false
+	if _, err := data.GetPermanentIdFromDbByEmail(email, yauth); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			data := structs.MsgForUser{Msg: consts.MsgForUser["userNotExist"].Msg, Regs: nil}
 			if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "generatePasswordResetLink", data); err != nil {
@@ -59,8 +59,7 @@ func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resetToken := url.Query().Get("token")
-	resetTokenCancelled := false
-	if err := data.SetPasswordResetTokenCancelledInDb(resetToken, resetTokenCancelled); err != nil {
+	if err := data.SetPasswordResetTokenInDb(resetToken); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -81,16 +80,8 @@ func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
 
 func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 	resetToken := r.FormValue("token")
-	cancelled, err := data.GetResetTokenCancelledFromDb(resetToken)
-	if err != nil {
+	if err := data.IsPasswordResetTokenCancelled(resetToken); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
-	if cancelled {
-		err := errors.New("reset-token invalid")
-		wrappederr := errors.WithStack(err)
-		errs.LogAndRedirectIfErrNotNill(w, r, wrappederr, consts.Err500URL)
 		return
 	}
 
@@ -138,7 +129,6 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
-
 	defer func() {
 		if err := recover(); err != nil {
 			tx.Rollback()
@@ -146,42 +136,25 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	yauth := false
+	permanentId, err := data.GetPermanentIdFromDbByEmail(claims.Email, yauth)
 	if err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
-	oldPasswordHash, permanentId, err := data.GetOldPasswordHashAndPermanentIdFromUserTx(tx, claims.Email)
-	if err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
-	if err := data.SetOldPasswordHashInHistoryTx(tx, permanentId, oldPasswordHash); err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-	if err := data.SetNewPasswordHashInUserTx(tx, hashedPassword, claims.Email); err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
-	passwordResetTokenCancelled := true
-	if err := data.SetPasswordResetTokenCancelledInDbTx(tx, resetToken, passwordResetTokenCancelled); err != nil {
+	if err := data.SetPasswordInDbTx(tx, permanentId, newPassword); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
 	userAgent := r.UserAgent()
-	rememberMe := false
-	refreshToken, err := tools.GenerateRefreshToken(consts.Exp7Days, rememberMe)
-	if err != nil {
+	if err := data.SetTemporaryIdCancelledInDbTx(tx, permanentId, userAgent); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
-	temporaryIdCancelled, refreshTokenCancelled := true, true
-	if err := data.SetTemporaryIdAndRefreshTokenInDbTx(tx, permamentId, temporaryId, userAgent, refreshToken, temporaryIdCancelled, refreshTokenCancelled); err != nil {
+
+	if err := data.SetRefreshTokenCancelledInDbTx(tx, permanentId, userAgent); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
