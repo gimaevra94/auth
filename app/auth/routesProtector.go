@@ -21,9 +21,9 @@ func AuthGuardForSignUpAndSignInPath(next http.Handler) http.Handler {
 
 		temporaryId := Cookies.Value
 		userAgent := r.UserAgent()
-		temporaryIdCancelled, refreshTokenCancelled, _, err := data.GetTemporaryIdCancelledRefreshTokenCancelledAndRefreshTokenFromDb(temporaryId, userAgent)
+		temporaryIdCancelled, err := data.IsTemporaryIdCancelled(temporaryId, userAgent)
 		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) || temporaryIdCancelled || refreshTokenCancelled {
+			if errors.Is(err, sql.ErrNoRows) || temporaryIdCancelled {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -64,8 +64,13 @@ func ResetTokenGuard(next http.Handler) http.Handler {
 			return
 		}
 
-		if cancelled, err := data.GetResetTokenCancelledFromDb(token); err != nil || cancelled {
-			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+		isResetTokenCancelled, err := data.IsResetTokenCancelled(token, r.UserAgent())
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) || isResetTokenCancelled {
+				http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+				return
+			}
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 
@@ -82,9 +87,9 @@ func AuthGuardForHomePath(next http.Handler) http.Handler {
 		}
 
 		temporaryId := Cookies.Value
-		email, permanentId, userAgent, yauth, err := data.GetUserFromDb(temporaryId)
+		permanentId, userAgent, cancelled, yauth, err := data.GetTemporaryIdKeys(temporaryId)
 		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
+			if errors.Is(err, sql.ErrNoRows) || cancelled {
 				http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
 				return
 			}
@@ -98,21 +103,35 @@ func AuthGuardForHomePath(next http.Handler) http.Handler {
 		}
 
 		if userAgent != r.UserAgent() {
-			Logout(w, r)
+			email, err := data.GetEmailFromDb(permanentId)
+			if err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+					return
+				}
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				return
+			}
+
 			if err := tools.SuspiciousLoginEmailSend(email, r.UserAgent()); err != nil {
 				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
+			Logout(w, r)
 			return
 		}
 
-		temporaryIdCancelled, refreshTokenCancelled, refreshToken, err := data.GetTemporaryIdCancelledRefreshTokenCancelledAndRefreshTokenFromDb(permanentId, userAgent)
+		refreshToken, refreshTokenCancelled, err := data.GetRefreshTokenFromDb(permanentId, userAgent)
 		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) || refreshTokenCancelled {
+				Logout(w, r)
+				return
+			}
 			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
 
-		if temporaryIdCancelled || refreshTokenCancelled {
+		if refreshTokenCancelled {
 			Logout(w, r)
 			return
 		}
@@ -134,18 +153,37 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	temporaryId := cookie.Value
-	permanentId, err := data.GetPermanentIdFromDbByTemporaryId(temporaryId)
+	permanentId, yauth, err := data.GetPermanentIdFromDbByTemporaryId(temporaryId)
 	if err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 	userAgent := r.UserAgent()
 
-	temporaryIdCancelled, refreshTokenCancelled := true, true
-	if err := data.SetTemporaryIdCancelledAndRefreshTokenCancelledInDb(permanentId, userAgent, temporaryIdCancelled, refreshTokenCancelled); err != nil {
+	tx, err := data.Db.Begin()
+	if err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
+
+	defer func() {
+		if err := recover(); err != nil {
+			tx.Rollback()
+			panic(err)
+		}
+	}()
+
+	cancelled := true
+	if err := data.SetTemporaryIdInDbTx(tx, permanentId, temporaryId, userAgent, cancelled, yauth); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	if err = tx.Commit(); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
 	data.ClearTemporaryIdInCookies(w)
 
 	http.Redirect(w, r, consts.SignUpURL, http.StatusFound)

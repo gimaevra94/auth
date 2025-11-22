@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"net/http"
 	"slices"
+	"strings"
 
 	"github.com/gimaevra94/auth/app/captcha"
 	"github.com/gimaevra94/auth/app/consts"
@@ -14,7 +15,6 @@ import (
 	"github.com/gimaevra94/auth/app/tools"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/bcrypt"
 )
 
 func CheckInDbAndValidateSignInUserInput(w http.ResponseWriter, r *http.Request) {
@@ -36,34 +36,22 @@ func CheckInDbAndValidateSignInUserInput(w http.ResponseWriter, r *http.Request)
 		Password: password,
 	}
 
-	passwordHash, permanentId, err := data.GetPasswordHashAndPermanentIdFromDb(user.Login, user.Password)
+	permanentId, err := data.GetPermanentIdAndPasswordHashFromDb(user.Login, user.Password)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
-				msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha, Regs: nil}
+				msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha}
 			} else {
-				msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["userNotExist"].Msg, ShowCaptcha: showCaptcha, Regs: nil}
+				msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["userNotExist"].Msg, ShowCaptcha: showCaptcha}
 			}
-
-			if err := captcha.UpdateCaptchaState(w, r, captchaCounter-1, showCaptcha); err != nil {
-				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-				return
-			}
-			if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "signIn", msgForUserdata); err != nil {
-				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-				return
-			}
-			return
 		}
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash.String), []byte(user.Password)); err != nil {
-		if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
-			msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha}
-		} else {
-			msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["passwordInvalid"].Msg, ShowCaptcha: showCaptcha, ShowForgotPassword: true, Regs: consts.MsgForUser["passwordInvalid"].Regs}
+		if strings.Contains(err.Error(), "password invalid") {
+			if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
+				msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha}
+			} else {
+				msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["passwordInvalid"].Msg, ShowCaptcha: showCaptcha, ShowForgotPassword: true, Regs: consts.MsgForUser["passwordInvalid"].Regs}
+			}
 		}
 
 		if err := captcha.UpdateCaptchaState(w, r, captchaCounter-1, showCaptcha); err != nil {
@@ -90,17 +78,24 @@ func CheckInDbAndValidateSignInUserInput(w http.ResponseWriter, r *http.Request)
 		}
 	}()
 
-	rememberMe := r.FormValue("rememberMe") != ""
 	temporaryId := uuid.New().String()
+	rememberMe := r.FormValue("rememberMe") != ""
 	data.SetTemporaryIdInCookies(w, temporaryId, consts.Exp7Days, rememberMe)
+
+	userAgent := r.UserAgent()
+	cancelled := false
+	yauth := false
+	if err := data.SetTemporaryIdInDbTx(tx, permanentId, temporaryId, userAgent, cancelled, yauth); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
 	refreshToken, err := tools.GenerateRefreshToken(consts.Exp7Days, rememberMe)
 	if err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
-	temporaryIdCancelled, refreshTokenCancelled := false, false
-	userAgent := r.UserAgent()
-	if err = data.SetTemporaryIdAndRefreshTokenInDbTx(tx, permanentId, userAgent, temporaryId, refreshToken, temporaryIdCancelled, refreshTokenCancelled); err != nil {
+	if err := data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken,userAgent,cancelled); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}

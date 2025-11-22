@@ -13,7 +13,6 @@ import (
 	"github.com/gimaevra94/auth/app/tools"
 
 	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 
 	"github.com/pkg/errors"
 )
@@ -37,7 +36,7 @@ func CheckInDbAndValidateSignUpUserInput(w http.ResponseWriter, r *http.Request)
 		Password: password,
 	}
 
-	_, err = data.GetPermanentIdFromEmailDb(user.Email)
+	_, err = data.GetPermanentIdFromDbByEmail(user.Email)
 	if err != nil {
 		if strings.Contains(err.Error(), "user not found") {
 			errMsgKey, err := tools.InputValidate(r, user.Login, user.Email, user.Password, false)
@@ -168,22 +167,24 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	temporaryId := uuid.New().String()
+	rememberMe := r.FormValue("rememberMe") != ""
+	data.SetTemporaryIdInCookies(w, temporaryId, consts.Exp7Days, rememberMe)
+
+	userAgent := r.UserAgent()
+	cancelled := false
 	yauth := false
-	if err := data.SetUserInDbTx(tx, user.Login, user.Email, permanentId, hashedPassword, yauth); err != nil {
+	if err := data.SetTemporaryIdInDbTx(tx, permanentId, temporaryId, userAgent, cancelled, yauth); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
-	rememberMe := r.FormValue("rememberMe") != ""
-	data.SetTemporaryIdInCookies(w, temporaryId, consts.Exp7Days, rememberMe)
 	refreshToken, err := tools.GenerateRefreshToken(consts.Exp7Days, rememberMe)
 	if err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
-	temporaryIdCancelled, refreshTokenCancelled := false, false
-	userAgent := r.UserAgent()
-	if err = data.SetTemporaryIdAndRefreshTokenInDbTx(tx, permanentId, temporaryId, refreshToken, userAgent, temporaryIdCancelled, refreshTokenCancelled); err != nil {
+	if err := data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken,userAgent,cancelled); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -194,7 +195,7 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = tools.SendNewDeviceLoginEmail(user.Login, user.Email, r.UserAgent()); err != nil {
+	if err = tools.SendNewDeviceLoginEmail(user.Login, user.Email, userAgent); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 	}
 
