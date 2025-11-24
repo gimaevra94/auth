@@ -73,7 +73,7 @@ const (
 			{{end}}
 		</div>
 		{{end}}
-		<form method="POST" action="/validate-sign-up-input" Id="signup-form">
+		<form method="POST" action="/check-in-db-and-validate-sign-up-user-input" Id="signup-form">
 			<div class="form-group">
 				<label for="username">Username</label>
 				<input type="text" Id="username" name="login">

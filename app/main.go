@@ -15,17 +15,13 @@ import (
 )
 
 const (
-	validateSignUpInputURL                 = "/validate-sign-up-input"
 	setUserInDbURL                         = "/set-user-in-db"
 	CheckInDbAndValidateSignUpUserInputURL = "/check-in-db-and-validate-sign-up-user-input"
 	CheckInDbAndValidateSignInUserInputURL = "/check-in-db-and-validate-sign-in-user-input"
 	generatePasswordResetLinkURL           = "/generate-password-reset-link"
 	yandexCallbackURL                      = "/ya_callback"
 	setNewPasswordURL                      = "/set-new-password"
-	setFirstTimePasswordURL                = "/set-first-time-password"
 	logoutURL                              = "/logout"
-	simpleLogoutURL                        = "/simple-logout"
-
 )
 
 func main() {
