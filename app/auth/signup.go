@@ -18,6 +18,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+var user structs.User
+
 func CheckInDbAndValidateSignUpUserInput(w http.ResponseWriter, r *http.Request) {
 	captchaCounter, showCaptcha, err := captcha.InitCaptchaState(w, r)
 	if err != nil {
@@ -30,7 +32,6 @@ func CheckInDbAndValidateSignUpUserInput(w http.ResponseWriter, r *http.Request)
 	login := r.FormValue("login")
 	email := r.FormValue("email")
 	password := r.FormValue("password")
-	var user structs.User
 	user = structs.User{
 		Login:    login,
 		Email:    email,
@@ -50,7 +51,7 @@ func CheckInDbAndValidateSignUpUserInput(w http.ResponseWriter, r *http.Request)
 						msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser[errMsgKey].Msg, ShowCaptcha: showCaptcha, Regs: consts.MsgForUser[errMsgKey].Regs}
 					}
 
-					if err := captcha.UpdateCaptchaState(w, r, captchaCounter, showCaptcha); err != nil {
+					if err := captcha.UpdateCaptchaState(w, r, captchaCounter-1, showCaptcha); err != nil {
 						errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 						return
 					}
@@ -59,6 +60,7 @@ func CheckInDbAndValidateSignUpUserInput(w http.ResponseWriter, r *http.Request)
 						return
 					}
 				}
+				return
 			}
 
 			if err := data.SetAuthDataInSession(w, r, user); err != nil {
@@ -66,6 +68,7 @@ func CheckInDbAndValidateSignUpUserInput(w http.ResponseWriter, r *http.Request)
 				return
 			}
 			tools.ServerAuthCodeSend(w, r)
+			return
 		}
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return

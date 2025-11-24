@@ -7,7 +7,8 @@ CREATE TABLE login (
 CREATE TABLE email (
     permanentId CHAR(36) NOT NULL,
     email VARCHAR(128) NOT NULL,
-    cancelled BOOLEAN NOT NULL
+    cancelled BOOLEAN NOT NULL,
+    auth BOOLEAN NOT NULL
 ) ENGINE=INNODB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE password (
@@ -16,7 +17,7 @@ CREATE TABLE password (
     cancelled BOOLEAN NOT NULL
 ) ENGINE=INNODB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE user_sessions (
+CREATE TABLE temporaryId (
     permanentId CHAR(36) NOT NULL,
     temporaryId CHAR(36) NOT NULL,
     userAgent VARCHAR(255) NOT NULL,
