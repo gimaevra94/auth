@@ -13,6 +13,7 @@ import (
 	"github.com/gimaevra94/auth/app/consts"
 	"github.com/gimaevra94/auth/app/data"
 	"github.com/gimaevra94/auth/app/errs"
+	"github.com/gimaevra94/auth/app/structs"
 	"github.com/gimaevra94/auth/app/tmpls"
 	"github.com/pkg/errors"
 )
@@ -147,39 +148,35 @@ func ServerAuthCodeSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if user.ServerAuthCodeMailSendedCounter == 0 {
-		if user.ServerCode != "" {
-			http.Redirect(w, r, consts.ServerAuthCodeSendURL, http.StatusFound)
+	if user.ServerCode == "" {
+		authServerCode := serverAuthCodeGenerate()
+		serverEmail := os.Getenv("SERVER_EMAIL")
+		sMTPServerAuthSubject, sMTPServerAddr := sMTPServerAuth(serverEmail)
+		data_ := struct{ Code string }{Code: authServerCode}
+
+		msg, err := executeTmpl(serverEmail, user.Email, authCodeSubject, data_)
+		if err != nil {
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
-	}
+		if err := mailSend(serverEmail, user.Email, sMTPServerAuthSubject, sMTPServerAddr, msg); err != nil {
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
+		}
 
-	if user.ServerCode == "" {
+		user.ServerCode = authServerCode
+		if err := data.SetAuthDataInSession(w, r, user); err != nil {
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
+		}
+
 		http.Redirect(w, r, consts.ServerAuthCodeSendURL, http.StatusFound)
 		return
 	}
 
-	authServerCode := serverAuthCodeGenerate()
-	serverEmail := os.Getenv("SERVER_EMAIL")
-	sMTPServerAuthSubject, sMTPServerAddr := sMTPServerAuth(serverEmail)
-	data_ := struct{ Code string }{Code: authServerCode}
-
-	msg, err := executeTmpl(serverEmail, user.Email, authCodeSubject, data_)
-	if err != nil {
+	msgForUserdata := structs.MsgForUser{Msg: consts.MsgForUser["serverCodeHasBeenSend"].Msg}
+	if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "serverAuthCodeSend", msgForUserdata); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
-	if err := mailSend(serverEmail, user.Email, sMTPServerAuthSubject, sMTPServerAddr, msg); err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
-	user.ServerCode = authServerCode
-	user.ServerAuthCodeMailSendedCounter++
-	if err := data.SetAuthDataInSession(w, r, user); err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
-	http.Redirect(w, r, consts.ServerAuthCodeSendURL, http.StatusFound)
 }

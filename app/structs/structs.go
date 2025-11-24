@@ -8,7 +8,6 @@ type User struct {
 	Email                           string `sql:"email" json:"default_email"`
 	Password                        string `sql:"passwordHash"`
 	ServerCode                      string
-	ServerAuthCodeMailSendedCounter int
 }
 
 type MsgForUser struct {

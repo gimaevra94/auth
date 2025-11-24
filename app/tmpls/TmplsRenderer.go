@@ -117,6 +117,7 @@ const (
 </html>
 {{ end }}
 `
+
 	serverAuthCodeSendTMPL = `
 {{ define "serverAuthCodeSend" }}
 <!DOCTYPE html>
@@ -168,14 +169,9 @@ const (
 			</div>
 			<button type="submit" class="btn">Verify</button>
 		</form>
-		{{if .Msg}}
-		<div class="resend">
-			Didn't receive the code?
-			<form method="GET" action="/server-auth-code-send-again">
-				<button type="submit" class="btn">Send again</button>
-			</form>
+		<div class="login-link">
+			Didn't receive the code? <a href="/server-auth-code-send">Send again</a>
 		</div>
-		{{end}}
 	</div>
 </body>
 </html>

@@ -20,6 +20,7 @@ const (
 	wrongCodeMsg                   = "Wrong code"
 	failedMailSendingStatusMsg     = "Failed to send password reset link"
 	successfulMailSendingStatusMsg = "Password reset link has been sent"
+	serverCodeHasBeenSend          = "Server auth code has been sent"
 )
 
 const Exp7Days = 7 * 24 * 60 * 60
@@ -53,4 +54,5 @@ var MsgForUser = map[string]structs.MsgForUser{
 	"wrongCode":                   {Msg: wrongCodeMsg, Regs: nil},
 	"failedMailSendingStatus":     {Msg: failedMailSendingStatusMsg, Regs: nil},
 	"successfulMailSendingStatus": {Msg: successfulMailSendingStatusMsg, Regs: nil},
+	"serverCodeHasBeenSend":       {Msg: serverCodeHasBeenSend, Regs: nil},
 }
