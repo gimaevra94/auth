@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"net/http"
 	"slices"
-	"strings"
 
 	"github.com/gimaevra94/auth/app/captcha"
 	"github.com/gimaevra94/auth/app/consts"
@@ -23,19 +22,21 @@ func CheckInDbAndValidateSignInUserInput(w http.ResponseWriter, r *http.Request)
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
+
 	captchaMsgErr := captcha.ShowCaptchaMsg(r, showCaptcha)
 	var msgForUserdata structs.MsgForUser
-
 	login := r.FormValue("login")
 	email := r.FormValue("email")
 	password := r.FormValue("password")
+
 	user := structs.User{
 		Login:    login,
 		Email:    email,
 		Password: password,
 	}
 
-	permanentId, err := data.GetPermanentIdAndCheckPasswordFromDb(user.Login, user.Password)
+	// если логин или пароль пустый ебануть валидацию 
+	permanentId, err := data.GetPermanentIdFromDbByLogin(user.Login)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
@@ -45,7 +46,19 @@ func CheckInDbAndValidateSignInUserInput(w http.ResponseWriter, r *http.Request)
 			}
 		}
 
-		if strings.Contains(err.Error(), "password invalid") {
+		if err := captcha.UpdateCaptchaState(w, r, captchaCounter-1, showCaptcha); err != nil {
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
+		}
+		if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "signIn", msgForUserdata); err != nil {
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
+		}
+		return
+	}
+
+	if err := data.IsOKPasswordHashInDb(permanentId, user.Password); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
 			if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
 				msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha}
 			} else {
@@ -92,7 +105,7 @@ func CheckInDbAndValidateSignInUserInput(w http.ResponseWriter, r *http.Request)
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
-	if err := data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken,userAgent); err != nil {
+	if err := data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken, userAgent); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}

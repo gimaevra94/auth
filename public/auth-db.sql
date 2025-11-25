@@ -7,8 +7,8 @@ CREATE TABLE login (
 CREATE TABLE email (
     permanentId CHAR(36) NOT NULL,
     email VARCHAR(128) NOT NULL,
-    cancelled BOOLEAN NOT NULL,
-    yauth BOOLEAN NOT NULL
+    yauth BOOLEAN NOT NULL,
+    cancelled BOOLEAN NOT NULL
 ) ENGINE=INNODB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE password_hash (
