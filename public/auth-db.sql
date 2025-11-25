@@ -8,16 +8,16 @@ CREATE TABLE email (
     permanentId CHAR(36) NOT NULL,
     email VARCHAR(128) NOT NULL,
     cancelled BOOLEAN NOT NULL,
-    auth BOOLEAN NOT NULL
+    yauth BOOLEAN NOT NULL
 ) ENGINE=INNODB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE password (
+CREATE TABLE password_hash (
     permanentId CHAR(36) NOT NULL,
-    hash VARCHAR(255) NOT NULL,
+    passwordHash VARCHAR(255) NOT NULL,
     cancelled BOOLEAN NOT NULL
 ) ENGINE=INNODB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE temporaryId (
+CREATE TABLE temporary_id (
     permanentId CHAR(36) NOT NULL,
     temporaryId CHAR(36) NOT NULL,
     userAgent VARCHAR(255) NOT NULL,

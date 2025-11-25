@@ -16,6 +16,7 @@ import (
 
 const (
 	setUserInDbURL                         = "/set-user-in-db"
+	codeValidateURL                        = "/code-validate"
 	CheckInDbAndValidateSignUpUserInputURL = "/check-in-db-and-validate-sign-up-user-input"
 	CheckInDbAndValidateSignInUserInputURL = "/check-in-db-and-validate-sign-in-user-input"
 	generatePasswordResetLinkURL           = "/generate-password-reset-link"
@@ -80,6 +81,8 @@ func initRouter() *chi.Mux {
 	r.With(auth.AuthGuardForSignUpAndSignInPath).Get(consts.SignUpURL, tmpls.SignUp)
 	r.Post(CheckInDbAndValidateSignUpUserInputURL, auth.CheckInDbAndValidateSignUpUserInput)
 	r.With(auth.AuthGuardForServerAuthCodeSendPath).Get(consts.ServerAuthCodeSendURL, tmpls.ServerAuthCodeSend)
+	r.With(auth.AuthGuardForServerAuthCodeSendPath).Get(consts.ServerAuthCodeSendAgainURL, auth.ServerAuthCodeSend)
+	r.Post(codeValidateURL, auth.CodeValidate)
 	r.Post(setUserInDbURL, auth.SetUserInDb)
 
 	r.With(auth.AuthGuardForSignUpAndSignInPath).Get(consts.SignInURL, tmpls.SignIn)

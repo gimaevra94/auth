@@ -123,56 +123,121 @@ const (
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-	<meta charset="UTF-8">
-	<title>Verification Code</title>
-	<link rel="stylesheet" href="/public/styles.css">
-	<style>
-		.form-group-centered {
-			margin-bottom: 1rem;
-			text-align: center;
-		}
-		.form-group-centered label {
-			display: block;
-			margin-bottom: 0.5rem;
-			font-weight: 500;
-			color: var(--text-color);
-		}
-		.form-group-centered input[type="text"] {
-			width: auto;
-			min-width: 200px;
-			max-width: 100%;
-			padding: 0.75rem;
-			border: 1px solid var(--border-color);
-			border-radius: 4px;
-			font-size: 1rem;
-			transition: border-color 0.2s;
-			background-color: var(--input-bg);
-			color: var(--text-color);
-			text-align: center;
-		}
-		.form-group-centered input[type="text"]:focus {
-			outline: none;
-			border-color: var(--primary-color);
-			box-shadow: 0 0 0 3px rgba(37,99,235,0.2);
-		}
-	</style>
+    <meta charset="UTF-8">
+    <title>Verification Code</title>
+    <link rel="stylesheet" href="/public/styles.css">
+    <style>
+        #clientCode {
+            text-align: center;
+            padding: 10px 0;
+            font-size: 1.2em;
+        }
+        
+        .resend-disabled {
+            color: #888;
+            pointer-events: none;
+            text-decoration: none;
+            cursor: not-allowed;
+        }
+
+        .captcha-container {
+            margin: 15px 0;
+            text-align: center;
+            display: flex;
+            justify-content: center;
+        }
+        
+        .g-recaptcha {
+            transform: scale(1);
+        }
+    </style>
 </head>
 <body>
-	<div class="container">
-		<h1>Verification</h1>
-		{{if .Msg}}<div class="error-msg">{{.Msg}}</div>{{end}}
-		<p class="msg">We've sent a verification code to your email. Please enter it below.</p>
-		<form method="POST" action="/set-user-in-db">
-			<div class="form-group-centered">
-				<label for="clientCode">Verification Code</label>
-				<input type="text" id="clientCode" name="clientCode" required maxlength="6" pattern="[0-9]*" inputmode="numeric">
-			</div>
-			<button type="submit" class="btn">Verify</button>
-		</form>
-		<div class="login-link">
-			Didn't receive the code? <a href="/server-auth-code-send">Send again</a>
-		</div>
-	</div>
+    <div class="container">
+        <h1>Verification</h1>
+        {{if .Msg}}<div class="error-msg">{{.Msg}}</div>{{end}}
+        <p class="msg">We've sent a verification code to your email. Please enter it below.</p>
+        <form method="POST" action="/code-validate" id="codeForm">
+            <div class="form-group-centered">
+                <label for="clientCode">Verification Code</label>
+                <input type="text" id="clientCode" name="clientCode" required maxlength="6" pattern="[0-9]*" inputmode="numeric">
+            </div>
+            {{if .ShowCaptcha}}
+            <div class="captcha-container">
+                <div class="g-recaptcha" data-sitekey="6LfUPt4rAAAAAAEU_lnGN9DbW_QngiTObsj8ro0D"></div>
+            </div>
+            {{end}}
+            <button type="submit" class="btn">Verify</button>
+        </form>
+        <div class="login-link">
+            Didn't receive the code? 
+            <span id="resend-container">
+                <a href="/server-auth-code-send-again" id="resend-link">Send again</a>
+            </span>
+            <span id="resend-timer" style="display: none;">
+                Resend available in <span id="countdown">60</span>s
+            </span>
+        </div>
+    </div>
+
+    {{if .ShowCaptcha}}
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    {{end}}
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const resendLink = document.getElementById('resend-link');
+            const resendContainer = document.getElementById('resend-container');
+            const resendTimer = document.getElementById('resend-timer');
+            const countdownElement = document.getElementById('countdown');
+            
+            const COOLDOWN_SECONDS = 60;
+            const STORAGE_KEY = 'resendCooldownEnd';
+            
+            function checkCooldown() {
+                const now = Math.floor(Date.now() / 1000);
+                const cooldownEnd = localStorage.getItem(STORAGE_KEY);
+                
+                if (cooldownEnd && now < cooldownEnd) {
+                    startCountdown(cooldownEnd - now);
+                    return true;
+                }
+                return false;
+            }
+            
+            function startCountdown(seconds) {
+                let remaining = seconds;
+                resendContainer.style.display = 'none';
+                resendTimer.style.display = 'inline';
+                
+                const timer = setInterval(() => {
+                    remaining--;
+                    countdownElement.textContent = remaining;
+                    
+                    if (remaining <= 0) {
+                        clearInterval(timer);
+                        resendContainer.style.display = 'inline';
+                        resendTimer.style.display = 'none';
+                        localStorage.removeItem(STORAGE_KEY);
+                    }
+                }, 1000);
+            }
+            
+            resendLink.addEventListener('click', function(e) {
+                if (checkCooldown()) {
+                    e.preventDefault();
+                    return;
+                }
+                
+                const cooldownEnd = Math.floor(Date.now() / 1000) + COOLDOWN_SECONDS;
+                localStorage.setItem(STORAGE_KEY, cooldownEnd);
+                
+                startCountdown(COOLDOWN_SECONDS);
+            });
+            
+            checkCooldown();
+        });
+    </script>
 </body>
 </html>
 {{ end }}
@@ -218,7 +283,7 @@ const (
 			{{end}}
 		</div>
 		{{end}}
-		<form method="POST" action="/validate-sign-in-input">
+		<form method="POST" action="/check-in-db-and-validate-sign-in-user-input">
 			<div class="form-group">
 				<label for="login">Username</label>
 				<input type="text" Id="login" name="login">
@@ -254,6 +319,7 @@ const (
 </html>
 {{ end }}
 `
+
 	homeTMPL = `
 {{ define "home" }}
 <!DOCTYPE html>
@@ -268,16 +334,8 @@ const (
 		<div class="header">
 			<h1>Welcome</h1>
 			<div class="header-buttons">
-				{{if .ShowSetPasswordButton}}
-				<form method="GET" action="/set-first-time-password">
-					<button type="submit" class="btn btn-primary">Set Password</button>
-				</form>
-				{{end}}
 				<form method="GET" action="/logout">
 					<button type="submit" class="btn btn-danger">Sign Out</button>
-				</form>
-				<form method="GET" action="/simple-logout">
-					<button type="submit" class="btn btn-primary">Logout</button>
 				</form>
 			</div>
 		</div>

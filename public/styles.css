@@ -137,7 +137,8 @@ input[type="email"]:focus {
     cursor: pointer;
     transition: background-color 0.2s;
     text-decoration: none;
-    wIdth: 100%;
+    width: 100%;
+    margin-top: 1rem;
 }
 
 .btn:hover {

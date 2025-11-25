@@ -29,8 +29,7 @@ func CheckInDbAndValidateSignInUserInput(w http.ResponseWriter, r *http.Request)
 	login := r.FormValue("login")
 	email := r.FormValue("email")
 	password := r.FormValue("password")
-	var user structs.User
-	user = structs.User{
+	user := structs.User{
 		Login:    login,
 		Email:    email,
 		Password: password,

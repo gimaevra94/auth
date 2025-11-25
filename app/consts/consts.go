@@ -3,11 +3,12 @@ package consts
 import "github.com/gimaevra94/auth/app/structs"
 
 const (
-	SignUpURL                    = "/sign-up"
-	ServerAuthCodeSendURL        = "/server-auth-code-send"
-	SignInURL                    = "/sign-in"
-	HomeURL                      = "/home"
-	Err500URL                    = "/500"
+	SignUpURL                  = "/sign-up"
+	ServerAuthCodeSendURL      = "/server-auth-code-send"
+	ServerAuthCodeSendAgainURL = "/server-auth-code-send-again"
+	SignInURL                  = "/sign-in"
+	HomeURL                    = "/home"
+	Err500URL                  = "/500"
 )
 
 const (
@@ -20,7 +21,7 @@ const (
 	wrongCodeMsg                   = "Wrong code"
 	failedMailSendingStatusMsg     = "Failed to send password reset link"
 	successfulMailSendingStatusMsg = "Password reset link has been sent"
-	serverCodeHasBeenSend          = "Server auth code has been sent"
+	serverCodeHasBeenSend          = "Auth code has been sent. You can send it again in 1 minute."
 )
 
 const Exp7Days = 7 * 24 * 60 * 60

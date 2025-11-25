@@ -3,18 +3,19 @@ package structs
 import "github.com/golang-jwt/jwt"
 
 type User struct {
-	UserId                          string `sql:"userId"`
-	Login                           string `sql:"login" json:"login"`
-	Email                           string `sql:"email" json:"default_email"`
-	Password                        string `sql:"passwordHash"`
-	ServerCode                      string
+	UserId                 string `sql:"userId"`
+	Login                  string `sql:"login" json:"login"`
+	Email                  string `sql:"email" json:"default_email"`
+	Password               string `sql:"passwordHash"`
+	ServerCode             string
+	ServerCodeSendedConter int
 }
 
 type MsgForUser struct {
-	Msg         string
-	ShowCaptcha bool
+	Msg                string
+	ShowCaptcha        bool
 	ShowForgotPassword bool
-	Regs        []string
+	Regs               []string
 }
 
 type PasswordResetTokenClaims struct {

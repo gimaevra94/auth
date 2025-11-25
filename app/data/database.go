@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	permanentIdAndPasswordHashSelectQuery = "select permanentId, passwordHash from password_hash where permanentId = ? and cancelled = false"
+	permanentIdAndPasswordHashSelectQuery = "select permanentId, passwordHash from password_hash where login = ? and cancelled = false"
 	refreshTokenSelectQuery               = "select token, cancelled from refresh_token where permanentId = ? and userAgent = ?"
 
 	uniqueUserAgentsSelectQuery            = "select userAgent from temporary_id where permanentId = ?"
