@@ -25,7 +25,7 @@ func CheckInDbAndValidateSignUpUserInput(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	captchaMsgErr := captcha.ShowCaptchaMsg(r, showCaptcha)
-	var msgForUserdata structs.MsgForUser
+	var msgForUser structs.MsgForUser
 
 	login := r.FormValue("login")
 	email := r.FormValue("email")
@@ -44,16 +44,16 @@ func CheckInDbAndValidateSignUpUserInput(w http.ResponseWriter, r *http.Request)
 			if err != nil {
 				if strings.Contains(err.Error(), "login") || strings.Contains(err.Error(), "email") || strings.Contains(err.Error(), "password") {
 					if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
-						msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha}
+						msgForUser = structs.MsgForUser{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha}
 					} else {
-						msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser[errMsgKey].Msg, ShowCaptcha: showCaptcha, Regs: consts.MsgForUser[errMsgKey].Regs}
+						msgForUser = structs.MsgForUser{Msg: consts.MsgForUser[errMsgKey].Msg, ShowCaptcha: showCaptcha, Regs: consts.MsgForUser[errMsgKey].Regs}
 					}
 
 					if err := captcha.UpdateCaptchaState(w, r, captchaCounter-1, showCaptcha); err != nil {
 						errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 						return
 					}
-					if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "signUp", msgForUserdata); err != nil {
+					if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "signUp", msgForUser); err != nil {
 						errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 						return
 					}
@@ -73,16 +73,16 @@ func CheckInDbAndValidateSignUpUserInput(w http.ResponseWriter, r *http.Request)
 	}
 
 	if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
-		msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha}
+		msgForUser = structs.MsgForUser{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha}
 	} else {
-		msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["userAlreadyExist"].Msg, ShowCaptcha: showCaptcha}
+		msgForUser = structs.MsgForUser{Msg: consts.MsgForUser["userAlreadyExist"].Msg, ShowCaptcha: showCaptcha}
 	}
 
 	if err := captcha.UpdateCaptchaState(w, r, captchaCounter-1, showCaptcha); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
-	if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "signUp", msgForUserdata); err != nil {
+	if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "signUp", msgForUser); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -138,14 +138,14 @@ func CodeValidate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var msgForUserdata structs.MsgForUser
+	var msgForUser structs.MsgForUser
 	captchaMsgErr := captcha.ShowCaptchaMsg(r, showCaptcha)
 
 	if err := tools.CodeValidate(r, clientCode, user.ServerCode); err != nil {
 		if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
-			msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha}
+			msgForUser = structs.MsgForUser{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha}
 		} else {
-			msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["wrongCode"].Msg, ShowCaptcha: showCaptcha}
+			msgForUser = structs.MsgForUser{Msg: consts.MsgForUser["wrongCode"].Msg, ShowCaptcha: showCaptcha}
 		}
 	} else {
 		SetUserInDb(w, r)
@@ -157,7 +157,7 @@ func CodeValidate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "serverAuthCodeSend", msgForUserdata); err != nil {
+	if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "serverAuthCodeSend", msgForUser); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}

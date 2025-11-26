@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"net/http"
 	"slices"
+	"strings"
 
 	"github.com/gimaevra94/auth/app/captcha"
 	"github.com/gimaevra94/auth/app/consts"
@@ -24,7 +25,7 @@ func CheckInDbAndValidateSignInUserInput(w http.ResponseWriter, r *http.Request)
 	}
 
 	captchaMsgErr := captcha.ShowCaptchaMsg(r, showCaptcha)
-	var msgForUserdata structs.MsgForUser
+	var msgForUser structs.MsgForUser
 	login := r.FormValue("login")
 	email := r.FormValue("email")
 	password := r.FormValue("password")
@@ -35,14 +36,39 @@ func CheckInDbAndValidateSignInUserInput(w http.ResponseWriter, r *http.Request)
 		Password: password,
 	}
 
-	// если логин или пароль пустый ебануть валидацию 
+	if login == "" || password == "" {
+		errMsgKey, err := tools.InputValidate(r, login, "", password, true)
+		if err != nil {
+			if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
+				msgForUser = structs.MsgForUser{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha}
+			} else {
+				if strings.Contains(err.Error(), "password") {
+					msgForUser = structs.MsgForUser{Msg: consts.MsgForUser[errMsgKey].Msg, ShowCaptcha: showCaptcha, Regs: consts.MsgForUser[errMsgKey].Regs}
+				} else {
+					msgForUser = structs.MsgForUser{Msg: consts.MsgForUser[errMsgKey].Msg, ShowCaptcha: showCaptcha, ShowForgotPassword: true, Regs: consts.MsgForUser[errMsgKey].Regs}
+				}
+			}
+
+			if err := captcha.UpdateCaptchaState(w, r, captchaCounter-1, showCaptcha); err != nil {
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				return
+			}
+			if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "signIn", msgForUser); err != nil {
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				return
+			}
+			
+			return
+		}
+	}
+
 	permanentId, err := data.GetPermanentIdFromDbByLogin(user.Login)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
-				msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha}
+				msgForUser = structs.MsgForUser{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha}
 			} else {
-				msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["userNotExist"].Msg, ShowCaptcha: showCaptcha}
+				msgForUser = structs.MsgForUser{Msg: consts.MsgForUser["userNotExist"].Msg, ShowCaptcha: showCaptcha}
 			}
 		}
 
@@ -50,7 +76,7 @@ func CheckInDbAndValidateSignInUserInput(w http.ResponseWriter, r *http.Request)
 			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
-		if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "signIn", msgForUserdata); err != nil {
+		if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "signIn", msgForUser); err != nil {
 			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
@@ -60,9 +86,9 @@ func CheckInDbAndValidateSignInUserInput(w http.ResponseWriter, r *http.Request)
 	if err := data.IsOKPasswordHashInDb(permanentId, user.Password); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
-				msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha}
+				msgForUser = structs.MsgForUser{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha}
 			} else {
-				msgForUserdata = structs.MsgForUser{Msg: consts.MsgForUser["passwordInvalid"].Msg, ShowCaptcha: showCaptcha, ShowForgotPassword: true, Regs: consts.MsgForUser["passwordInvalid"].Regs}
+				msgForUser = structs.MsgForUser{Msg: consts.MsgForUser["passwordInvalid"].Msg, ShowCaptcha: showCaptcha, ShowForgotPassword: true, Regs: consts.MsgForUser["passwordInvalid"].Regs}
 			}
 		}
 
@@ -70,7 +96,7 @@ func CheckInDbAndValidateSignInUserInput(w http.ResponseWriter, r *http.Request)
 			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
-		if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "signIn", msgForUserdata); err != nil {
+		if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "signIn", msgForUser); err != nil {
 			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
