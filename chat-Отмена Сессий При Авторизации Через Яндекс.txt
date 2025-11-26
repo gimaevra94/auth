@@ -1,0 +1,1502 @@
+### USER
+тестирую сервис авторизации. захожу через яндекс. попадаю в личный кабинет. в бд заносятся временный айди и рефреш токен. находясь в личном кабинете снова "захожу" через яндекс вручную переходя на /yauth. снова попадаю в личный кабинет. в бд снова заносятся временный айди и рефреш токен. проблема в том что старые при этом не отменяются. а должны потому что код вроде бы этот момент регулирует "package auth
+
+import (
+	"database/sql"
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
+	"slices"
+
+	"github.com/gimaevra94/auth/app/consts"
+	"github.com/gimaevra94/auth/app/data"
+	"github.com/gimaevra94/auth/app/errs"
+	"github.com/gimaevra94/auth/app/structs"
+	"github.com/gimaevra94/auth/app/tools"
+	"github.com/google/uuid"
+	"github.com/pkg/errors"
+)
+
+const (
+	authURL               = "https://oauth.yandex.ru/authorize"
+	tokenURL              = "https://oauth.yandex.ru/token"
+	userInfoURL           = "https://login.yandex.ru/info"
+	YandexCallbackFullURL = "http://localhost:8080/ya_callback"
+)
+
+func YandexAuthHandler(w http.ResponseWriter, r *http.Request) {
+	authParams := url.Values{
+		"response_type": {"code"},
+		"client_id":     {os.Getenv("clientId")},
+		"redirect_uri":  {YandexCallbackFullURL},
+		"scope":         {"login:email"},
+	}
+	authUrlWithParams := authURL + "?" + authParams.Encode()
+	http.Redirect(w, r, authUrlWithParams, http.StatusFound)
+}
+
+func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
+	yauthCode := r.URL.Query().Get("code")
+	if yauthCode == "" {
+		http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+		return
+	}
+
+	yandexAccessToken, err := getAccessToken(yauthCode)
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	yandexUser, err := getYandexUserInfo(yandexAccessToken)
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	var permanentId string
+	yauth := true
+
+	DbPermanentId, err := data.GetPermanentIdFromDbByEmail(yandexUser.Email, yauth)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			permanentId = uuid.New().String()
+			if err := data.SetEmailInDb(permanentId, yandexUser.Email, yauth); err != nil {
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				return
+			}
+		} else {
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
+		}
+	} else {
+		permanentId = DbPermanentId
+	}
+
+	tx, err := data.Db.Begin()
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+	defer func() {
+		r := recover()
+		if r != nil {
+			tx.Rollback()
+			panic(r)
+		}
+	}()
+
+	rememberMe := r.FormValue("rememberMe") != ""
+	temporaryId := uuid.New().String()
+	data.SetTemporaryIdInCookies(w, temporaryId, consts.Exp7Days, rememberMe)
+
+	userAgent := r.UserAgent()
+	if err := data.SetTemporaryIdInDbTx(tx, permanentId, temporaryId, userAgent, yauth); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	refreshToken, err := tools.GenerateRefreshToken(consts.Exp7Days, rememberMe)
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+	if err := data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken, userAgent, yauth); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	if err = tx.Commit(); err != nil {
+		tx.Rollback()
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	uniqueUserAgents, err := data.GetUniqueUserAgentsFromDb(permanentId)
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+	if !slices.Contains(uniqueUserAgents, r.UserAgent()) {
+		if err := tools.SendNewDeviceLoginEmail(yandexUser.Login, yandexUser.Email, r.UserAgent()); err != nil {
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
+		}
+	}
+
+	if err = data.EndAuthAndCaptchaSessions(w, r); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
+	return
+}
+
+func getAccessToken(yauthCode string) (string, error) {
+	tokenParams := url.Values{
+		"grant_type":    {"authorization_code"},
+		"code":          {yauthCode},
+		"client_id":     {os.Getenv("clientId")},
+		"client_secret": {os.Getenv("clientSecret")},
+		"redirect_uri":  {YandexCallbackFullURL},
+	}
+
+	resp, err := http.PostForm(tokenURL, tokenParams)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	var result map[string]interface{}
+	if err = json.Unmarshal(body, &result); err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	accessToken, ok := result["access_token"].(string)
+	if !ok {
+		err := errors.New("access_token: not exist")
+		return "", errors.WithStack(err)
+	}
+
+	return accessToken, nil
+}
+
+func getYandexUserInfo(accessToken string) (structs.User, error) {
+	userInfoURLWithParams := userInfoURL + "?format=json&with_openId_Identity=1&with_email=1"
+
+	req, err := http.NewRequest("GET", userInfoURLWithParams, nil)
+	if err != nil {
+		return structs.User{}, errors.WithStack(err)
+	}
+
+	req.Header.Set("Authorization", "OAuth "+accessToken)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return structs.User{}, errors.WithStack(err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return structs.User{}, errors.WithStack(err)
+	}
+
+	var user structs.User
+	if err = json.Unmarshal(body, &user); err != nil {
+		return structs.User{}, errors.WithStack(err)
+	}
+
+	return user, nil
+}
+ package auth
+
+import (
+	"database/sql"
+	"net/http"
+	"strings"
+
+	"github.com/gimaevra94/auth/app/consts"
+	"github.com/gimaevra94/auth/app/data"
+	"github.com/gimaevra94/auth/app/errs"
+	"github.com/gimaevra94/auth/app/tools"
+	"github.com/pkg/errors"
+)
+
+func AuthGuardForSignUpAndSignInPath(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		Cookies, err := data.GetTemporaryIdFromCookies(r)
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		temporaryId := Cookies.Value
+		if err := data.IsTemporaryIdCancelled(temporaryId); err != nil {
+			if strings.Contains(err.Error(), "temporaryId cancelled") {
+				next.ServeHTTP(w, r)
+				return
+			}
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
+		}
+
+		http.Redirect(w, r, consts.HomeURL, http.StatusFound)
+	})
+}
+
+func AuthGuardForServerAuthCodeSendPath(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		user, err := data.GetAuthDataFromSession(r)
+		if err != nil {
+			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+			return
+		}
+
+		if user.ServerCode == "" {
+			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func ResetTokenGuard(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token := r.URL.Query().Get("token")
+		if token == "" {
+			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+			return
+		}
+
+		if _, err := tools.ResetTokenValidate(token); err != nil {
+			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+			return
+		}
+
+		if err := data.IsPasswordResetTokenCancelled(token); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+				return
+			}
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func AuthGuardForHomePath(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		Cookies, err := data.GetTemporaryIdFromCookies(r)
+		if err != nil {
+			http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+			return
+		}
+
+		temporaryId := Cookies.Value
+
+		permanentId, userAgent, err := data.GetTemporaryIdKeysFromDb(temporaryId)
+		if err != nil {
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
+		}
+
+		email, err := data.GetEmailFromDb(permanentId)
+		if err != nil {
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
+		}
+
+		if userAgent != r.UserAgent() {
+			if err := tools.SuspiciousLoginEmailSend(email, r.UserAgent()); err != nil {
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				return
+			}
+			Logout(w, r)
+			return
+		}
+
+		refreshToken, err := data.GetRefreshTokenFromDb(permanentId, userAgent)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				Logout(w, r)
+				return
+			}
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
+		}
+
+		if err := tools.RefreshTokenValidate(refreshToken); err != nil {
+			Logout(w, r)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func Logout(w http.ResponseWriter, r *http.Request) {
+
+	cookie, err := data.GetTemporaryIdFromCookies(r)
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	temporaryId := cookie.Value
+
+	permanentId, err := data.GetPermanentIdFromDbByTemporaryId(temporaryId)
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	userAgent := r.UserAgent()
+
+	tx, err := data.Db.Begin()
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+	defer func() {
+		if err := recover(); err != nil {
+			tx.Rollback()
+			panic(err)
+		}
+	}()
+
+	if err := data.SetTemporaryIdCancelledInDbTx(tx, permanentId, userAgent); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	if err := data.SetRefreshTokenCancelledInDbTx(tx, permanentId, userAgent); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	if err = tx.Commit(); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	data.ClearTemporaryIdInCookies(w)
+
+	http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+}
+ package data
+
+import (
+	"database/sql"
+	"os"
+
+	"github.com/go-sql-driver/mysql"
+	"github.com/pkg/errors"
+	"golang.org/x/crypto/bcrypt"
+)
+
+const (
+	permanentIdByEmailSelectQuery          = "select permanentId from email where email = ? and yauth = ? and cancelled = false"
+	permanentIdByTemporaryIdSelectQuery    = "select permanentId from temporary_id where temporaryId = ? and cancelled = false"
+	permanentIdByLoginSelectQuery          = "select permanentId from login where login = ? and cancelled = false"
+	uniqueUserAgentsSelectQuery            = "select userAgent from temporary_id where permanentId = ?"
+	temporaryIdSelectQuery                 = "select permanentId, userAgent from temporary_id where temporaryId = ?"
+	emailSelectQuery                       = "select email from email where permanentId = ? and cancelled = false"
+	refreshTokenSelectQuery                = "select token from refresh_token where permanentId = ? and userAgent = ? and cancelled = false"
+	loginUpdateQuery                       = "update login set cancelled = true where permanentId = ? and cancelled = false"
+	loginInsertQuery                       = "insert into login (permanentId, login, cancelled) values (?, ?, ?)"
+	emailUpdateQuery                       = "update email set cancelled = true where permanentId = ? and yauth = ? and cancelled = false"
+	emailInsertQuery                       = "insert into email (permanentId, email, yauth, cancelled) values (?, ?, ?, ?)"
+	passwordHashUpdateQuery                = "update password_hash set cancelled = true where permanentId = ? and cancelled = false"
+	passwordHashInsertQuery                = "insert into password_hash (permanentId, passwordHash, cancelled) values (?, ?, ?)"
+	temporaryIdUpdateQuery                 = "update temporary_id set cancelled = true where permanentId = ? and userAgent = ? and yauth = ? and cancelled = false"
+	temporaryIdInsertQuery                 = "insert into temporary_id (permanentId, temporaryId, userAgent,yauth,cancelled) values (?, ?, ?, ?, ?)"
+	refreshTokenUpdateQuery                = "update refresh_token set cancelled = true where permanentId = ? and userAgent = ? and yauth = ? and cancelled = false"
+	refreshTokenInsertQuery                = "insert into refresh_token (permanentId, token, userAgent,yauth,cancelled) values (?, ?, ?, ?, ?)"
+	temporaryIdCancelledUpdateQuery        = "update temporary_id set cancelled = true where permanentId = ? and userAgent = ? and cancelled = false"
+	refreshTokenCancelledUpdateQuery       = "update refresh_token set cancelled = true where permanentId = ? and userAgent = ? and cancelled = false"
+	passwordResetTokenInsertQuery          = "insert into password_reset_token (token, cancelled) values (?, ?)"
+	IsOKPasswordHashInDbSelectQuery        = "select passwordHash from password_hash where permanentId = ? and cancelled = false"
+	passwordResetTokenCancelledSelectQuery = "select cancelled from password_reset_token where token = ? and cancelled = false"
+	temporaryIdCancelledSelectQuery        = "select cancelled from temporary_id where temporaryId = ? and cancelled = false"
+)
+
+var Db *sql.DB
+
+func DbConn() error {
+	DbPassword := []byte(os.Getenv("DB_PASSWORD"))
+	cfg := mysql.Config{
+		User:   "root",
+		Passwd: string(DbPassword),
+		Net:    "tcp",
+		Addr:   "localhost:3306",
+		DBName: "db",
+	}
+	var err error
+
+	Db, err = sql.Open("mysql", cfg.FormatDSN())
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if err = Db.Ping(); err != nil {
+		Db.Close()
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func DbClose() {
+	if Db != nil {
+		Db.Close()
+	}
+}
+
+func GetPermanentIdFromDbByEmail(email string, yauth bool) (string, error) {
+	var permanentId string
+	row := Db.QueryRow(permanentIdByEmailSelectQuery, yauth, email)
+	err := row.Scan(&permanentId)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", errors.WithStack(err)
+		}
+		return "", errors.WithStack(err)
+	}
+	return permanentId, nil
+}
+
+func GetPermanentIdFromDbByTemporaryId(temporaryId string) (string, error) {
+	row := Db.QueryRow(permanentIdByTemporaryIdSelectQuery, temporaryId)
+	var permanentId string
+	err := row.Scan(&permanentId)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	return permanentId, nil
+}
+
+func GetPermanentIdFromDbByLogin(login string) (string, error) {
+	row := Db.QueryRow(permanentIdByLoginSelectQuery, login)
+	var permanentId string
+	err := row.Scan(&permanentId)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	return permanentId, nil
+}
+
+func GetUniqueUserAgentsFromDb(permanentId string) ([]string, error) {
+	rows, err := Db.Query(uniqueUserAgentsSelectQuery, permanentId)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	defer rows.Close()
+
+	var uniqueUserAgents []string
+	for rows.Next() {
+		var userAgent string
+		if err := rows.Scan(&userAgent); err != nil {
+			return nil, errors.WithStack(err)
+		}
+		uniqueUserAgents = append(uniqueUserAgents, userAgent)
+	}
+	return uniqueUserAgents, nil
+}
+
+func GetTemporaryIdKeysFromDb(temporaryId string) (string, string, error) {
+	row := Db.QueryRow(temporaryIdSelectQuery, temporaryId)
+	var permanentId, userAgent string
+	err := row.Scan(&permanentId, &userAgent)
+	if err != nil {
+		return "", "", errors.WithStack(err)
+	}
+	return permanentId, userAgent, nil
+}
+
+func GetEmailFromDb(permamentId string) (string, error) {
+	row := Db.QueryRow(emailSelectQuery, permamentId)
+	var email string
+	err := row.Scan(&email)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	return email, nil
+}
+
+func GetRefreshTokenFromDb(permamentId, userAgent string) (string, error) {
+	row := Db.QueryRow(refreshTokenSelectQuery, permamentId, userAgent)
+	var token string
+	err := row.Scan(&token)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	return token, nil
+}
+
+func SetLoginInDbTx(tx *sql.Tx, permanentId, login string) error {
+	_, err := tx.Exec(loginUpdateQuery, permanentId)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	_, err = tx.Exec(loginInsertQuery, permanentId, login, false)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func SetEmailInDbTx(tx *sql.Tx, permanentId, email string, yauth bool) error {
+	_, err := tx.Exec(emailUpdateQuery, permanentId, yauth)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	_, err = tx.Exec(emailInsertQuery, permanentId, email, yauth, false)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func SetEmailInDb(permanentId, email string, yauth bool) error {
+	_, err := Db.Exec(emailUpdateQuery, permanentId, yauth)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	_, err = Db.Exec(emailInsertQuery, permanentId, email, yauth, false)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func SetPasswordInDbTx(tx *sql.Tx, permanentId, password string) error {
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	_, err = tx.Exec(passwordHashUpdateQuery, permanentId)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	_, err = tx.Exec(passwordHashInsertQuery, permanentId, passwordHash, false)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func SetTemporaryIdInDbTx(tx *sql.Tx, permanentId, temporaryId, userAgent string, yauth bool) error {
+	_, err := tx.Exec(temporaryIdUpdateQuery, permanentId, userAgent, yauth)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	_, err = tx.Exec(temporaryIdInsertQuery, permanentId, temporaryId, userAgent, yauth, false)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func SetRefreshTokenInDbTx(tx *sql.Tx, permanentId, refreshToken, userAgent string, yauth bool) error {
+	_, err := tx.Exec(refreshTokenUpdateQuery, permanentId, userAgent, yauth)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	_, err = tx.Exec(refreshTokenInsertQuery, permanentId, refreshToken, userAgent, yauth, false)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func SetTemporaryIdCancelledInDbTx(tx *sql.Tx, permanentId, userAgent string) error {
+	_, err := tx.Exec(temporaryIdCancelledUpdateQuery, permanentId, userAgent)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func SetRefreshTokenCancelledInDbTx(tx *sql.Tx, permanentId, userAgent string) error {
+	_, err := tx.Exec(refreshTokenCancelledUpdateQuery, permanentId, userAgent)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func SetPasswordResetTokenInDb(token string) error {
+	_, err := Db.Exec(passwordResetTokenInsertQuery, token, false)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func IsTemporaryIdCancelled(temporaryId string) error {
+	row := Db.QueryRow(temporaryIdCancelledSelectQuery, temporaryId)
+	var cancelled bool
+	err := row.Scan(&cancelled)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if cancelled {
+		err := errors.New("temporaryId cancelled")
+		traceErr := errors.WithStack(err)
+		return errors.WithStack(traceErr)
+	}
+	return nil
+}
+
+func IsPasswordResetTokenCancelled(token string) error {
+	row := Db.QueryRow(passwordResetTokenCancelledSelectQuery, token)
+	var cancelled bool
+	err := row.Scan(&cancelled)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if cancelled {
+		err := errors.New("passwordResetToken cancelled")
+		traceErr := errors.WithStack(err)
+		return errors.WithStack(traceErr)
+	}
+	return nil
+}
+
+func IsOKPasswordHashInDb(permanentId, password string) error {
+	row := Db.QueryRow(IsOKPasswordHashInDbSelectQuery, permanentId)
+	var passwordHash string
+	err := row.Scan(&passwordHash)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password)); err != nil {
+		err := errors.New("password invalid")
+		traceErr := errors.WithStack(err)
+		return errors.WithStack(traceErr)
+	}
+	return nil
+}
+ package data
+
+import (
+	"net/http"
+
+	"github.com/gimaevra94/auth/app/consts"
+	"github.com/pkg/errors"
+)
+
+func SetTemporaryIdInCookies(w http.ResponseWriter, value string, temporaryIdExp int, rememberMe bool) {
+	temporaryIdExp24Hours := 24 * 60 * 60
+	if !rememberMe {
+		temporaryIdExp = temporaryIdExp24Hours
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "temporaryId",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		Value:    value,
+		MaxAge:   temporaryIdExp,
+	})
+}
+
+func GetTemporaryIdFromCookies(r *http.Request) (*http.Cookie, error) {
+	Cookies, err := r.Cookie("temporaryId")
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	if Cookies.Value == "" {
+		return nil, errors.New("temporaryId not exist")
+	}
+	return Cookies, nil
+}
+
+func ClearTemporaryIdInCookies(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "temporaryId",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
+}
+
+func ClearCookiesDev(w http.ResponseWriter, r *http.Request) {
+	ClearTemporaryIdInCookies(w)
+	if err := EndAuthAndCaptchaSessions(w, r); err != nil {
+		errors.WithStack(err)
+	}
+	http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+}
+ package data
+
+import (
+	"encoding/json"
+	"net/http"
+	"os"
+
+	"github.com/gimaevra94/auth/app/structs"
+	"github.com/gorilla/sessions"
+	"github.com/pkg/errors"
+)
+
+var loginStore *sessions.CookieStore
+var captchaStore *sessions.CookieStore
+
+func InitStore() *sessions.CookieStore {
+	sessionAuthKey := []byte(os.Getenv("LOGIN_STORE_SESSION_AUTH_KEY"))
+	sessionEncryptionKey := []byte(os.Getenv("LOGIN_STORE_SESSION_ENCRYPTION_KEY"))
+	loginStore = sessions.NewCookieStore(sessionAuthKey, sessionEncryptionKey)
+	loginStoreLifeTime := 30 * 60
+	loginStore.Options = &sessions.Options{
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   loginStoreLifeTime,
+		Secure:   false,
+	}
+
+	sessionSecret := []byte(os.Getenv("CAPTCHA_STORE_SESSION_SECRET_KEY"))
+	captchaStore = sessions.NewCookieStore(sessionSecret)
+	captchaStoreLifeTime := 30 * 24 * 60 * 60
+	captchaStore.Options = &sessions.Options{
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   captchaStoreLifeTime,
+		Secure:   false,
+	}
+
+	return nil
+}
+
+func SetCaptchaDataInSession(w http.ResponseWriter, r *http.Request, key string, consts any) error {
+	captchaSession, err := captchaStore.Get(r, "captchaStore")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	jsonData, err := json.Marshal(consts)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	captchaSession.Values[key] = jsonData
+	err = captchaSession.Save(r, w)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+func SetAuthDataInSession(w http.ResponseWriter, r *http.Request, consts any) error {
+	loginSession, err := loginStore.Get(r, "loginStore")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	jsonData, err := json.Marshal(consts)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	loginSession.Values["user"] = jsonData
+	if err = loginSession.Save(r, w); err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+func GetCaptchaCounterFromSession(r *http.Request) (int64, error) {
+	session, err := captchaStore.Get(r, "captchaStore")
+	if err != nil {
+		return 0, errors.WithStack(err)
+	}
+
+	byteData, ok := session.Values["captchaCounter"].([]byte)
+	if !ok {
+		err := errors.New("captchaCounter not exist")
+		return 0, errors.WithStack(err)
+	}
+
+	var intData int64
+	if err = json.Unmarshal([]byte(byteData), &intData); err != nil {
+		return 0, errors.WithStack(err)
+	}
+
+	return intData, nil
+}
+
+func GetShowCaptchaFromSession(r *http.Request) (bool, error) {
+	session, err := captchaStore.Get(r, "captchaStore")
+	if err != nil {
+		return false, errors.WithStack(err)
+	}
+
+	byteData, ok := session.Values["showCaptcha"].([]byte)
+	if !ok {
+		err := errors.New("showCaptcha not exist")
+		return false, errors.WithStack(err)
+	}
+
+	var boolData bool
+	if err = json.Unmarshal([]byte(byteData), &boolData); err != nil {
+		return false, errors.WithStack(err)
+	}
+
+	return boolData, nil
+}
+
+func GetAuthDataFromSession(r *http.Request) (structs.User, error) {
+	session, err := loginStore.Get(r, "loginStore")
+	if err != nil {
+		return structs.User{}, errors.WithStack(err)
+	}
+
+	byteData, ok := session.Values["user"].([]byte)
+	if !ok {
+		err := errors.New("user not exist")
+		return structs.User{}, errors.WithStack(err)
+	}
+
+	var userData structs.User
+	if err = json.Unmarshal([]byte(byteData), &userData); err != nil {
+		return structs.User{}, errors.WithStack(err)
+	}
+
+	return userData, nil
+}
+
+func EndAuthAndCaptchaSessions(w http.ResponseWriter, r *http.Request) error {
+	session, err := loginStore.Get(r, "loginStore")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	session.Options.MaxAge = -1
+	if err = session.Save(r, w); err != nil {
+		return errors.WithStack(err)
+	}
+
+	captchaSession, err := captchaStore.Get(r, "captchaStore")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	captchaSession.Options.MaxAge = -1
+	if err = captchaSession.Save(r, w); err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+ package tools
+
+import (
+	"os"
+	"time"
+
+	"github.com/gimaevra94/auth/app/structs"
+	"github.com/golang-jwt/jwt"
+	"github.com/pkg/errors"
+)
+
+func GenerateRefreshToken(refreshTokenExp int, rememberMe bool) (string, error) {
+	refreshTokenExp24Hours := 24 * 60 * 60
+	if !rememberMe {
+		refreshTokenExp = refreshTokenExp24Hours
+	}
+
+	refreshTokenExpiresAt := time.Now().Unix() + int64(refreshTokenExp)
+	refreshTokenIssuedAt := time.Now().Unix()
+	standardClaims := jwt.StandardClaims{
+		ExpiresAt: refreshTokenExpiresAt,
+		IssuedAt:  refreshTokenIssuedAt,
+	}
+
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, standardClaims)
+	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
+	signedrefreshToken, err := refreshToken.SignedString(jwtSecret)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	return signedrefreshToken, nil
+}
+
+func GeneratePasswordResetLink(email, baseURL string) (string, error) {
+	passwordResetTokenExp15Minutes := time.Now().Add(15 * time.Minute)
+	passwordResetTokenExp15MinutesExpiresAt := passwordResetTokenExp15Minutes.Unix()
+	passwordResetTokenExp15MinutesIssuedAt := time.Now().Unix()
+	passwordResetTokenClaims := structs.PasswordResetTokenClaims{
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: passwordResetTokenExp15MinutesExpiresAt,
+			IssuedAt:  passwordResetTokenExp15MinutesIssuedAt,
+		},
+		Email: email,
+	}
+
+	resetToken := jwt.NewWithClaims(jwt.SigningMethodHS256, passwordResetTokenClaims)
+	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
+	signedPasswordResetToken, err := resetToken.SignedString(jwtSecret)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	passwordResetLink := baseURL + "?token=" + signedPasswordResetToken
+	return passwordResetLink, nil
+}
+ package tools
+
+import (
+	"net/http"
+	"os"
+	"regexp"
+
+	"github.com/gimaevra94/auth/app/structs"
+
+	"github.com/golang-jwt/jwt"
+	"github.com/pkg/errors"
+)
+
+var (
+	loginRegex    = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ0-9]{3,30}$`)
+	emailRegex    = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$`)
+	passwordRegex = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ\d!@#$%^&*\-\)]{4,30}$`)
+)
+
+func InputValidate(r *http.Request, login, email, password string, IsSignIn bool) (string, error) {
+	var errMsgKey string
+	if login == "" || !loginRegex.MatchString(login) {
+		err := errors.New("loginInvalid")
+		errMsgKey = "loginInvalid"
+		return errMsgKey, errors.WithStack(err)
+	}
+
+	if password == "" || !passwordRegex.MatchString(password) {
+		err := errors.New("passwordInvalid")
+		errMsgKey = "passwordInvalid"
+		return errMsgKey, errors.WithStack(err)
+	}
+
+	if !IsSignIn {
+		if email == "" || !emailRegex.MatchString(email) {
+			err := errors.New("emailInvalid")
+			errMsgKey = "emailInvalid"
+			return errMsgKey, errors.WithStack(err)
+		}
+	}
+
+	return errMsgKey, nil
+}
+
+func RefreshTokenValidate(refreshToken string) error {
+	signedToken, err := jwt.ParseWithClaims(refreshToken, &jwt.StandardClaims{}, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok || t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
+			err := errors.New("unexpected signing method")
+			return nil, errors.WithStack(err)
+		}
+		jwtSecret := []byte(os.Getenv("JWT_SECRET"))
+		return jwtSecret, nil
+	})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if !signedToken.Valid {
+		err := errors.New("Refresh token invalid")
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+func CodeValidate(r *http.Request, clientCode, serverCode string) error {
+	if clientCode == "" {
+		err := errors.New("clientCode not exist")
+		return errors.WithStack(err)
+	}
+
+	if clientCode != serverCode {
+		err := errors.New("codes not match")
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func EmailValidate(email string) error {
+	if email == "" || !emailRegex.MatchString(email) {
+		err := errors.New("email invalid")
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func PasswordValidate(password string) error {
+	if password == "" || !passwordRegex.MatchString(password) {
+		err := errors.New("password invalid")
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func ResetTokenValidate(signedToken string) (*structs.PasswordResetTokenClaims, error) {
+	claims := &structs.PasswordResetTokenClaims{}
+
+	tok, err := jwt.ParseWithClaims(signedToken, claims, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(os.Getenv("JWT_SECRET")), nil
+	})
+
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	if !tok.Valid {
+		return nil, errors.New("token invalid")
+	}
+
+	return claims, nil
+} package main
+
+import (
+	"log"
+	"net/http"
+	"os"
+
+	"github.com/gimaevra94/auth/app/auth"
+	"github.com/gimaevra94/auth/app/consts"
+	"github.com/gimaevra94/auth/app/data"
+	"github.com/gimaevra94/auth/app/tmpls"
+	"github.com/go-chi/chi"
+	"github.com/joho/godotenv"
+	"github.com/pkg/errors"
+)
+
+const (
+	setUserInDbURL                         = "/set-user-in-db"
+	codeValidateURL                        = "/code-validate"
+	CheckInDbAndValidateSignUpUserInputURL = "/check-in-db-and-validate-sign-up-user-input"
+	CheckInDbAndValidateSignInUserInputURL = "/check-in-db-and-validate-sign-in-user-input"
+	generatePasswordResetLinkURL           = "/generate-password-reset-link"
+	yandexCallbackURL                      = "/ya_callback"
+	setNewPasswordURL                      = "/set-new-password"
+	logoutURL                              = "/logout"
+)
+
+func main() {
+	initEnv()
+	initDb()
+	data.InitStore()
+	r := initRouter()
+	serverStart(r)
+	defer data.DbClose()
+}
+
+func initEnv() {
+	if err := godotenv.Load("../public/.env"); err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		return
+	}
+
+	envVars := []string{
+		"CAPTCHA_STORE_SESSION_SECRET_KEY",
+		"LOGIN_STORE_SESSION_AUTH_KEY",
+		"LOGIN_STORE_SESSION_ENCRYPTION_KEY",
+		"JWT_SECRET",
+		"DB_PASSWORD",
+		"SERVER_EMAIL",
+		"SERVER_EMAIL_PASSWORD",
+		"GOOGLE_CAPTCHA_SECRET",
+		"clientId",
+		"clientSecret",
+	}
+
+	for _, v := range envVars {
+		if os.Getenv(v) == "" {
+			err := errors.New(v + " not exist")
+			log.Printf("%+v", errors.WithStack(err))
+			return
+		}
+	}
+}
+
+func initDb() {
+	if err := data.DbConn(); err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		return
+	}
+}
+
+func initRouter() *chi.Mux {
+	r := chi.NewRouter()
+
+	r.Handle("/public/*", http.StripPrefix("/public/", http.FileServer(http.Dir("../public"))))
+
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+	})
+
+	r.With(auth.AuthGuardForSignUpAndSignInPath).Get(consts.SignUpURL, tmpls.SignUp)
+	r.Post(CheckInDbAndValidateSignUpUserInputURL, auth.CheckInDbAndValidateSignUpUserInput)
+	r.With(auth.AuthGuardForServerAuthCodeSendPath).Get(consts.ServerAuthCodeSendURL, tmpls.ServerAuthCodeSend)
+	r.With(auth.AuthGuardForServerAuthCodeSendPath).Get(consts.ServerAuthCodeSendAgainURL, auth.ServerAuthCodeSend)
+	r.Post(codeValidateURL, auth.CodeValidate)
+	r.Post(setUserInDbURL, auth.SetUserInDb)
+
+	r.With(auth.AuthGuardForSignUpAndSignInPath).Get(consts.SignInURL, tmpls.SignIn)
+	r.Post(CheckInDbAndValidateSignInUserInputURL, auth.CheckInDbAndValidateSignInUserInput)
+
+	r.Get("/yauth", auth.YandexAuthHandler)
+	r.Get(yandexCallbackURL, auth.YandexCallbackHandler)
+
+	r.Get(generatePasswordResetLinkURL, tmpls.GeneratePasswordResetLink)
+	r.Post(generatePasswordResetLinkURL, auth.GeneratePasswordResetLink)
+	r.With(auth.ResetTokenGuard).Get(setNewPasswordURL, tmpls.SetNewPassword)
+	r.Post(setNewPasswordURL, auth.SetNewPassword)
+
+	r.With(auth.AuthGuardForHomePath).Get(consts.HomeURL, tmpls.Home)
+	r.With(auth.AuthGuardForHomePath).Get(logoutURL, auth.Logout)
+	r.Get("/clear", data.ClearCookiesDev)
+	r.Get(consts.Err500URL, tmpls.Err500)
+
+	return r
+}
+
+func serverStart(r *chi.Mux) {
+	if err := http.ListenAndServe(":8080", r); err != nil {
+		log.Printf("%+v", errors.WithStack(err))
+		return
+	}
+}
+
+
+### ASSISTANT
+Проблема заключается в том, что при повторном входе через Яндекс текущие сессии (временный ID и рефреш-токен) не отменяются. Это происходит потому, что в функции `YandexCallbackHandler` нет логики отмены старых сессий перед созданием новых.
+
+В вашем коде есть функция `SetTemporaryIdInDbTx`, которая должна отменять старые записи, но она использует неверный SQL-запрос. В файле `data/database.go` в функции `SetTemporaryIdInDbTx` используется запрос `temporaryIdUpdateQuery`, который фильтрует по `permanentId`, `userAgent` и `yauth`, но не учитывает, что пользователь может входить с одного и того же браузера (одинаковый `userAgent`), и в результате старые сессии с тем же `userAgent` отменяются, но если `userAgent` отличается, старые сессии остаются активными.
+
+Однако, более фундаментальная проблема в том, что при каждом входе через Яндекс вы создаете **новую** пару `temporaryId` и `refreshToken`, не отменяя **все** существующие сессии для данного `permanentId`.
+
+Вот исправленный код для `YandexCallbackHandler` в файле `auth/yandex.go`:
+
+```go
+package auth
+
+import (
+	"database/sql"
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
+	"slices"
+
+	"github.com/gimaevra94/auth/app/consts"
+	"github.com/gimaevra94/auth/app/data"
+	"github.com/gimaevra94/auth/app/errs"
+	"github.com/gimaevra94/auth/app/structs"
+	"github.com/gimaevra94/auth/app/tools"
+	"github.com/google/uuid"
+	"github.com/pkg/errors"
+)
+
+const (
+	authURL               = "https://oauth.yandex.ru/authorize"
+	tokenURL              = "https://oauth.yandex.ru/token"
+	userInfoURL           = "https://login.yandex.ru/info"
+	YandexCallbackFullURL = "http://localhost:8080/ya_callback"
+)
+
+func YandexAuthHandler(w http.ResponseWriter, r *http.Request) {
+	authParams := url.Values{
+		"response_type": {"code"},
+		"client_id":     {os.Getenv("clientId")},
+		"redirect_uri":  {YandexCallbackFullURL},
+		"scope":         {"login:email"},
+	}
+	authUrlWithParams := authURL + "?" + authParams.Encode()
+	http.Redirect(w, r, authUrlWithParams, http.StatusFound)
+}
+
+func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
+	yauthCode := r.URL.Query().Get("code")
+	if yauthCode == "" {
+		http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
+		return
+	}
+
+	yandexAccessToken, err := getAccessToken(yauthCode)
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	yandexUser, err := getYandexUserInfo(yandexAccessToken)
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	var permanentId string
+	yauth := true
+
+	DbPermanentId, err := data.GetPermanentIdFromDbByEmail(yandexUser.Email, yauth)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			permanentId = uuid.New().String()
+			if err := data.SetEmailInDb(permanentId, yandexUser.Email, yauth); err != nil {
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				return
+			}
+		} else {
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
+		}
+	} else {
+		permanentId = DbPermanentId
+	}
+
+	tx, err := data.Db.Begin()
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+	defer func() {
+		r := recover()
+		if r != nil {
+			tx.Rollback()
+			panic(r)
+		}
+	}()
+
+	// Отменяем ВСЕ существующие temporaryId и refresh_token для этого permanentId перед созданием новых
+	if err := data.CancelAllTemporaryIdsAndRefreshTokensInDbTx(tx, permanentId); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	rememberMe := r.FormValue("rememberMe") != ""
+	temporaryId := uuid.New().String()
+	data.SetTemporaryIdInCookies(w, temporaryId, consts.Exp7Days, rememberMe)
+
+	userAgent := r.UserAgent()
+	if err := data.SetTemporaryIdInDbTx(tx, permanentId, temporaryId, userAgent, yauth); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	refreshToken, err := tools.GenerateRefreshToken(consts.Exp7Days, rememberMe)
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+	if err := data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken, userAgent, yauth); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	if err = tx.Commit(); err != nil {
+		tx.Rollback()
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	uniqueUserAgents, err := data.GetUniqueUserAgentsFromDb(permanentId)
+	if err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+	if !slices.Contains(uniqueUserAgents, r.UserAgent()) {
+		if err := tools.SendNewDeviceLoginEmail(yandexUser.Login, yandexUser.Email, r.UserAgent()); err != nil {
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
+		}
+	}
+
+	if err = data.EndAuthAndCaptchaSessions(w, r); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}
+
+	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
+	return
+}
+
+func getAccessToken(yauthCode string) (string, error) {
+	tokenParams := url.Values{
+		"grant_type":    {"authorization_code"},
+		"code":          {yauthCode},
+		"client_id":     {os.Getenv("clientId")},
+		"client_secret": {os.Getenv("clientSecret")},
+		"redirect_uri":  {YandexCallbackFullURL},
+	}
+
+	resp, err := http.PostForm(tokenURL, tokenParams)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	var result map[string]interface{}
+	if err = json.Unmarshal(body, &result); err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	accessToken, ok := result["access_token"].(string)
+	if !ok {
+		err := errors.New("access_token: not exist")
+		return "", errors.WithStack(err)
+	}
+
+	return accessToken, nil
+}
+
+func getYandexUserInfo(accessToken string) (structs.User, error) {
+	userInfoURLWithParams := userInfoURL + "?format=json&with_openId_Identity=1&with_email=1"
+
+	req, err := http.NewRequest("GET", userInfoURLWithParams, nil)
+	if err != nil {
+		return structs.User{}, errors.WithStack(err)
+	}
+
+	req.Header.Set("Authorization", "OAuth "+accessToken)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return structs.User{}, errors.WithStack(err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return structs.User{}, errors.WithStack(err)
+	}
+
+	var user structs.User
+	if err = json.Unmarshal(body, &user); err != nil {
+		return structs.User{}, errors.WithStack(err)
+	}
+
+	return user, nil
+}
+```
+
+Теперь нужно добавить соответствующую функцию в `data/database.go`. Добавьте следующие константы и функцию:
+
+```go
+// В начале файла, после других констант
+const (
+	// ... (остальные константы)
+	cancelAllTemporaryIdsUpdateQuery   = "UPDATE temporary_id SET cancelled = true WHERE permanentId = ? AND cancelled = false"
+	cancelAllRefreshTokensUpdateQuery  = "UPDATE refresh_token SET cancelled = true WHERE permanentId = ? AND cancelled = false"
+	// ... (остальные константы)
+)
+
+// В конец файла, после других функций
+func CancelAllTemporaryIdsAndRefreshTokensInDbTx(tx *sql.Tx, permanentId string) error {
+	// Отменяем все временные ID для пользователя
+	_, err := tx.Exec(cancelAllTemporaryIdsUpdateQuery, permanentId)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	// Отменяем все refresh-токены для пользователя
+	_, err = tx.Exec(cancelAllRefreshTokensUpdateQuery, permanentId)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+```
+
+Теперь при каждом входе через Яндекс все старые сессии (и временные ID, и refresh-токены) для данного пользователя будут отменяться перед созданием новой сессии.
+
+### USER
+"В вашем коде есть функция SetTemporaryIdInDbTx, которая должна отменять старые записи, но она использует неверный SQL-запрос. В файле data/database.go в функции SetTemporaryIdInDbTx используется запрос temporaryIdUpdateQuery, который фильтрует по permanentId, userAgent и yauth, но не учитывает, что пользователь может входить с одного и того же браузера (одинаковый userAgent), и в результате старые сессии с тем же userAgent отменяются, но если userAgent отличается, старые сессии остаются активными." там же стоит переключатель yauth который и должен управлять логикой того что может быть одинаковый userAgent и следовательно корректно отзывать предыдущий токен если у него yauth = true а он true так как это было две подряд авторизации через яндекс
+
+"Однако, более фундаментальная проблема в том, что при каждом входе через Яндекс вы создаете новую пару temporaryId и refreshToken, не отменяя все существующие сессии для данного permanentId." с хуя ли  раз в yauth.go есть "	if err = data.EndAuthAndCaptchaSessions(w, r); err != nil {
+		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
+	}"
+
+
+
+### ASSISTANT
+Вы правы, спасибо за уточнение. Давайте разберёмся подробнее.
+
+1.  **Про `yauth` и `userAgent`:** Да, вы используете поле `yauth` в качестве фильтра в `temporaryIdUpdateQuery` и `refreshTokenUpdateQuery`. Это означает, что при новом входе через Яндекс (`yauth = true`) отменяются *только* те старые сессии, которые также были *через Яндекс* (`yauth = true`) *и* с *тем же* `userAgent`. Если пользователь заходил через Яндекс с другого браузера или устройства (другой `userAgent`), то *та* сессия с `yauth = true` останется активной, хотя, судя по вашему ожиданию, она должна быть отменена. Это может быть не полностью корректным поведением, если вы хотите отменять *все* старые сессии Яндекса при новом входе через Яндекс, независимо от `userAgent`.
+
+2.  **Про `EndAuthAndCaptchaSessions`:** Вы абсолютно правы, что `data.EndAuthAndCaptchaSessions(w, r)` удаляет *куки-сессии* Gorilla Sessions (для `loginStore` и `captchaStore`). Это очищает *локальное* состояние сессии в браузере пользователя, но **не отменяет** *базу данных* записи `temporaryId` и `refreshToken`. Эти записи в БД остаются активными (с `cancelled = false`) до тех пор, пока логика в `data/database.go` не установит `cancelled = true`.
+
+Таким образом, проблема, которую вы описываете ("старые временные айди и рефреш токен не отменяются"), действительно касается *базы данных*, а не сессий Gorilla Sessions. Функции `SetTemporaryIdInDbTx` и `SetRefreshTokenInDbTx` отменяют *только конкретные* старые записи (с тем же `permanentId`, `userAgent` и `yauth`), а не *все* существующие сессии для `permanentId`.
+
+Предложенный мной ранее патч, добавляющий `CancelAllTemporaryIdsAndRefreshTokensInDbTx`, решает именно эту проблему: он отменяет *все* старые активные сессии (и для `yauth`, и для обычного входа) в БД перед созданием новой при входе через Яндекс, что соответствует вашему ожиданию.
+
+### USER
+"Про yauth и userAgent: Да, вы используете поле yauth в качестве фильтра в temporaryIdUpdateQuery и refreshTokenUpdateQuery. Это означает, что при новом входе через Яндекс (yauth = true) отменяются только те старые сессии, которые также были через Яндекс (yauth = true) и с тем же userAgent. Если пользователь заходил через Яндекс с другого браузера или устройства (другой userAgent), то та сессия с yauth = true останется активной, хотя, судя по вашему ожиданию, она должна быть отменена. Это может быть не полностью корректным поведением, если вы хотите отменять все старые сессии Яндекса при новом входе через Яндекс, независимо от userAgent." нет именно такое поведение и ожидается при входе с разных устройств
+
+"Про EndAuthAndCaptchaSessions: Вы абсолютно правы, что data.EndAuthAndCaptchaSessions(w, r) удаляет куки-сессии Gorilla Sessions (для loginStore и captchaStore). Это очищает локальное состояние сессии в браузере пользователя, но не отменяет базу данных записи temporaryId и refreshToken. Эти записи в БД остаются активными (с cancelled = false) до тех пор, пока логика в data/database.go не установит cancelled = true." ну так SetTemporaryIdInDbTx и SetRefreshTokenInDbTx должны благополучно отменять старые токен и айди. в чем проблема?
+
+### ASSISTANT
+Хорошо, давайте разберёмся внимательно, исходя из ваших уточнений.
+
+1.  **`yauth` и `userAgent`**: Вы подтверждаете, что текущая логика (отмена старых сессий *только* с тем же `permanentId`, `userAgent` и `yauth`) *корректна* для вашего сценария. То есть, если пользователь вошёл через Яндекс с `UserAgent A`, а потом снова с `UserAgent B`, то сессия с `UserAgent A` *не отменяется*. Это понятно. Значит, проблема не в этом.
+
+2.  **`EndAuthAndCaptchaSessions`**: Согласен, это очистка *локальных сессий*, не БД. Это не решает проблему с БД.
+
+3.  **`SetTemporaryIdInDbTx` и `SetRefreshTokenInDbTx`**: Да, они *должны* отменять старые записи. Давайте посмотрим, *какие* именно старые записи они отменяют, используя `temporaryIdUpdateQuery` и `refreshTokenUpdateQuery`:
+    ```go
+    temporaryIdUpdateQuery   = "update temporary_id set cancelled = true where permanentId = ? and userAgent = ? and yauth = ? and cancelled = false"
+    refreshTokenUpdateQuery  = "update refresh_token set cancelled = true where permanentId = ? and userAgent = ? and yauth = ? and cancelled = false"
+    ```
+    Эти запросы отменяют *только те* записи, у которых совпадают **permanentId**, **userAgent** и **yauth**.
+
+Теперь, в `YandexCallbackHandler`, вы вызываете:
+```go
+userAgent := r.UserAgent() // userAgent текущего запроса
+// ...
+if err := data.SetTemporaryIdInDbTx(tx, permanentId, temporaryId, userAgent, yauth); err != nil {
+    // ...
+}
+// ...
+if err := data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken, userAgent, yauth); err != nil {
+    // ...
+}
+```
+
+Предположим, пользователь:
+*   Заходит первый раз через Яндекс в браузере `Chrome1` (UserAgent1). В БД создаются записи:
+    *   `temporary_id`: `permanentId=1`, `userAgent=Chrome1`, `yauth=true`, `cancelled=false`
+    *   `refresh_token`: `permanentId=1`, `userAgent=Chrome1`, `yauth=true`, `cancelled=false`
+*   Потом пользователь снова заходит через Яндекс *в том же браузере* `Chrome1` (UserAgent1). Код снова вызывает `YandexCallbackHandler`.
+    *   `userAgent` = `Chrome1`.
+    *   `SetTemporaryIdInDbTx` выполняет `UPDATE ... WHERE permanentId=1 AND userAgent=Chrome1 AND yauth=true AND cancelled=false`. Это **находит и отменяет** старую запись `temporary_id`.
+    *   `SetRefreshTokenInDbTx` выполняет `UPDATE ... WHERE permanentId=1 AND userAgent=Chrome1 AND yauth=true AND cancelled=false`. Это **находит и отменяет** старый `refresh_token`.
+    *   Затем создаются *новые* записи `temporary_id` и `refresh_token` с `cancelled=false`.
+
+    В этом случае всё работает **корректно**, старые токены отменяются.
+
+Но вы говорите: *"в бд снова заносятся временный айди и рефреш токен. проблема в том что старые при этом не отменяются."* Это означает, что **отмена не произошла**.
+
+Возможные причины:
+*   **Ошибка в логике или транзакции**: Что-то пошло не так внутри транзакции, и `UPDATE` не сработал. Возможно, была ошибка, которая не была должным образом обработана или зафиксирована. Проверьте логи. Вы упоминали `log.Printf` и `errors.WithStack`. Убедитесь, что `SetTemporaryIdInDbTx` и `SetRefreshTokenInDbTx` возвращают `nil`, и что `tx.Commit()` проходит успешно. Если `Commit` не происходит (например, из-за ошибки после `UPDATE`, но до `INSERT`), изменения `UPDATE` откатываются.
+*   **Состояние гонки**: Если пользователь дважды быстро нажимает кнопку входа, могут возникнуть проблемы с конкурентным доступом к БД. Хотя транзакции должны это предотвращать, стоит учитывать.
+*   **Несоответствие данных**: Убедитесь, что в БД действительно есть активные (`cancelled = false`) записи с *совпадающим* `permanentId`, `userAgent` и `yauth` перед вызовом `SetTemporaryIdInDbTx` и `SetRefreshTokenInDbTx`. Возможно, что-то в предыдущем вызове не создало записи, или `userAgent` или `yauth` были другими, и старые записи уже были отменены или не созданы.
+
+**Вывод:** Согласно логике кода, `SetTemporaryIdInDbTx` и `SetRefreshTokenInDbTx` *должны* отменять старые сессии с тем же `permanentId`, `userAgent` и `yauth`. Если это не происходит, значит, либо:
+*   Условия `WHERE` в `UPDATE` не совпадают с существующими строками (например, `userAgent` или `yauth` отличаются от ожидаемых).
+*   Происходит ошибка в транзакции, и изменения не фиксируются.
+
+Поскольку вы ожидаете, что отмена происходит при входе с *одного и того же* устройства (`userAgent`), и код это учитывает, проблема, скорее всего, в данных или в обработке ошибок в транзакции.
+
+Пожалуйста, проверьте:
+*   Значения `permanentId`, `userAgent`, `yauth` и `cancelled` в таблицах `temporary_id` и `refresh_token` до и после второго входа.
+*   Логи приложения на наличие ошибок в `SetTemporaryIdInDbTx`, `SetRefreshTokenInDbTx` и `tx.Commit()`.

@@ -42,10 +42,10 @@ func CheckInDbAndValidateSignInUserInput(w http.ResponseWriter, r *http.Request)
 			if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
 				msgForUser = structs.MsgForUser{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha}
 			} else {
-				if strings.Contains(err.Error(), "password") {
-					msgForUser = structs.MsgForUser{Msg: consts.MsgForUser[errMsgKey].Msg, ShowCaptcha: showCaptcha, Regs: consts.MsgForUser[errMsgKey].Regs}
-				} else {
+				if strings.Contains(err.Error(), "passwordInvalid") {
 					msgForUser = structs.MsgForUser{Msg: consts.MsgForUser[errMsgKey].Msg, ShowCaptcha: showCaptcha, ShowForgotPassword: true, Regs: consts.MsgForUser[errMsgKey].Regs}
+				} else {
+					msgForUser = structs.MsgForUser{Msg: consts.MsgForUser[errMsgKey].Msg, ShowCaptcha: showCaptcha, Regs: consts.MsgForUser[errMsgKey].Regs}
 				}
 			}
 
@@ -57,7 +57,7 @@ func CheckInDbAndValidateSignInUserInput(w http.ResponseWriter, r *http.Request)
 				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 				return
 			}
-			
+
 			return
 		}
 	}
@@ -121,7 +121,7 @@ func CheckInDbAndValidateSignInUserInput(w http.ResponseWriter, r *http.Request)
 	data.SetTemporaryIdInCookies(w, temporaryId, consts.Exp7Days, rememberMe)
 
 	userAgent := r.UserAgent()
-	if err := data.SetTemporaryIdInDbTx(tx, permanentId, temporaryId, userAgent); err != nil {
+	if err := data.SetTemporaryIdInDbTx(tx, permanentId, temporaryId, userAgent, false); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -131,7 +131,7 @@ func CheckInDbAndValidateSignInUserInput(w http.ResponseWriter, r *http.Request)
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
-	if err := data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken, userAgent); err != nil {
+	if err := data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken, userAgent, false); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}

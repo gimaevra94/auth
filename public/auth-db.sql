@@ -21,6 +21,7 @@ CREATE TABLE temporary_id (
     permanentId CHAR(36) NOT NULL,
     temporaryId CHAR(36) NOT NULL,
     userAgent VARCHAR(255) NOT NULL,
+    yauth BOOLEAN NOT NULL,
     cancelled BOOLEAN NOT NULL
 ) ENGINE=INNODB DEFAULT CHARSET=utf8mb4;
 
@@ -28,6 +29,7 @@ CREATE TABLE refresh_token (
     permanentId CHAR(36) NOT NULL,
     token VARCHAR(255) NOT NULL,
     userAgent VARCHAR(255) NOT NULL,
+    yauth BOOLEAN NOT NULL,
     cancelled BOOLEAN NOT NULL
 ) ENGINE=INNODB DEFAULT CHARSET=utf8mb4;
 

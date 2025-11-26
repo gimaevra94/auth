@@ -62,11 +62,17 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			permanentId = uuid.New().String()
+			if err := data.SetEmailInDb(permanentId, yandexUser.Email, yauth); err != nil {
+				errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+				return
+			}
+		} else {
+			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+			return
 		}
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
+	} else {
+		permanentId = DbPermanentId
 	}
-	permanentId = DbPermanentId
 
 	tx, err := data.Db.Begin()
 	if err != nil {
@@ -81,17 +87,12 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	if err := data.SetEmailInDbTx(tx, permanentId, yandexUser.Email, yauth); err != nil {
-		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
-		return
-	}
-
 	rememberMe := r.FormValue("rememberMe") != ""
 	temporaryId := uuid.New().String()
 	data.SetTemporaryIdInCookies(w, temporaryId, consts.Exp7Days, rememberMe)
 
 	userAgent := r.UserAgent()
-	if err := data.SetTemporaryIdInDbTx(tx, permanentId, temporaryId, userAgent); err != nil {
+	if err := data.SetTemporaryIdInDbTx(tx, permanentId, temporaryId, userAgent, yauth); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -101,7 +102,7 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
-	if err := data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken, userAgent); err != nil {
+	if err := data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken, userAgent, yauth); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -130,7 +131,6 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
-	return
 }
 
 func getAccessToken(yauthCode string) (string, error) {
