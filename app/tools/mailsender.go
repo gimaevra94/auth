@@ -27,7 +27,7 @@ func serverAuthCodeGenerate() string {
 	return AuthServerCode
 }
 
-func SendNewDeviceLoginEmail(login, userEmail, userAgent string) error {
+var SendNewDeviceLoginEmail = func(login, userEmail, userAgent string) error {
 	serverEmail := os.Getenv("SERVER_EMAIL")
 	sMTPServerAuthSubject, sMTPServerAddr := sMTPServerAuth(serverEmail)
 	data := struct {

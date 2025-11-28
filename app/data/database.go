@@ -77,7 +77,7 @@ var GetPermanentIdFromDbByEmail = func(email string, yauth bool) (string, error)
 	return permanentId, nil
 }
 
-func GetPermanentIdFromDbByLogin(login string) (string, error) {
+var GetPermanentIdFromDbByLogin = func(login string) (string, error) {
 	row := Db.QueryRow(PermanentIdByLoginSelectQuery, login)
 	var permanentId string
 	err := row.Scan(&permanentId)
@@ -87,7 +87,7 @@ func GetPermanentIdFromDbByLogin(login string) (string, error) {
 	return permanentId, nil
 }
 
-func GetUniqueUserAgentsFromDb(permanentId string) ([]string, error) {
+var GetUniqueUserAgentsFromDb = func(permanentId string) ([]string, error) {
 	rows, err := Db.Query(UniqueUserAgentsSelectQuery, permanentId)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -187,7 +187,7 @@ var SetPasswordInDbTx = func(tx *sql.Tx, permanentId, password string) error {
 	return nil
 }
 
-func SetTemporaryIdInDbTx(tx *sql.Tx, permanentId, temporaryId, userAgent string, yauth bool) error {
+var SetTemporaryIdInDbTx = func(tx *sql.Tx, permanentId, temporaryId, userAgent string, yauth bool) error {
 	_, err := tx.Exec(TemporaryIdUpdateQuery, permanentId, userAgent, yauth)
 	if err != nil {
 		return errors.WithStack(err)
@@ -199,7 +199,7 @@ func SetTemporaryIdInDbTx(tx *sql.Tx, permanentId, temporaryId, userAgent string
 	return nil
 }
 
-func SetRefreshTokenInDbTx(tx *sql.Tx, permanentId, refreshToken, userAgent string, yauth bool) error {
+var SetRefreshTokenInDbTx = func(tx *sql.Tx, permanentId, refreshToken, userAgent string, yauth bool) error {
 	_, err := tx.Exec(RefreshTokenUpdateQuery, permanentId, userAgent, yauth)
 	if err != nil {
 		return errors.WithStack(err)
@@ -265,7 +265,7 @@ var IsPasswordResetTokenCancelled = func(token string) error {
 	return nil
 }
 
-func IsOKPasswordHashInDb(permanentId, password string) error {
+var IsOKPasswordHashInDb = func(permanentId, password string) error {
 	row := Db.QueryRow(IsOKPasswordHashInDbSelectQuery, permanentId)
 	var passwordHash string
 	err := row.Scan(&passwordHash)

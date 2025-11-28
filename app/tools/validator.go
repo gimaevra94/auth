@@ -17,7 +17,7 @@ var (
 	passwordRegex = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ\d!@#$%^&*\-\)]{4,30}$`)
 )
 
-func InputValidate(r *http.Request, login, email, password string, IsSignIn bool) (string, error) {
+var InputValidate = func(r *http.Request, login, email, password string, IsSignIn bool) (string, error) {
 	var errMsgKey string
 	if login == "" || !loginRegex.MatchString(login) {
 		err := errors.New("loginInvalid")

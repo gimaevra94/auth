@@ -139,7 +139,7 @@ func GetAuthDataFromSession(r *http.Request) (structs.User, error) {
 	return userData, nil
 }
 
-func EndAuthAndCaptchaSessions(w http.ResponseWriter, r *http.Request) error {
+var EndAuthAndCaptchaSessions = func(w http.ResponseWriter, r *http.Request) error {
 	session, err := loginStore.Get(r, "loginStore")
 	if err != nil {
 		return errors.WithStack(err)

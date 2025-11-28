@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func SetTemporaryIdInCookies(w http.ResponseWriter, value string, temporaryIdExp int, rememberMe bool) {
+var SetTemporaryIdInCookies = func(w http.ResponseWriter, value string, temporaryIdExp int, rememberMe bool) {
 	temporaryIdExp24Hours := 24 * 60 * 60
 	if !rememberMe {
 		temporaryIdExp = temporaryIdExp24Hours
