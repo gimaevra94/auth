@@ -60,7 +60,7 @@ func SetCaptchaDataInSession(w http.ResponseWriter, r *http.Request, key string,
 	return nil
 }
 
-func SetAuthDataInSession(w http.ResponseWriter, r *http.Request, consts any) error {
+var SetAuthDataInSession = func(w http.ResponseWriter, r *http.Request, consts any) error {
 	loginSession, err := loginStore.Get(r, "loginStore")
 	if err != nil {
 		return errors.WithStack(err)
@@ -79,7 +79,7 @@ func SetAuthDataInSession(w http.ResponseWriter, r *http.Request, consts any) er
 	return nil
 }
 
-func GetCaptchaCounterFromSession(r *http.Request) (int64, error) {
+var GetCaptchaCounterFromSession = func(r *http.Request) (int64, error) {
 	session, err := captchaStore.Get(r, "captchaStore")
 	if err != nil {
 		return 0, errors.WithStack(err)
@@ -99,7 +99,7 @@ func GetCaptchaCounterFromSession(r *http.Request) (int64, error) {
 	return intData, nil
 }
 
-func GetShowCaptchaFromSession(r *http.Request) (bool, error) {
+var GetShowCaptchaFromSession = func(r *http.Request) (bool, error) {
 	session, err := captchaStore.Get(r, "captchaStore")
 	if err != nil {
 		return false, errors.WithStack(err)
@@ -119,7 +119,7 @@ func GetShowCaptchaFromSession(r *http.Request) (bool, error) {
 	return boolData, nil
 }
 
-func GetAuthDataFromSession(r *http.Request) (structs.User, error) {
+var GetAuthDataFromSession = func(r *http.Request) (structs.User, error) {
 	session, err := loginStore.Get(r, "loginStore")
 	if err != nil {
 		return structs.User{}, errors.WithStack(err)

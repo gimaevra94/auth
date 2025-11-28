@@ -63,7 +63,7 @@ var RefreshTokenValidate = func(refreshToken string) error {
 	return nil
 }
 
-func CodeValidate(r *http.Request, clientCode, serverCode string) error {
+var CodeValidate = func(r *http.Request, clientCode, serverCode string) error {
 	if clientCode == "" {
 		err := errors.New("clientCode not exist")
 		return errors.WithStack(err)

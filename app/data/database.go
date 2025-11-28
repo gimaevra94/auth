@@ -135,7 +135,7 @@ func GetRefreshTokenFromDb(permamentId, userAgent string) (string, error) {
 	return token, nil
 }
 
-func SetLoginInDbTx(tx *sql.Tx, permanentId, login string) error {
+var SetLoginInDbTx = func(tx *sql.Tx, permanentId, login string) error {
 	_, err := tx.Exec(LoginUpdateQuery, permanentId)
 	if err != nil {
 		return errors.WithStack(err)
@@ -147,7 +147,7 @@ func SetLoginInDbTx(tx *sql.Tx, permanentId, login string) error {
 	return nil
 }
 
-func SetEmailInDbTx(tx *sql.Tx, permanentId, email string, yauth bool) error {
+var SetEmailInDbTx = func(tx *sql.Tx, permanentId, email string, yauth bool) error {
 	_, err := tx.Exec(EmailUpdateQuery, permanentId, yauth)
 	if err != nil {
 		return errors.WithStack(err)

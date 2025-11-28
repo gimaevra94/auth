@@ -185,17 +185,20 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 
 	permanentId := uuid.New().String()
 	if err := data.SetLoginInDbTx(tx, permanentId, user.Login); err != nil {
+		tx.Rollback()
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
 	yauth := false
 	if err := data.SetEmailInDbTx(tx, permanentId, user.Email, yauth); err != nil {
+		tx.Rollback()
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
 	if err := data.SetPasswordInDbTx(tx, permanentId, user.Password); err != nil {
+		tx.Rollback()
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -206,16 +209,19 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 
 	userAgent := r.UserAgent()
 	if err := data.SetTemporaryIdInDbTx(tx, permanentId, temporaryId, userAgent, yauth); err != nil {
+		tx.Rollback()
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 
 	refreshToken, err := tools.GenerateRefreshToken(consts.Exp7Days, rememberMe)
 	if err != nil {
+		tx.Rollback()
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
 	if err := data.SetRefreshTokenInDbTx(tx, permanentId, refreshToken, userAgent, yauth); err != nil {
+		tx.Rollback()
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
@@ -228,6 +234,7 @@ func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 
 	if err = tools.SendNewDeviceLoginEmail(user.Login, user.Email, userAgent); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
+		return
 	}
 
 	if err = data.EndAuthAndCaptchaSessions(w, r); err != nil {

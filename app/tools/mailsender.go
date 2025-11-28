@@ -136,7 +136,7 @@ var PasswordResetEmailSend = func(userEmail, resetLink string) error {
 	return nil
 }
 
-func ServerAuthCodeSend(userEmail string) (string, error) {
+var ServerAuthCodeSend = func(userEmail string) (string, error) {
 	authServerCode := serverAuthCodeGenerate()
 	serverEmail := os.Getenv("SERVER_EMAIL")
 	sMTPServerAuthSubject, sMTPServerAddr := sMTPServerAuth(serverEmail)
