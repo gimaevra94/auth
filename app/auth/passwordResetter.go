@@ -29,6 +29,7 @@ func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
 			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
+		return
 	}
 
 	yauth := false
@@ -108,7 +109,7 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 
 	if newPassword != confirmPassword {
 		data := structs.MsgForUser{Msg: consts.MsgForUser["passwordsNotMatch"].Msg, Regs: nil}
-		if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "SetNewPassword", data); err != nil {
+		if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "setNewPassword", data); err != nil {
 			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}
@@ -117,7 +118,7 @@ func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 
 	if err := tools.PasswordValidate(newPassword); err != nil {
 		data := structs.MsgForUser{Msg: consts.MsgForUser["invalidPassword"].Msg, Regs: nil}
-		if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "SetNewPassword", data); err != nil {
+		if err := tmpls.TmplsRenderer(w, tmpls.BaseTmpl, "setNewPassword", data); err != nil {
 			errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 			return
 		}

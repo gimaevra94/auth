@@ -76,7 +76,7 @@ func CodeValidate(r *http.Request, clientCode, serverCode string) error {
 	return nil
 }
 
-func EmailValidate(email string) error {
+var EmailValidate = func(email string) error {
 	if email == "" || !emailRegex.MatchString(email) {
 		err := errors.New("email invalid")
 		return errors.WithStack(err)
@@ -84,7 +84,7 @@ func EmailValidate(email string) error {
 	return nil
 }
 
-func PasswordValidate(password string) error {
+var PasswordValidate = func(password string) error {
 	if password == "" || !passwordRegex.MatchString(password) {
 		err := errors.New("password invalid")
 		return errors.WithStack(err)
@@ -92,7 +92,7 @@ func PasswordValidate(password string) error {
 	return nil
 }
 
-func ResetTokenValidate(signedToken string) (*structs.PasswordResetTokenClaims, error) {
+var ResetTokenValidate = func(signedToken string) (*structs.PasswordResetTokenClaims, error) {
 	claims := &structs.PasswordResetTokenClaims{}
 
 	tok, err := jwt.ParseWithClaims(signedToken, claims, func(token *jwt.Token) (interface{}, error) {

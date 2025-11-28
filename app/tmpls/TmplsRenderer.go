@@ -25,7 +25,7 @@ var (
 	_        = Must(BaseTmpl.Parse(emailMsgAboutNewDeviceLoginEmailTMPL))
 )
 
-func TmplsRenderer(w http.ResponseWriter, tmpl *template.Template, templateName string, data interface{}) error {
+var TmplsRenderer = func(w http.ResponseWriter, tmpl *template.Template, templateName string, data interface{}) error {
 	if err := tmpl.ExecuteTemplate(w, templateName, data); err != nil {
 		return errors.WithStack(err)
 	}

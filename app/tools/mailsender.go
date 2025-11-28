@@ -120,7 +120,7 @@ func SuspiciousLoginEmailSend(userEmail, userAgent string) error {
 	return nil
 }
 
-func PasswordResetEmailSend(userEmail, resetLink string) error {
+var PasswordResetEmailSend = func(userEmail, resetLink string) error {
 	serverEmail := os.Getenv("SERVER_EMAIL")
 	sMTPServerAuthSubject, sMTPServerAddr := sMTPServerAuth(serverEmail)
 	data := struct{ ResetLink string }{ResetLink: resetLink}

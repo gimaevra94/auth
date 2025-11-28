@@ -32,7 +32,7 @@ func GenerateRefreshToken(refreshTokenExp int, rememberMe bool) (string, error) 
 	return signedrefreshToken, nil
 }
 
-func GeneratePasswordResetLink(email, baseURL string) (string, error) {
+var GeneratePasswordResetLink = func(email, baseURL string) (string, error) {
 	passwordResetTokenExp15Minutes := time.Now().Add(15 * time.Minute)
 	passwordResetTokenExp15MinutesExpiresAt := passwordResetTokenExp15Minutes.Unix()
 	passwordResetTokenExp15MinutesIssuedAt := time.Now().Unix()

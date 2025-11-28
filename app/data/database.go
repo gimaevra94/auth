@@ -10,28 +10,28 @@ import (
 )
 
 const (
-	permanentIdByEmailSelectQuery          = "select permanentId from email where email = ? and yauth = ? and cancelled = false"
-	permanentIdByLoginSelectQuery          = "select permanentId from login where login = ? and cancelled = false"
-	uniqueUserAgentsSelectQuery            = "select userAgent from temporary_id where permanentId = ?"
-	temporaryIdSelectQuery                 = "select permanentId, userAgent from temporary_id where temporaryId = ?"
-	emailSelectQuery                       = "select email from email where permanentId = ? and cancelled = false"
-	refreshTokenSelectQuery                = "select token from refresh_token where permanentId = ? and userAgent = ? and cancelled = false"
-	loginUpdateQuery                       = "update login set cancelled = true where permanentId = ? and cancelled = false"
-	loginInsertQuery                       = "insert into login (permanentId, login, cancelled) values (?, ?, ?)"
-	emailUpdateQuery                       = "update email set cancelled = true where permanentId = ? and yauth = ? and cancelled = false"
-	emailInsertQuery                       = "insert into email (permanentId, email, yauth, cancelled) values (?, ?, ?, ?)"
-	passwordHashUpdateQuery                = "update password_hash set cancelled = true where permanentId = ? and cancelled = false"
-	passwordHashInsertQuery                = "insert into password_hash (permanentId, passwordHash, cancelled) values (?, ?, ?)"
-	temporaryIdUpdateQuery                 = "update temporary_id set cancelled = true where permanentId = ? and userAgent = ? and yauth = ? and cancelled = false"
-	temporaryIdInsertQuery                 = "insert into temporary_id (permanentId, temporaryId, userAgent,yauth,cancelled) values (?, ?, ?, ?, ?)"
-	refreshTokenUpdateQuery                = "update refresh_token set cancelled = true where permanentId = ? and userAgent = ? and yauth = ? and cancelled = false"
-	refreshTokenInsertQuery                = "insert into refresh_token (permanentId, token, userAgent,yauth,cancelled) values (?, ?, ?, ?, ?)"
-	temporaryIdCancelledUpdateQuery        = "update temporary_id set cancelled = true where permanentId = ? and userAgent = ? and cancelled = false"
-	refreshTokenCancelledUpdateQuery       = "update refresh_token set cancelled = true where permanentId = ? and userAgent = ? and cancelled = false"
-	passwordResetTokenInsertQuery          = "insert into reset_token (token, cancelled) values (?, ?)"
+	PermanentIdByEmailSelectQuery          = "select permanentId from email where email = ? and yauth = ? and cancelled = false"
+	PermanentIdByLoginSelectQuery          = "select permanentId from login where login = ? and cancelled = false"
+	UniqueUserAgentsSelectQuery            = "select userAgent from temporary_id where permanentId = ?"
+	TemporaryIdSelectQuery                 = "select permanentId, userAgent from temporary_id where temporaryId = ?"
+	EmailSelectQuery                       = "select email from email where permanentId = ? and cancelled = false"
+	RefreshTokenSelectQuery                = "select token from refresh_token where permanentId = ? and userAgent = ? and cancelled = false"
+	LoginUpdateQuery                       = "update login set cancelled = true where permanentId = ? and cancelled = false"
+	LoginInsertQuery                       = "insert into login (permanentId, login, cancelled) values (?, ?, ?)"
+	EmailUpdateQuery                       = "update email set cancelled = true where permanentId = ? and yauth = ? and cancelled = false"
+	EmailInsertQuery                       = "insert into email (permanentId, email, yauth, cancelled) values (?, ?, ?, ?)"
+	PasswordHashUpdateQuery                = "update password_hash set cancelled = true where permanentId = ? and cancelled = false"
+	PasswordHashInsertQuery                = "insert into password_hash (permanentId, passwordHash, cancelled) values (?, ?, ?)"
+	TemporaryIdUpdateQuery                 = "update temporary_id set cancelled = true where permanentId = ? and userAgent = ? and yauth = ? and cancelled = false"
+	TemporaryIdInsertQuery                 = "insert into temporary_id (permanentId, temporaryId, userAgent,yauth,cancelled) values (?, ?, ?, ?, ?)"
+	RefreshTokenUpdateQuery                = "update refresh_token set cancelled = true where permanentId = ? and userAgent = ? and yauth = ? and cancelled = false"
+	RefreshTokenInsertQuery                = "insert into refresh_token (permanentId, token, userAgent,yauth,cancelled) values (?, ?, ?, ?, ?)"
+	TemporaryIdCancelledUpdateQuery        = "update temporary_id set cancelled = true where permanentId = ? and userAgent = ? and cancelled = false"
+	RefreshTokenCancelledUpdateQuery       = "update refresh_token set cancelled = true where permanentId = ? and userAgent = ? and cancelled = false"
+	PasswordResetTokenInsertQuery          = "insert into reset_token (token, cancelled) values (?, ?)"
 	IsOKPasswordHashInDbSelectQuery        = "select passwordHash from password_hash where permanentId = ? and cancelled = false"
-	passwordResetTokenCancelledSelectQuery = "select cancelled from reset_token where token = ? and cancelled = false"
-	temporaryIdCancelledSelectQuery        = "select cancelled from temporary_id where temporaryId = ? and cancelled = false"
+	PasswordResetTokenCancelledSelectQuery = "select cancelled from reset_token where token = ? and cancelled = false"
+	TemporaryIdCancelledSelectQuery        = "select cancelled from temporary_id where temporaryId = ? and cancelled = false"
 )
 
 var Db *sql.DB
@@ -64,9 +64,9 @@ func DbClose() {
 	}
 }
 
-func GetPermanentIdFromDbByEmail(email string, yauth bool) (string, error) {
+var GetPermanentIdFromDbByEmail = func(email string, yauth bool) (string, error) {
 	var permanentId string
-	row := Db.QueryRow(permanentIdByEmailSelectQuery, email, yauth)
+	row := Db.QueryRow(PermanentIdByEmailSelectQuery, email, yauth)
 	err := row.Scan(&permanentId)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -78,7 +78,7 @@ func GetPermanentIdFromDbByEmail(email string, yauth bool) (string, error) {
 }
 
 func GetPermanentIdFromDbByLogin(login string) (string, error) {
-	row := Db.QueryRow(permanentIdByLoginSelectQuery, login)
+	row := Db.QueryRow(PermanentIdByLoginSelectQuery, login)
 	var permanentId string
 	err := row.Scan(&permanentId)
 	if err != nil {
@@ -88,7 +88,7 @@ func GetPermanentIdFromDbByLogin(login string) (string, error) {
 }
 
 func GetUniqueUserAgentsFromDb(permanentId string) ([]string, error) {
-	rows, err := Db.Query(uniqueUserAgentsSelectQuery, permanentId)
+	rows, err := Db.Query(UniqueUserAgentsSelectQuery, permanentId)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -106,7 +106,7 @@ func GetUniqueUserAgentsFromDb(permanentId string) ([]string, error) {
 }
 
 func GetTemporaryIdKeysFromDb(temporaryId string) (string, string, error) {
-	row := Db.QueryRow(temporaryIdSelectQuery, temporaryId)
+	row := Db.QueryRow(TemporaryIdSelectQuery, temporaryId)
 	var permanentId, userAgent string
 	err := row.Scan(&permanentId, &userAgent)
 	if err != nil {
@@ -116,7 +116,7 @@ func GetTemporaryIdKeysFromDb(temporaryId string) (string, string, error) {
 }
 
 func GetEmailFromDb(permamentId string) (string, error) {
-	row := Db.QueryRow(emailSelectQuery, permamentId)
+	row := Db.QueryRow(EmailSelectQuery, permamentId)
 	var email string
 	err := row.Scan(&email)
 	if err != nil {
@@ -126,7 +126,7 @@ func GetEmailFromDb(permamentId string) (string, error) {
 }
 
 func GetRefreshTokenFromDb(permamentId, userAgent string) (string, error) {
-	row := Db.QueryRow(refreshTokenSelectQuery, permamentId, userAgent)
+	row := Db.QueryRow(RefreshTokenSelectQuery, permamentId, userAgent)
 	var token string
 	err := row.Scan(&token)
 	if err != nil {
@@ -136,11 +136,11 @@ func GetRefreshTokenFromDb(permamentId, userAgent string) (string, error) {
 }
 
 func SetLoginInDbTx(tx *sql.Tx, permanentId, login string) error {
-	_, err := tx.Exec(loginUpdateQuery, permanentId)
+	_, err := tx.Exec(LoginUpdateQuery, permanentId)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	_, err = tx.Exec(loginInsertQuery, permanentId, login, false)
+	_, err = tx.Exec(LoginInsertQuery, permanentId, login, false)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -148,11 +148,11 @@ func SetLoginInDbTx(tx *sql.Tx, permanentId, login string) error {
 }
 
 func SetEmailInDbTx(tx *sql.Tx, permanentId, email string, yauth bool) error {
-	_, err := tx.Exec(emailUpdateQuery, permanentId, yauth)
+	_, err := tx.Exec(EmailUpdateQuery, permanentId, yauth)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	_, err = tx.Exec(emailInsertQuery, permanentId, email, yauth, false)
+	_, err = tx.Exec(EmailInsertQuery, permanentId, email, yauth, false)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -160,27 +160,27 @@ func SetEmailInDbTx(tx *sql.Tx, permanentId, email string, yauth bool) error {
 }
 
 func SetEmailInDb(permanentId, email string, yauth bool) error {
-	_, err := Db.Exec(emailUpdateQuery, permanentId, yauth)
+	_, err := Db.Exec(EmailUpdateQuery, permanentId, yauth)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	_, err = Db.Exec(emailInsertQuery, permanentId, email, yauth, false)
+	_, err = Db.Exec(EmailInsertQuery, permanentId, email, yauth, false)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func SetPasswordInDbTx(tx *sql.Tx, permanentId, password string) error {
+var SetPasswordInDbTx = func(tx *sql.Tx, permanentId, password string) error {
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	_, err = tx.Exec(passwordHashUpdateQuery, permanentId)
+	_, err = tx.Exec(PasswordHashUpdateQuery, permanentId)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	_, err = tx.Exec(passwordHashInsertQuery, permanentId, passwordHash, false)
+	_, err = tx.Exec(PasswordHashInsertQuery, permanentId, passwordHash, false)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -188,11 +188,11 @@ func SetPasswordInDbTx(tx *sql.Tx, permanentId, password string) error {
 }
 
 func SetTemporaryIdInDbTx(tx *sql.Tx, permanentId, temporaryId, userAgent string, yauth bool) error {
-	_, err := tx.Exec(temporaryIdUpdateQuery, permanentId, userAgent, yauth)
+	_, err := tx.Exec(TemporaryIdUpdateQuery, permanentId, userAgent, yauth)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	_, err = tx.Exec(temporaryIdInsertQuery, permanentId, temporaryId, userAgent, yauth, false)
+	_, err = tx.Exec(TemporaryIdInsertQuery, permanentId, temporaryId, userAgent, yauth, false)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -200,35 +200,35 @@ func SetTemporaryIdInDbTx(tx *sql.Tx, permanentId, temporaryId, userAgent string
 }
 
 func SetRefreshTokenInDbTx(tx *sql.Tx, permanentId, refreshToken, userAgent string, yauth bool) error {
-	_, err := tx.Exec(refreshTokenUpdateQuery, permanentId, userAgent, yauth)
+	_, err := tx.Exec(RefreshTokenUpdateQuery, permanentId, userAgent, yauth)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	_, err = tx.Exec(refreshTokenInsertQuery, permanentId, refreshToken, userAgent, yauth, false)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	return nil
-}
-
-func SetTemporaryIdCancelledInDbTx(tx *sql.Tx, permanentId, userAgent string) error {
-	_, err := tx.Exec(temporaryIdCancelledUpdateQuery, permanentId, userAgent)
+	_, err = tx.Exec(RefreshTokenInsertQuery, permanentId, refreshToken, userAgent, yauth, false)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func SetRefreshTokenCancelledInDbTx(tx *sql.Tx, permanentId, userAgent string) error {
-	_, err := tx.Exec(refreshTokenCancelledUpdateQuery, permanentId, userAgent)
+var SetTemporaryIdCancelledInDbTx = func(tx *sql.Tx, permanentId, userAgent string) error {
+	_, err := tx.Exec(TemporaryIdCancelledUpdateQuery, permanentId, userAgent)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func SetPasswordResetTokenInDb(token string) error {
-	_, err := Db.Exec(passwordResetTokenInsertQuery, token, false)
+var SetRefreshTokenCancelledInDbTx = func(tx *sql.Tx, permanentId, userAgent string) error {
+	_, err := tx.Exec(RefreshTokenCancelledUpdateQuery, permanentId, userAgent)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+var SetPasswordResetTokenInDb = func(token string) error {
+	_, err := Db.Exec(PasswordResetTokenInsertQuery, token, false)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -236,7 +236,7 @@ func SetPasswordResetTokenInDb(token string) error {
 }
 
 func IsTemporaryIdCancelled(temporaryId string) error {
-	row := Db.QueryRow(temporaryIdCancelledSelectQuery, temporaryId)
+	row := Db.QueryRow(TemporaryIdCancelledSelectQuery, temporaryId)
 	var cancelled bool
 	err := row.Scan(&cancelled)
 	if err != nil {
@@ -250,8 +250,8 @@ func IsTemporaryIdCancelled(temporaryId string) error {
 	return nil
 }
 
-func IsPasswordResetTokenCancelled(token string) error {
-	row := Db.QueryRow(passwordResetTokenCancelledSelectQuery, token)
+var IsPasswordResetTokenCancelled = func(token string) error {
+	row := Db.QueryRow(PasswordResetTokenCancelledSelectQuery, token)
 	var cancelled bool
 	err := row.Scan(&cancelled)
 	if err != nil {
