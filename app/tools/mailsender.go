@@ -102,7 +102,7 @@ func executeTmpl(serverEmail, userEmail, emailSubject string, data any) ([]byte,
 	return msg, nil
 }
 
-func SuspiciousLoginEmailSend(userEmail, userAgent string) error {
+var SuspiciousLoginEmailSend = func(userEmail, userAgent string) error {
 	serverEmail := os.Getenv("SERVER_EMAIL")
 	sMTPServerAuthSubject, sMTPServerAddr := sMTPServerAuth(serverEmail)
 	data := struct {

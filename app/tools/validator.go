@@ -42,7 +42,7 @@ func InputValidate(r *http.Request, login, email, password string, IsSignIn bool
 	return errMsgKey, nil
 }
 
-func RefreshTokenValidate(refreshToken string) error {
+var RefreshTokenValidate = func(refreshToken string) error {
 	signedToken, err := jwt.ParseWithClaims(refreshToken, &jwt.StandardClaims{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok || t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
 			err := errors.New("unexpected signing method")
