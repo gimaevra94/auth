@@ -35,6 +35,5 @@ CREATE TABLE refresh_token (
 
 CREATE TABLE reset_token (
     token VARCHAR(255) NOT NULL,
-    permanentId CHAR(36) NOT NULL,
     cancelled BOOLEAN NOT NULL
 ) ENGINE=INNODB DEFAULT CHARSET=utf8mb4;

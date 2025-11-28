@@ -11,7 +11,6 @@ import (
 
 const (
 	permanentIdByEmailSelectQuery          = "select permanentId from email where email = ? and yauth = ? and cancelled = false"
-	permanentIdByTemporaryIdSelectQuery    = "select permanentId from temporary_id where temporaryId = ? and cancelled = false"
 	permanentIdByLoginSelectQuery          = "select permanentId from login where login = ? and cancelled = false"
 	uniqueUserAgentsSelectQuery            = "select userAgent from temporary_id where permanentId = ?"
 	temporaryIdSelectQuery                 = "select permanentId, userAgent from temporary_id where temporaryId = ?"
@@ -29,9 +28,9 @@ const (
 	refreshTokenInsertQuery                = "insert into refresh_token (permanentId, token, userAgent,yauth,cancelled) values (?, ?, ?, ?, ?)"
 	temporaryIdCancelledUpdateQuery        = "update temporary_id set cancelled = true where permanentId = ? and userAgent = ? and cancelled = false"
 	refreshTokenCancelledUpdateQuery       = "update refresh_token set cancelled = true where permanentId = ? and userAgent = ? and cancelled = false"
-	passwordResetTokenInsertQuery          = "insert into password_reset_token (token, cancelled) values (?, ?)"
+	passwordResetTokenInsertQuery          = "insert into reset_token (token, cancelled) values (?, ?)"
 	IsOKPasswordHashInDbSelectQuery        = "select passwordHash from password_hash where permanentId = ? and cancelled = false"
-	passwordResetTokenCancelledSelectQuery = "select cancelled from password_reset_token where token = ? and cancelled = false"
+	passwordResetTokenCancelledSelectQuery = "select cancelled from reset_token where token = ? and cancelled = false"
 	temporaryIdCancelledSelectQuery        = "select cancelled from temporary_id where temporaryId = ? and cancelled = false"
 )
 
@@ -73,16 +72,6 @@ func GetPermanentIdFromDbByEmail(email string, yauth bool) (string, error) {
 		if err == sql.ErrNoRows {
 			return "", errors.WithStack(err)
 		}
-		return "", errors.WithStack(err)
-	}
-	return permanentId, nil
-}
-
-func GetPermanentIdFromDbByTemporaryId(temporaryId string) (string, error) {
-	row := Db.QueryRow(permanentIdByTemporaryIdSelectQuery, temporaryId)
-	var permanentId string
-	err := row.Scan(&permanentId)
-	if err != nil {
 		return "", errors.WithStack(err)
 	}
 	return permanentId, nil

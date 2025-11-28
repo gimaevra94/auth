@@ -139,13 +139,11 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 
 	temporaryId := cookie.Value
 
-	permanentId, err := data.GetPermanentIdFromDbByTemporaryId(temporaryId)
+	permanentId, userAgent, err := data.GetTemporaryIdKeysFromDb(temporaryId)
 	if err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return
 	}
-
-	userAgent := r.UserAgent()
 
 	tx, err := data.Db.Begin()
 	if err != nil {

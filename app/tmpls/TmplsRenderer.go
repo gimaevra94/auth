@@ -86,6 +86,12 @@ const (
 				<label for="password">Password</label>
 				<input type="password" Id="password" name="password">
 			</div>
+			<div class="form-group">
+				<label>
+					<input type="checkbox" name="rememberMe" value="true">
+					Remember me
+				</label>
+			</div>
 			{{if .ShowCaptcha}}
 			<div class="g-recaptcha g-recaptcha-centered" data-sitekey="6LfUPt4rAAAAAAEU_lnGN9DbW_QngiTObsj8ro0D"></div>
 			{{end}}
@@ -292,6 +298,12 @@ const (
 				<label for="password">Password</label>
 				<input type="password" Id="password" name="password">
 			</div>
+             <div class="form-group">
+ <label>
+ <input type="checkbox" name="rememberMe" value="true">
+ Remember me
+ </label>
+ </div>
 			{{if .ShowCaptcha}}
 			<div class="g-recaptcha g-recaptcha-centered" data-sitekey="6LfUPt4rAAAAAAEU_lnGN9DbW_QngiTObsj8ro0D"></div>
 			{{end}}
@@ -377,6 +389,7 @@ const (
 				<div class="msg success-msg" style="text-align:center; padding: 1.5rem 0;">{{.Msg}}</div>
 			{{else}}
 				<div class="error-msg" style="text-align:center; padding: 1.5rem 0;">{{.Msg}}</div>
+				<a href="/sign-up" class="btn" style="margin-top: 1rem;">Go to Sign-up Page</a>
 			{{end}}
 		{{end}}
 	</div>

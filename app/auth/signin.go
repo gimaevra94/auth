@@ -84,7 +84,7 @@ func CheckInDbAndValidateSignInUserInput(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := data.IsOKPasswordHashInDb(permanentId, user.Password); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if strings.Contains(err.Error(), "password invalid") {
 			if captchaCounter == 0 && r.Method == "POST" && captchaMsgErr {
 				msgForUser = structs.MsgForUser{Msg: consts.MsgForUser["captchaRequired"].Msg, ShowCaptcha: showCaptcha}
 			} else {

@@ -9,6 +9,7 @@ type User struct {
 	Password               string `sql:"passwordHash"`
 	ServerCode             string
 	ServerCodeSendedConter int
+	UserAgent              string
 }
 
 type MsgForUser struct {

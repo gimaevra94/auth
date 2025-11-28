@@ -318,3 +318,63 @@ input[type="email"]:focus {
 .requirements-list {
     margin: 0 0 1rem;
 }
+
+input[type="checkbox"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    background-color: var(--input-bg);
+    cursor: pointer;
+    position: relative;
+    vertical-align: middle;
+    margin: 0 8px 0 0;
+    padding: 0;
+}
+
+input[type="checkbox"]:checked {
+    background-color: #16a34a;
+}
+
+input[type="checkbox"] {
+    background-color: #e9f3ff;
+}
+
+input[type="checkbox"]:checked::after {
+    content: "✓";
+    position: absolute;
+    color: white;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 12px;
+    line-height: 1;
+}
+
+label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    margin: 8px 0;
+}
+
+label > span {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+input[type="checkbox"]:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+input[type="checkbox"]:active {
+    outline: none;
+}
+
+input[type="checkbox"]:focus-visible {
+    outline: none;
+}
