@@ -61,6 +61,7 @@ func DbConn() error {
 func DbClose() {
 	if Db != nil {
 		Db.Close()
+		Db = nil
 	}
 }
 
