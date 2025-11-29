@@ -1,3 +1,8 @@
+// Package auth предоставляет функции для аутентификации и авторизации.
+//
+// Файл содержит HTTP-обработчики для сброса пароля:
+//   - GeneratePasswordResetLink: генерирует и отправляет ссылку для сброса пароля
+//   - SetNewPassword: устанавливает новый пароль по токену
 package auth
 
 import (
@@ -14,6 +19,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+// GeneratePasswordResetLink обрабатывает запрос на сброс пароля.
+//
+// Принимает email пользователя и отправляет на него ссылку для сброса.
+// В случае успеха отображает сообщение об отправке.
 func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
 	if email == "" {
@@ -79,6 +88,10 @@ func GeneratePasswordResetLink(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// SetNewPassword устанавливает новый пароль по токену.
+//
+// Проверяет совпадение паролей, валидирует токен и устанавливает новый пароль.
+// При успехе аннулирует все сессии пользователя и перенаправляет на страницу входа.
 func SetNewPassword(w http.ResponseWriter, r *http.Request) {
 	resetToken := r.FormValue("token")
 	if err := data.IsPasswordResetTokenCancelled(resetToken); err != nil {
