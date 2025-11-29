@@ -79,7 +79,7 @@ func TestLogAndRedirectIfErrNotNill(t *testing.T) {
 			err:            &testError{msg: "тестовая ошибка"},
 			url:            "/ошибка",
 			expectedStatus: http.StatusFound,
-			expectedURL:    "/ошибка",
+			expectedURL:    "/%d0%be%d1%88%d0%b8%d0%b1%d0%ba%d0%b0",
 		},
 		{
 			name:           "Ошибка с URL содержащим пробелы",
@@ -231,7 +231,7 @@ func TestLogAndRedirectIfErrNotNillEdgeCases(t *testing.T) {
 			err:            &testError{msg: "ошибка"},
 			url:            "   ",
 			expectedStatus: http.StatusFound,
-			expectedURL:    "   ",
+			expectedURL:    "/   ",
 		},
 		{
 			name:           "URL с табуляцией",

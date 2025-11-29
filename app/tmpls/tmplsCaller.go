@@ -8,7 +8,7 @@ import (
 	"github.com/gimaevra94/auth/app/structs"
 )
 
-func SignUp(w http.ResponseWriter, r *http.Request) {
+var SignUp = func(w http.ResponseWriter, r *http.Request) {
 	if err := TmplsRenderer(w, BaseTmpl, "signUp", nil); err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
 		return

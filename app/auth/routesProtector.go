@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func AuthGuardForSignUpAndSignInPath(next http.Handler) http.Handler {
+var AuthGuardForSignUpAndSignInPath = func(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		Cookies, err := data.GetTemporaryIdFromCookies(r)
 		if err != nil {

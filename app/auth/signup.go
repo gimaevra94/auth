@@ -18,7 +18,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func CheckInDbAndValidateSignUpUserInput(w http.ResponseWriter, r *http.Request) {
+var CheckInDbAndValidateSignUpUserInput=func (w http.ResponseWriter, r *http.Request) {
 	captchaCounter, showCaptcha, err := captcha.InitCaptchaState(w, r)
 	if err != nil {
 		errs.LogAndRedirectIfErrNotNill(w, r, err, consts.Err500URL)
