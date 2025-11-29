@@ -146,6 +146,7 @@ var EndAuthAndCaptchaSessions = func(w http.ResponseWriter, r *http.Request) err
 	}
 
 	session.Options.MaxAge = -1
+	session.Values = make(map[interface{}]interface{})
 	if err = session.Save(r, w); err != nil {
 		return errors.WithStack(err)
 	}
@@ -156,6 +157,7 @@ var EndAuthAndCaptchaSessions = func(w http.ResponseWriter, r *http.Request) err
 	}
 
 	captchaSession.Options.MaxAge = -1
+	captchaSession.Values = make(map[interface{}]interface{})
 	if err = captchaSession.Save(r, w); err != nil {
 		return errors.WithStack(err)
 	}
