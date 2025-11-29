@@ -1,3 +1,13 @@
+// Package auth предоставляет функции для регистрации пользователей.
+//
+// Файл signup.go содержит следующие основные функции:
+// - CheckInDbAndValidateSignUpUserInput: проверка данных пользователя в БД и валидация
+// - ServerAuthCodeSend: отправка кода аутентификации на email
+// - CodeValidate: валидация кода, введенного пользователем
+// - SetUserInDb: сохранение пользователя в базе данных
+//
+// Процесс регистрации включает проверку уникальности email, валидацию введенных данных,
+// отправку кода подтверждения, валидацию кода и создание записи пользователя в БД.
 package auth
 
 import (
@@ -18,6 +28,17 @@ import (
 	"github.com/pkg/errors"
 )
 
+// CheckInDbAndValidateSignUpUserInput проверяет данные пользователя при регистрации.
+//
+// Функция выполняет следующие действия:
+// - Инициализирует состояние капчи
+// - Проверяет существование пользователя в БД по email
+// - Валидирует введенные данные (логин, email, пароль)
+// - Обрабатывает требования капчи при ошибках
+// - Сохраняет данные в сессию при успешной валидации
+// - Отправляет код аутентификации на email
+//
+// При ошибках возвращает пользователя на страницу регистрации с соответствующим сообщением.
 var CheckInDbAndValidateSignUpUserInput=func (w http.ResponseWriter, r *http.Request) {
 	captchaCounter, showCaptcha, err := captcha.InitCaptchaState(w, r)
 	if err != nil {
@@ -88,6 +109,16 @@ var CheckInDbAndValidateSignUpUserInput=func (w http.ResponseWriter, r *http.Req
 	}
 }
 
+// ServerAuthCodeSend отправляет код аутентификации на email пользователя.
+//
+// Функция:
+// - Получает данные пользователя из сессии
+// - Генерирует и отправляет код подтверждения на email
+// - Увеличивает счетчик отправленных кодов
+// - Сохраняет обновленные данные в сессию
+// - Перенаправляет на страницу ввода кода
+//
+// При ошибках перенаправляет на страницу 500.
 func ServerAuthCodeSend(w http.ResponseWriter, r *http.Request) {
 	user, err := data.GetAuthDataFromSession(r)
 	if err != nil {
@@ -111,6 +142,16 @@ func ServerAuthCodeSend(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, consts.ServerAuthCodeSendURL, http.StatusFound)
 }
 
+// CodeValidate проверяет код, введенный пользователем.
+//
+// Функция:
+// - Получает данные пользователя и состояние капчи из сессии
+// - Проверяет наличие кода в запросе
+// - Валидирует введенный код с серверным
+// - При успешной валидации создает запись пользователя в БД
+// - При ошибках обновляет счетчик капчи и возвращает сообщение
+//
+// При успешной валидации вызывает SetUserInDb для создания пользователя.
 func CodeValidate(w http.ResponseWriter, r *http.Request) {
 	user, err := data.GetAuthDataFromSession(r)
 	if err != nil {
@@ -163,6 +204,18 @@ func CodeValidate(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// SetUserInDb создает запись пользователя в базе данных.
+//
+// Функция выполняет транзакцию в БД:
+// - Создает постоянный ID пользователя
+// - Сохраняет логин, email и хеш пароля
+// - Создает временный ID для сессии
+// - Устанавливает refresh token
+// - Отправляет уведомление о входе с нового устройства
+// - Завершает сессии аутентификации и капчи
+//
+// Использует транзакцию для обеспечения целостности данных.
+// При успешном выполнении перенаправляет на домашнюю страницу.
 func SetUserInDb(w http.ResponseWriter, r *http.Request) {
 	user, err := data.GetAuthDataFromSession(r)
 	if err != nil {
