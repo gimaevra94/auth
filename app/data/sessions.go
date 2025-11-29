@@ -40,7 +40,7 @@ func InitStore() *sessions.CookieStore {
 	return nil
 }
 
-func SetCaptchaDataInSession(w http.ResponseWriter, r *http.Request, key string, consts any) error {
+var SetCaptchaDataInSession = func(w http.ResponseWriter, r *http.Request, key string, consts any) error {
 	captchaSession, err := captchaStore.Get(r, "captchaStore")
 	if err != nil {
 		return errors.WithStack(err)

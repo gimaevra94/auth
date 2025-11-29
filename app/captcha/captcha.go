@@ -12,6 +12,12 @@ import (
 	"github.com/pkg/errors"
 )
 
+var httpClient = &http.Client{}
+
+func SetHTTPClient(client *http.Client) {
+	httpClient = client
+}
+
 func ShowCaptcha(r *http.Request) error {
 	captchaToken := r.FormValue("g-recaptcha-response")
 	if captchaToken == "" {
@@ -26,7 +32,7 @@ func ShowCaptcha(r *http.Request) error {
 		"response": {captchaToken},
 	}
 
-	resp, err := http.PostForm(captchaURL, captchaParams)
+	resp, err := httpClient.PostForm(captchaURL, captchaParams)
 	if err != nil {
 		return errors.WithStack(err)
 	}
