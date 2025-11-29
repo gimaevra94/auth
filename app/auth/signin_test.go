@@ -1,3 +1,6 @@
+// Package auth предоставляет тесты для модуля аутентификации и авторизации.
+//
+// Файл тестирует функцию CheckInDbAndValidateSignInUserInput для входа пользователей.
 package auth
 
 import (
@@ -21,6 +24,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// setupSignInTest создаёт мок базы данных и заменяет глобальные зависимости.
+// Возвращает мок и функцию очистки.
 func setupSignInTest(t *testing.T) (*sql.DB, sqlmock.Sqlmock, func()) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
@@ -63,6 +68,8 @@ func setupSignInTest(t *testing.T) (*sql.DB, sqlmock.Sqlmock, func()) {
 	}
 }
 
+// TestCheckInDbAndValidateSignInUserInput_Success проверяет успешный вход пользователя.
+// Ожидается: HTTP 302, редирект на домашнюю страницу.
 func TestCheckInDbAndValidateSignInUserInput_Success(t *testing.T) {
 	_, mock, teardown := setupSignInTest(t)
 	defer teardown()
@@ -118,6 +125,8 @@ func TestCheckInDbAndValidateSignInUserInput_Success(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestCheckInDbAndValidateSignInUserInput_EmptyLogin проверяет обработку пустого логина.
+// Ожидается: HTTP 200, сообщение об ошибке валидации.
 func TestCheckInDbAndValidateSignInUserInput_EmptyLogin(t *testing.T) {
 	_, mock, teardown := setupSignInTest(t)
 	defer teardown()
@@ -159,6 +168,8 @@ func TestCheckInDbAndValidateSignInUserInput_EmptyLogin(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestCheckInDbAndValidateSignInUserInput_EmptyPassword проверяет обработку пустого пароля.
+// Ожидается: HTTP 200, сообщение об ошибке валидации.
 func TestCheckInDbAndValidateSignInUserInput_EmptyPassword(t *testing.T) {
 	_, mock, teardown := setupSignInTest(t)
 	defer teardown()
@@ -201,6 +212,8 @@ func TestCheckInDbAndValidateSignInUserInput_EmptyPassword(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestCheckInDbAndValidateSignInUserInput_UserNotFound проверяет обработку несуществующего пользователя.
+// Ожидается: HTTP 200, сообщение "пользователь не существует".
 func TestCheckInDbAndValidateSignInUserInput_UserNotFound(t *testing.T) {
 	_, mock, teardown := setupSignInTest(t)
 	defer teardown()
@@ -245,6 +258,8 @@ func TestCheckInDbAndValidateSignInUserInput_UserNotFound(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestCheckInDbAndValidateSignInUserInput_InvalidPassword проверяет обработку неверного пароля.
+// Ожидается: HTTP 200, сообщение об ошибке пароля с опцией "забыли пароль".
 func TestCheckInDbAndValidateSignInUserInput_InvalidPassword(t *testing.T) {
 	_, mock, teardown := setupSignInTest(t)
 	defer teardown()
@@ -293,6 +308,8 @@ func TestCheckInDbAndValidateSignInUserInput_InvalidPassword(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestCheckInDbAndValidateSignInUserInput_CaptchaRequired проверяет требование капчи.
+// Ожидается: HTTP 200, сообщение о необходимости капчи.
 func TestCheckInDbAndValidateSignInUserInput_CaptchaRequired(t *testing.T) {
 	_, mock, teardown := setupSignInTest(t)
 	defer teardown()
@@ -334,6 +351,8 @@ func TestCheckInDbAndValidateSignInUserInput_CaptchaRequired(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestCheckInDbAndValidateSignInUserInput_NewDeviceNotification проверяет уведомление о новом устройстве.
+// Ожидается: HTTP 302, редирект на домашнюю страницу с отправкой email.
 func TestCheckInDbAndValidateSignInUserInput_NewDeviceNotification(t *testing.T) {
 	_, mock, teardown := setupSignInTest(t)
 	defer teardown()
@@ -392,6 +411,8 @@ func TestCheckInDbAndValidateSignInUserInput_NewDeviceNotification(t *testing.T)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestCheckInDbAndValidateSignInUserInput_DatabaseError проверяет обработку ошибки базы данных.
+// Ожидается: HTTP 302, редирект на страницу 500.
 func TestCheckInDbAndValidateSignInUserInput_DatabaseError(t *testing.T) {
 	_, mock, teardown := setupSignInTest(t)
 	defer teardown()
@@ -414,6 +435,8 @@ func TestCheckInDbAndValidateSignInUserInput_DatabaseError(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestCheckInDbAndValidateSignInUserInput_TransactionError проверяет обработку ошибки транзакции.
+// Ожидается: HTTP 302, редирект на страницу 500.
 func TestCheckInDbAndValidateSignInUserInput_TransactionError(t *testing.T) {
 	_, mock, teardown := setupSignInTest(t)
 	defer teardown()
@@ -450,6 +473,8 @@ func TestCheckInDbAndValidateSignInUserInput_TransactionError(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestCheckInDbAndValidateSignInUserInput_WithRememberMe проверяет вход с опцией "запомнить меня".
+// Ожидается: HTTP 302, редирект на домашнюю страницу.
 func TestCheckInDbAndValidateSignInUserInput_WithRememberMe(t *testing.T) {
 	_, mock, teardown := setupSignInTest(t)
 	defer teardown()
