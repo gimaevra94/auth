@@ -1,3 +1,8 @@
+// Package auth предоставляет тесты для модуля регистрации пользователей.
+//
+// Файл тестирует функции CheckInDbAndValidateSignUpUserInput, ServerAuthCodeSend,
+// CodeValidate и SetUserInDb, покрывая все основные сценарии регистрации,
+// включая валидацию данных, обработку ошибок и успешное создание пользователя.
 package auth
 
 import (
@@ -21,6 +26,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// setupSignUpTest создаёт мок базы данных и заменяет глобальные зависимости.
+// Возвращает мок и функцию очистки.
 func setupSignUpTest(t *testing.T) (*sql.DB, sqlmock.Sqlmock, func()) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
@@ -83,6 +90,8 @@ func setupSignUpTest(t *testing.T) (*sql.DB, sqlmock.Sqlmock, func()) {
 	}
 }
 
+// TestCheckInDbAndValidateSignUpUserInput_Success проверяет успешную валидацию данных регистрации.
+// Ожидается: HTTP 302, редирект на страницу отправки кода.
 func TestCheckInDbAndValidateSignUpUserInput_Success(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -124,6 +133,8 @@ func TestCheckInDbAndValidateSignUpUserInput_Success(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestCheckInDbAndValidateSignUpUserInput_InvalidLogin проверяет обработку невалидного логина.
+// Ожидается: HTTP 200, сообщение об ошибке валидации логина.
 func TestCheckInDbAndValidateSignUpUserInput_InvalidLogin(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -170,6 +181,8 @@ func TestCheckInDbAndValidateSignUpUserInput_InvalidLogin(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestCheckInDbAndValidateSignUpUserInput_InvalidEmail проверяет обработку невалидного email.
+// Ожидается: HTTP 200, сообщение об ошибке валидации email.
 func TestCheckInDbAndValidateSignUpUserInput_InvalidEmail(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -216,6 +229,8 @@ func TestCheckInDbAndValidateSignUpUserInput_InvalidEmail(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestCheckInDbAndValidateSignUpUserInput_InvalidPassword проверяет обработку невалидного пароля.
+// Ожидается: HTTP 200, сообщение об ошибке валидации пароля.
 func TestCheckInDbAndValidateSignUpUserInput_InvalidPassword(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -262,6 +277,8 @@ func TestCheckInDbAndValidateSignUpUserInput_InvalidPassword(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestCheckInDbAndValidateSignUpUserInput_UserAlreadyExists проверяет обработку существующего пользователя.
+// Ожидается: HTTP 200, сообщение о том, что пользователь уже существует.
 func TestCheckInDbAndValidateSignUpUserInput_UserAlreadyExists(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -304,6 +321,8 @@ func TestCheckInDbAndValidateSignUpUserInput_UserAlreadyExists(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestCheckInDbAndValidateSignUpUserInput_CaptchaRequired проверяет требование капчи при ошибках.
+// Ожидается: HTTP 200, сообщение о требовании капчи.
 func TestCheckInDbAndValidateSignUpUserInput_CaptchaRequired(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -349,6 +368,8 @@ func TestCheckInDbAndValidateSignUpUserInput_CaptchaRequired(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestCheckInDbAndValidateSignUpUserInput_CaptchaRequired_UserExists проверяет требование капчи при существующем пользователе.
+// Ожидается: HTTP 200, сообщение о требовании капчи.
 func TestCheckInDbAndValidateSignUpUserInput_CaptchaRequired_UserExists(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -391,6 +412,8 @@ func TestCheckInDbAndValidateSignUpUserInput_CaptchaRequired_UserExists(t *testi
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestCheckInDbAndValidateSignUpUserInput_DatabaseError проверяет обработку ошибки базы данных.
+// Ожидается: HTTP 302, редирект на 500.
 func TestCheckInDbAndValidateSignUpUserInput_DatabaseError(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -414,6 +437,8 @@ func TestCheckInDbAndValidateSignUpUserInput_DatabaseError(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestCheckInDbAndValidateSignUpUserInput_SessionError проверяет обработку ошибки сессии.
+// Ожидается: HTTP 302, редирект на 500.
 func TestCheckInDbAndValidateSignUpUserInput_SessionError(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -449,6 +474,8 @@ func TestCheckInDbAndValidateSignUpUserInput_SessionError(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestServerAuthCodeSend_Success проверяет успешную отправку кода аутентификации.
+// Ожидается: HTTP 302, редирект на страницу ввода кода.
 func TestServerAuthCodeSend_Success(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -473,6 +500,8 @@ func TestServerAuthCodeSend_Success(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestServerAuthCodeSend_SessionError проверяет обработку ошибки сессии при отправке кода.
+// Ожидается: HTTP 302, редирект на 500.
 func TestServerAuthCodeSend_SessionError(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -491,6 +520,8 @@ func TestServerAuthCodeSend_SessionError(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestServerAuthCodeSend_EmailError проверяет обработку ошибки отправки email.
+// Ожидается: HTTP 302, редирект на 500.
 func TestServerAuthCodeSend_EmailError(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -512,6 +543,8 @@ func TestServerAuthCodeSend_EmailError(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestCodeValidate_Success проверяет успешную валидацию кода.
+// Ожидается: HTTP 302, редирект на домашнюю страницу.
 func TestCodeValidate_Success(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -569,6 +602,8 @@ func TestCodeValidate_Success(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestCodeValidate_EmptyCode проверяет обработку пустого кода.
+// Ожидается: HTTP 302, редирект на 500.
 func TestCodeValidate_EmptyCode(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -596,6 +631,8 @@ func TestCodeValidate_EmptyCode(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestCodeValidate_WrongCode проверяет обработку неверного кода.
+// Ожидается: HTTP 200, сообщение о неверном коде.
 func TestCodeValidate_WrongCode(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -639,6 +676,8 @@ func TestCodeValidate_WrongCode(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestCodeValidate_CaptchaRequired проверяет требование капчи при неверном коде.
+// Ожидается: HTTP 200, сообщение о требовании капчи.
 func TestCodeValidate_CaptchaRequired(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -685,6 +724,8 @@ func TestCodeValidate_CaptchaRequired(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestCodeValidate_SessionError проверяет обработку ошибки сессии при валидации кода.
+// Ожидается: HTTP 302, редирект на 500.
 func TestCodeValidate_SessionError(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -706,6 +747,8 @@ func TestCodeValidate_SessionError(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestSetUserInDb_Success проверяет успешное сохранение пользователя в базе данных.
+// Ожидается: HTTP 302, редирект на домашнюю страницу.
 func TestSetUserInDb_Success(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -757,6 +800,8 @@ func TestSetUserInDb_Success(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestSetUserInDb_WithRememberMe проверяет успешное сохранение пользователя с опцией "Запомнить меня".
+// Ожидается: HTTP 302, редирект на домашнюю страницу.
 func TestSetUserInDb_WithRememberMe(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -809,6 +854,8 @@ func TestSetUserInDb_WithRememberMe(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestSetUserInDb_SessionError проверяет обработку ошибки сессии при сохранении пользователя.
+// Ожидается: HTTP 302, редирект на 500.
 func TestSetUserInDb_SessionError(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -829,6 +876,8 @@ func TestSetUserInDb_SessionError(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestSetUserInDb_TransactionError проверяет обработку ошибки транзакции.
+// Ожидается: HTTP 302, редирект на 500.
 func TestSetUserInDb_TransactionError(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -855,6 +904,8 @@ func TestSetUserInDb_TransactionError(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestSetUserInDb_LoginError проверяет обработку ошибки при сохранении логина.
+// Ожидается: HTTP 302, редирект на 500.
 func TestSetUserInDb_LoginError(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -884,6 +935,8 @@ func TestSetUserInDb_LoginError(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestSetUserInDb_EmailError проверяет обработку ошибки при сохранении email.
+// Ожидается: HTTP 302, редирект на 500.
 func TestSetUserInDb_EmailError(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -915,6 +968,8 @@ func TestSetUserInDb_EmailError(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestSetUserInDb_PasswordError проверяет обработку ошибки при сохранении пароля.
+// Ожидается: HTTP 302, редирект на 500.
 func TestSetUserInDb_PasswordError(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -948,6 +1003,8 @@ func TestSetUserInDb_PasswordError(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestSetUserInDb_TemporaryIdError проверяет обработку ошибки при сохранении временного ID.
+// Ожидается: HTTP 302, редирект на 500.
 func TestSetUserInDb_TemporaryIdError(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -987,6 +1044,8 @@ func TestSetUserInDb_TemporaryIdError(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestSetUserInDb_RefreshTokenError проверяет обработку ошибки при генерации refresh токена.
+// Ожидается: HTTP 302, редирект на 500.
 func TestSetUserInDb_RefreshTokenError(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -1029,6 +1088,8 @@ func TestSetUserInDb_RefreshTokenError(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestSetUserInDb_RefreshTokenDbError проверяет обработку ошибки при сохранении refresh токена в БД.
+// Ожидается: HTTP 302, редирект на 500.
 func TestSetUserInDb_RefreshTokenDbError(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -1074,6 +1135,8 @@ func TestSetUserInDb_RefreshTokenDbError(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestSetUserInDb_CommitError проверяет обработку ошибки при коммите транзакции.
+// Ожидается: HTTP 302, редирект на 500.
 func TestSetUserInDb_CommitError(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -1119,6 +1182,8 @@ func TestSetUserInDb_CommitError(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestSetUserInDb_EmailNotificationError проверяет обработку ошибки при отправке email уведомления.
+// Ожидается: HTTP 302, редирект на 500.
 func TestSetUserInDb_EmailNotificationError(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
@@ -1170,6 +1235,8 @@ func TestSetUserInDb_EmailNotificationError(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestSetUserInDb_EndSessionError проверяет обработку ошибки при завершении сессии.
+// Ожидается: HTTP 302, редирект на 500.
 func TestSetUserInDb_EndSessionError(t *testing.T) {
 	_, mock, teardown := setupSignUpTest(t)
 	defer teardown()
