@@ -159,7 +159,7 @@ var SetEmailInDbTx = func(tx *sql.Tx, permanentId, email string, yauth bool) err
 	return nil
 }
 
-func SetEmailInDb(permanentId, email string, yauth bool) error {
+var SetEmailInDb = func(permanentId, email string, yauth bool) error {
 	_, err := Db.Exec(EmailUpdateQuery, permanentId, yauth)
 	if err != nil {
 		return errors.WithStack(err)
