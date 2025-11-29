@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/gimaevra94/auth/app/auth"
 	"github.com/gimaevra94/auth/app/consts"
@@ -30,14 +31,17 @@ func main() {
 	initDb()
 	data.InitStore()
 	r := initRouter()
-	serverStart(r)
+	if err := serverStart(r); err != nil {
+		log.Printf("%+v", err)
+	}
 	defer data.DbClose()
 }
 
 func initEnv() {
+	// Try to load .env file, but don't fail if it doesn't exist (useful for tests)
 	if err := godotenv.Load("../public/.env"); err != nil {
-		log.Printf("%+v", errors.WithStack(err))
-		return
+		// In production, this might be an error, but in tests we use env vars directly
+		log.Printf("Could not load .env file: %+v", errors.WithStack(err))
 	}
 
 	envVars := []string{
@@ -53,12 +57,15 @@ func initEnv() {
 		"clientSecret",
 	}
 
+	missingVars := []string{}
 	for _, v := range envVars {
 		if os.Getenv(v) == "" {
-			err := errors.New(v + " not exist")
-			log.Printf("%+v", errors.WithStack(err))
-			return
+			missingVars = append(missingVars, v)
 		}
+	}
+
+	if len(missingVars) > 0 {
+		log.Printf("Missing environment variables: %v", missingVars)
 	}
 }
 
@@ -104,9 +111,16 @@ func initRouter() *chi.Mux {
 	return r
 }
 
-func serverStart(r *chi.Mux) {
-	if err := http.ListenAndServe(":8080", r); err != nil {
-		log.Printf("%+v", errors.WithStack(err))
-		return
+func serverStart(r *chi.Mux) error {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = ":8080"
+	} else if !strings.HasPrefix(port, ":") {
+		port = ":" + port
 	}
+
+	if err := http.ListenAndServe(port, r); err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
 }
