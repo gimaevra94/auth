@@ -1,20 +1,5 @@
 // Package auth предоставляет тесты для модуля аутентификации и авторизации.
-// 
-// Этот файл содержит модульные тесты для функциональности сброса пароля:
-//   - GeneratePasswordResetLink: генерация ссылки для сброса пароля
-//   - SetNewPassword: установка нового пароля пользователя
-//
-// Тесты используют моки (mock) для изоляции от внешних зависимостей:
-//   - sqlmock для мокирования базы данных
-//   - моки для функций валидации, отправки email и других утилит
-//
-// Основные сценарии тестирования:
-//   - Успешная генерация ссылки сброса пароля
-//   - Обработка невалидного email
-//   - Обработка несуществующего пользователя
-//   - Успешная установка нового пароля
-//   - Обработка отменённых/невалидных токенов
-//   - Валидация паролей и их соответствие
+// Файл тестирует функции GeneratePasswordResetLink и SetNewPassword.
 package auth
 
 import (
@@ -38,19 +23,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// setupTest подготавливает тестовое окружение для каждого теста.
-//
-// Создаёт мок базы данных с помощью sqlmock.New(), сохраняет оригинальные
-// значения глобальных переменных и функций, заменяет их на моки, а также
-// возвращает функцию очистки для восстановления исходного состояния.
-//
-// Параметры:
-//   - t *testing.T: тестовый контекст для assert и require
-//
-// Возвращает:
-//   - *sql.DB: мок базы данных
-//   - sqlmock.Sqlmock: интерфейс для настройки ожиданий SQL запросов
-//   - func(): функция очистки, восстанавливающая исходное состояние
+// setupTest создаёт мок базы данных и заменяет глобальные зависимости.
+// Возвращает мок и функцию очистки.
 func setupTest(t *testing.T) (*sql.DB, sqlmock.Sqlmock, func()) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
@@ -87,19 +61,8 @@ func setupTest(t *testing.T) (*sql.DB, sqlmock.Sqlmock, func()) {
 	}
 }
 
-// TestGeneratePasswordResetLink_Success проверяет успешный сценарий генерации ссылки для сброса пароля.
-//
-// Тестирует полный путь выполнения функции:
-//   - Валидация email проходит успешно
-//   - Пользователь найден в базе данных
-//   - Ссылка для сброса сгенерирована
-//   - Токен сохранён в базе данных
-//   - Email с ссылкой отправлен успешно
-//   - Пользователю показано сообщение об успешной отправке
-//
-// Ожидаемый результат:
-//   - HTTP статус 200
-//   - Вызов рендерера шаблона с сообщением об успешной отправке
+// TestGeneratePasswordResetLink_Success проверяет успешную генерацию ссылки.
+// Ожидается: HTTP 200, сообщение об отправке.
 func TestGeneratePasswordResetLink_Success(t *testing.T) {
 	_, mock, teardown := setupTest(t)
 	defer teardown()
@@ -140,18 +103,8 @@ func TestGeneratePasswordResetLink_Success(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// TestGeneratePasswordResetLink_InvalidEmail проверяет обработку невалидного email адреса.
-//
-// Тестирует сценарий когда:
-//   - Email не проходит валидацию
-//   - Функция должна показать сообщение об ошибке без отправки email
-//
-// Мокируется:
-//   - EmailValidate возвращает ошибку валидации
-//
-// Ожидаемый результат:
-//   - HTTP статус 200
-//   - Вызов рендерера шаблона с сообщением о невалидном email
+// TestGeneratePasswordResetLink_InvalidEmail проверяет обработку невалидного email.
+// Ожидается: HTTP 200, сообщение об ошибке.
 func TestGeneratePasswordResetLink_InvalidEmail(t *testing.T) {
 	_, mock, teardown := setupTest(t)
 	defer teardown()
@@ -183,18 +136,7 @@ func TestGeneratePasswordResetLink_InvalidEmail(t *testing.T) {
 }
 
 // TestGeneratePasswordResetLink_UserNotFound проверяет обработку несуществующего пользователя.
-//
-// Тестирует сценарий когда:
-//   - Email валиден, но пользователь не найден в базе данных
-//   - Функция должна показать сообщение о несуществующем пользователе
-//
-// Мокируется:
-//   - EmailValidate возвращает nil (успешная валидация)
-//   - GetPermanentIdFromDbByEmail возвращает sql.ErrNoRows
-//
-// Ожидаемый результат:
-//   - HTTP статус 200
-//   - Вызов рендерера шаблона с сообщением о несуществующем пользователе
+// Ожидается: HTTP 200, сообщение "пользователь не существует".
 func TestGeneratePasswordResetLink_UserNotFound(t *testing.T) {
 	_, mock, teardown := setupTest(t)
 	defer teardown()
@@ -226,29 +168,8 @@ func TestGeneratePasswordResetLink_UserNotFound(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// TestSetNewPassword_Success проверяет успешный сценарий установки нового пароля.
-//
-// Тестирует полный путь выполнения функции:
-//   - Токен валиден и не отменён
-//   - Пароли совпадают и проходят валидацию
-//   - Пользователь найден по email из токена
-//   - Все операции выполняются в транзакции:
-//     - Установка нового пароля
-//     - Отмена временных ID
-//     - Отмена refresh токенов
-//   - Транзакция успешно коммитится
-//   - Пользователь перенаправляется на страницу входа с сообщением об успехе
-//
-// Мокируется:
-//   - IsPasswordResetTokenCancelled возвращает nil
-//   - ResetTokenValidate возвращает валидные claims
-//   - PasswordValidate возвращает nil
-//   - GetPermanentIdFromDbByEmail возвращает permanent ID
-//   - Все функции работы с базой данных в транзакции возвращают nil
-//
-// Ожидаемый результат:
-//   - HTTP статус 302 (redirect)
-//   - Redirect на страницу входа с сообщением об успехе
+// TestSetNewPassword_Success проверяет успешную установку пароля.
+// Ожидается: HTTP 302, редирект на страницу входа.
 func TestSetNewPassword_Success(t *testing.T) {
     db, mock, teardown := setupTest(t)
     defer teardown()
@@ -297,18 +218,8 @@ func TestSetNewPassword_Success(t *testing.T) {
     assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// TestSetNewPassword_TokenCancelled проверяет обработку отменённого токена сброса пароля.
-//
-// Тестирует сценарий когда:
-//   - Токен сброса пароля был отменён (использован или просрочен)
-//   - Функция должна перенаправить на страницу ошибки
-//
-// Мокируется:
-//   - IsPasswordResetTokenCancelled возвращает ошибку
-//
-// Ожидаемый результат:
-//   - HTTP статус 302 (redirect)
-//   - Redirect на страницу ошибки 500
+// TestSetNewPassword_TokenCancelled проверяет обработку отменённого токена.
+// Ожидается: HTTP 302, редирект на 500.
 func TestSetNewPassword_TokenCancelled(t *testing.T) {
 	_, mock, teardown := setupTest(t)
 	defer teardown()
@@ -331,19 +242,8 @@ func TestSetNewPassword_TokenCancelled(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// TestSetNewPassword_InvalidToken проверяет обработку невалидного токена сброса пароля.
-//
-// Тестирует сценарий когда:
-//   - Токен не отменён, но не проходит валидацию (невалидная подпись, просрочен и т.д.)
-//   - Функция должна перенаправить на страницу ошибки
-//
-// Мокируется:
-//   - IsPasswordResetTokenCancelled возвращает nil (токен не отменён)
-//   - ResetTokenValidate возвращает ошибку валидации токена
-//
-// Ожидаемый результат:
-//   - HTTP статус 302 (redirect)
-//   - Redirect на страницу ошибки 500
+// TestSetNewPassword_InvalidToken проверяет обработку невалидного токена.
+// Ожидается: HTTP 302, редирект на 500.
 func TestSetNewPassword_InvalidToken(t *testing.T) {
 	_, mock, teardown := setupTest(t)
 	defer teardown()
@@ -367,20 +267,8 @@ func TestSetNewPassword_InvalidToken(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// TestSetNewPassword_PasswordsDontMatch проверяет обработку несовпадающих паролей.
-//
-// Тестирует сценарий когда:
-//   - Токен валиден и не отменён
-//   - Новый пароль и подтверждение пароля не совпадают
-//   - Функция должна показать сообщение об ошибке без изменения пароля
-//
-// Мокируется:
-//   - IsPasswordResetTokenCancelled возвращает nil
-//   - ResetTokenValidate возвращает валидные claims
-//
-// Ожидаемый результат:
-//   - HTTP статус 200
-//   - Вызов рендерера шаблона с сообщением о несовпадении паролей
+// TestSetNewPassword_PasswordsDontMatch проверяет несовпадение паролей.
+// Ожидается: HTTP 200, сообщение об ошибке.
 func TestSetNewPassword_PasswordsDontMatch(t *testing.T) {
 	_, mock, teardown := setupTest(t)
 	defer teardown()
@@ -414,21 +302,8 @@ func TestSetNewPassword_PasswordsDontMatch(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// TestSetNewPassword_InvalidNewPassword проверяет обработку невалидного нового пароля.
-//
-// Тестирует сценарий когда:
-//   - Токен валиден и не отменён
-//   - Пароли совпадают, но не проходят валидацию (слишком короткие, простые и т.д.)
-//   - Функция должна показать сообщение об ошибке без изменения пароля
-//
-// Мокируется:
-//   - IsPasswordResetTokenCancelled возвращает nil
-//   - ResetTokenValidate возвращает валидные claims
-//   - PasswordValidate возвращает ошибку валидации пароля
-//
-// Ожидаемый результат:
-//   - HTTP статус 200
-//   - Вызов рендерера шаблона с сообщением о невалидном пароле
+// TestSetNewPassword_InvalidNewPassword проверяет невалидный пароль.
+// Ожидается: HTTP 200, сообщение об ошибке.
 func TestSetNewPassword_InvalidNewPassword(t *testing.T) {
 	_, mock, teardown := setupTest(t)
 	defer teardown()
