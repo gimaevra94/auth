@@ -1,3 +1,14 @@
+// Package auth предоставляет функции для аутентификации и авторизации.
+//
+// Файл содержит тесты для следующих защитников маршрутов:
+//   - AuthGuardForSignUpAndSignInPath: защита маршрутов регистрации и входа
+//   - AuthGuardForServerAuthCodeSendPath: защита маршрута отправки кода авторизации
+//   - ResetTokenGuard: защита маршрутов сброса пароля
+//   - AuthGuardForHomePath: защита домашней страницы
+//   - Logout: тесты функции выхода из системы
+//
+// Тесты проверяют различные сценарии аутентификации и авторизации,
+// включая обработку ошибок базы данных, валидацию токенов и управление сессиями.
 package auth
 
 import (
@@ -17,6 +28,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// setupRoutesProtectorTest подготавливает окружение для тестов защитников маршрутов.
+//
+// Создает mock базу данных, устанавливает переменные окружения для сессий,
+// инициализирует хранилище и возвращает функцию очистки ресурсов.
+// Возвращает mock базу данных, sqlmock интерфейс и функцию teardown.
 func setupRoutesProtectorTest(t *testing.T) (*sql.DB, sqlmock.Sqlmock, func()) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
@@ -51,6 +67,10 @@ func setupRoutesProtectorTest(t *testing.T) (*sql.DB, sqlmock.Sqlmock, func()) {
 	}
 }
 
+// TestAuthGuardForSignUpAndSignInPath_NoCookie проверяет работу защитника при отсутствии cookie.
+//
+// Убеждается, что при отсутствии cookie temporaryId запрос успешно передается
+// следующему обработчику без перенаправления.
 func TestAuthGuardForSignUpAndSignInPath_NoCookie(t *testing.T) {
 	_, mock, teardown := setupRoutesProtectorTest(t)
 	defer teardown()
@@ -71,6 +91,10 @@ func TestAuthGuardForSignUpAndSignInPath_NoCookie(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestAuthGuardForSignUpAndSignInPath_CancelledTemporaryId проверяет обработку отмененного temporaryId.
+//
+// Имитирует ошибку базы данных при проверке отмененного temporaryId и убеждается,
+// что запрос передается следующему обработчику, так как пользователь считается неаутентифицированным.
 func TestAuthGuardForSignUpAndSignInPath_CancelledTemporaryId(t *testing.T) {
 	_, mock, teardown := setupRoutesProtectorTest(t)
 	defer teardown()
@@ -96,6 +120,10 @@ func TestAuthGuardForSignUpAndSignInPath_CancelledTemporaryId(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestAuthGuardForSignUpAndSignInPath_ValidTemporaryId проверяет перенаправление при валидном temporaryId.
+//
+// Убеждается, что при наличии валидного (неотмененного) temporaryId пользователь
+// перенаправляется на домашнюю страницу, так как уже аутентифицирован.
 func TestAuthGuardForSignUpAndSignInPath_ValidTemporaryId(t *testing.T) {
 	_, mock, teardown := setupRoutesProtectorTest(t)
 	defer teardown()
@@ -123,6 +151,10 @@ func TestAuthGuardForSignUpAndSignInPath_ValidTemporaryId(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestAuthGuardForSignUpAndSignInPath_DatabaseError проверяет обработку ошибок базы данных.
+//
+// Имитирует ошибку соединения с базой данных при проверке temporaryId и убеждается,
+// что происходит перенаправление на страницу ошибки 500.
 func TestAuthGuardForSignUpAndSignInPath_DatabaseError(t *testing.T) {
 	_, mock, teardown := setupRoutesProtectorTest(t)
 	defer teardown()
@@ -149,6 +181,10 @@ func TestAuthGuardForSignUpAndSignInPath_DatabaseError(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestAuthGuardForServerAuthCodeSendPath_NoSession проверяет работу защитника при отсутствии сессии.
+//
+// Убеждается, что при отсутствии пользовательской сессии происходит перенаправление
+// на страницу регистрации, так как доступ к отправке кода авторизации требует аутентификации.
 func TestAuthGuardForServerAuthCodeSendPath_NoSession(t *testing.T) {
 	_, mock, teardown := setupRoutesProtectorTest(t)
 	defer teardown()
@@ -170,6 +206,10 @@ func TestAuthGuardForServerAuthCodeSendPath_NoSession(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestResetTokenGuard_NoToken проверяет работу защитника при отсутствии токена сброса.
+//
+// Убеждается, что при отсутствии токена в параметрах запроса происходит
+// перенаправление на страницу регистрации.
 func TestResetTokenGuard_NoToken(t *testing.T) {
 	_, mock, teardown := setupRoutesProtectorTest(t)
 	defer teardown()
@@ -191,6 +231,10 @@ func TestResetTokenGuard_NoToken(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestResetTokenGuard_InvalidToken проверяет обработку невалидного токена сброса.
+//
+// Имитирует невалидный токен и убеждается, что происходит перенаправление
+// на страницу регистрации при ошибке валидации токена.
 func TestResetTokenGuard_InvalidToken(t *testing.T) {
 	_, mock, teardown := setupRoutesProtectorTest(t)
 	defer teardown()
@@ -216,6 +260,10 @@ func TestResetTokenGuard_InvalidToken(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestResetTokenGuard_CancelledToken проверяет обработку отмененного токена.
+//
+// Имитирует отмененный токен (sql.ErrNoRows) и убеждается, что происходит
+// перенаправление на страницу регистрации.
 func TestResetTokenGuard_CancelledToken(t *testing.T) {
 	_, mock, teardown := setupRoutesProtectorTest(t)
 	defer teardown()
@@ -245,6 +293,10 @@ func TestResetTokenGuard_CancelledToken(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestResetTokenGuard_ValidToken проверяет успешную валидацию токена.
+//
+// Убеждается, что при валидном токене запрос успешно передается
+// следующему обработчику без перенаправления.
 func TestResetTokenGuard_ValidToken(t *testing.T) {
 	_, mock, teardown := setupRoutesProtectorTest(t)
 	defer teardown()
@@ -273,6 +325,10 @@ func TestResetTokenGuard_ValidToken(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestAuthGuardForHomePath_NoCookie проверяет работу защитника при отсутствии cookie.
+//
+// Убеждается, что при отсутствии cookie temporaryId происходит перенаправление
+// на страницу регистрации для аутентификации.
 func TestAuthGuardForHomePath_NoCookie(t *testing.T) {
 	_, mock, teardown := setupRoutesProtectorTest(t)
 	defer teardown()
@@ -294,6 +350,10 @@ func TestAuthGuardForHomePath_NoCookie(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestAuthGuardForHomePath_DatabaseError проверяет обработку ошибок базы данных.
+//
+// Имитирует ошибку соединения с базой данных при проверке temporaryId и убеждается,
+// что происходит перенаправление на страницу ошибки 500.
 func TestAuthGuardForHomePath_DatabaseError(t *testing.T) {
 	_, mock, teardown := setupRoutesProtectorTest(t)
 	defer teardown()
@@ -320,6 +380,10 @@ func TestAuthGuardForHomePath_DatabaseError(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestAuthGuardForHomePath_SuspiciousUserAgent проверяет обработку подозрительного User-Agent.
+//
+// Имитирует доступ с другого User-Agent и убеждается, что происходит
+// аннулирование сессии и перенаправление на страницу регистрации.
 func TestAuthGuardForHomePath_SuspiciousUserAgent(t *testing.T) {
 	_, mock, teardown := setupRoutesProtectorTest(t)
 	defer teardown()
@@ -371,6 +435,10 @@ func TestAuthGuardForHomePath_SuspiciousUserAgent(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestAuthGuardForHomePath_NoRefreshToken проверяет отсутствие refresh токена.
+//
+// Имитирует ситуацию, когда refresh токен не найден в базе данных,
+// и убеждается, что сессия аннулируется и происходит перенаправление.
 func TestAuthGuardForHomePath_NoRefreshToken(t *testing.T) {
 	_, mock, teardown := setupRoutesProtectorTest(t)
 	defer teardown()
@@ -422,6 +490,10 @@ func TestAuthGuardForHomePath_NoRefreshToken(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestAuthGuardForHomePath_InvalidRefreshToken проверяет обработку невалидного refresh токена.
+//
+// Имитирует невалидный refresh токен и убеждается, что сессия аннулируется
+// и происходит перенаправление на страницу регистрации.
 func TestAuthGuardForHomePath_InvalidRefreshToken(t *testing.T) {
 	_, mock, teardown := setupRoutesProtectorTest(t)
 	defer teardown()
@@ -475,6 +547,10 @@ func TestAuthGuardForHomePath_InvalidRefreshToken(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestAuthGuardForHomePath_ValidAccess проверяет успешный доступ к домашней странице.
+//
+// Убеждается, что при валидном temporaryId, совпадении User-Agent
+// и валидном refresh токене запрос передается следующему обработчику.
 func TestAuthGuardForHomePath_ValidAccess(t *testing.T) {
 	_, mock, teardown := setupRoutesProtectorTest(t)
 	defer teardown()
@@ -516,6 +592,10 @@ func TestAuthGuardForHomePath_ValidAccess(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestLogout_NoCookie проверяет выход без cookie.
+//
+// Убеждается, что при отсутствии cookie temporaryId происходит
+// перенаправление на страницу ошибки 500.
 func TestLogout_NoCookie(t *testing.T) {
 	_, _, teardown := setupRoutesProtectorTest(t)
 	defer teardown()
@@ -530,6 +610,10 @@ func TestLogout_NoCookie(t *testing.T) {
 	assert.Empty(t, w.Body.String())
 }
 
+// TestLogout_DatabaseError проверяет обработку ошибок базы данных при выходе.
+//
+// Имитирует ошибку соединения с базой данных при получении данных temporaryId
+// и убеждается, что происходит перенаправление на страницу ошибки 500.
 func TestLogout_DatabaseError(t *testing.T) {
 	_, mock, teardown := setupRoutesProtectorTest(t)
 	defer teardown()
@@ -550,6 +634,10 @@ func TestLogout_DatabaseError(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestLogout_Success проверяет успешный выход из системы.
+//
+// Убеждается, что при успешном выходе аннулируются temporaryId и refresh токены,
+// cookie очищается и происходит перенаправление на страницу регистрации.
 func TestLogout_Success(t *testing.T) {
 	_, mock, teardown := setupRoutesProtectorTest(t)
 	defer teardown()
@@ -591,6 +679,10 @@ func TestLogout_Success(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestLogout_TransactionRollback проверяет откат транзакции при панике.
+//
+// Имитирует панику во время выполнения транзакции и убеждается,
+// что происходит откат транзакции для сохранения целостности данных.
 func TestLogout_TransactionRollback(t *testing.T) {
 	_, mock, teardown := setupRoutesProtectorTest(t)
 	defer teardown()
@@ -620,6 +712,14 @@ func TestLogout_TransactionRollback(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestAuthGuardForServerAuthCodeSendPath_EdgeCases проверяет граничные случаи для защитника.
+//
+// Тестирует различные значения ServerCode в сессии:
+//   - пустой код
+//   - валидный код
+//   - код состоящий из пробелов
+//
+// Проверяет правильность перенаправлений в каждом случае.
 func TestAuthGuardForServerAuthCodeSendPath_EdgeCases(t *testing.T) {
 	_, mock, teardown := setupRoutesProtectorTest(t)
 	defer teardown()
