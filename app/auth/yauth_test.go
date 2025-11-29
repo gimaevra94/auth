@@ -1,3 +1,7 @@
+// Package auth предоставляет тесты для модуля аутентификации через Яндекс ID.
+//
+// Файл тестирует функции YandexAuthHandler и YandexCallbackHandlerWithDeps,
+// а также вспомогательные функции для работы с OAuth Yandex.
 package auth
 
 import (
@@ -22,6 +26,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+// MockDependencies предоставляет моки для всех зависимостей YandexCallbackHandlerWithDeps.
+// Позволяет изолировать тесты от внешних зависимостей и базы данных.
 type MockDependencies struct {
 	GetAccessToken            func(string) (string, error)
 	GetYandexUserInfo         func(string) (structs.User, error)
@@ -36,6 +42,8 @@ type MockDependencies struct {
 	BeginTransaction          func() (*sql.Tx, error)
 }
 
+// YandexCallbackHandlerWithDeps обрабатывает OAuth callback от Яндекса с возможностью подмены зависимостей.
+// Используется в тестах для изоляции от внешних сервисов и базы данных.
 func YandexCallbackHandlerWithDeps(w http.ResponseWriter, r *http.Request, deps *MockDependencies) {
 	yauthCode := r.URL.Query().Get("code")
 	if yauthCode == "" {
@@ -201,6 +209,8 @@ func YandexCallbackHandlerWithDeps(w http.ResponseWriter, r *http.Request, deps 
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }
 
+// contains проверяет наличие элемента в срезе строк.
+// Вспомогательная функция для проверки User-Agent в списке устройств.
 func contains(slice []string, item string) bool {
 	for _, s := range slice {
 		if s == item {
@@ -210,6 +220,8 @@ func contains(slice []string, item string) bool {
 	return false
 }
 
+// TestYandexAuthHandler проверяет обработчик авторизации через Яндекс.
+// Ожидается: HTTP 302, редирект на OAuth Yandex с корректными параметрами.
 func TestYandexAuthHandler(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -268,6 +280,8 @@ func TestYandexAuthHandler(t *testing.T) {
 	}
 }
 
+// getAccessTokenWithURL получает access token от Yandex OAuth с указанным URL сервера токенов.
+// Вспомогательная функция для тестирования с возможностью подмены URL.
 func getAccessTokenWithURL(yauthCode string, tokenServerURL string) (string, error) {
 	tokenParams := url.Values{
 		"grant_type":    {"authorization_code"},
@@ -302,6 +316,8 @@ func getAccessTokenWithURL(yauthCode string, tokenServerURL string) (string, err
 	return accessToken, nil
 }
 
+// getYandexUserInfoWithURL получает информацию о пользователе от Yandex с указанным URL.
+// Вспомогательная функция для тестирования с возможностью подмены URL.
 func getYandexUserInfoWithURL(accessToken string, userInfoServerURL string) (structs.User, error) {
 	userInfoURLWithParams := userInfoServerURL + "?format=json&with_openId_Identity=1&with_email=1"
 
@@ -331,6 +347,8 @@ func getYandexUserInfoWithURL(accessToken string, userInfoServerURL string) (str
 	return user, nil
 }
 
+// TestGetAccessTokenWithMockServer проверяет получение access token с мок сервером.
+// Тестирует успешные и неуспешные сценарии обмена кода на токен.
 func TestGetAccessTokenWithMockServer(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -407,6 +425,8 @@ func TestGetAccessTokenWithMockServer(t *testing.T) {
 	}
 }
 
+// TestGetYandexUserInfoWithMockServer проверяет получение информации о пользователе с мок сервером.
+// Тестирует обработку различных ответов от API Yandex.
 func TestGetYandexUserInfoWithMockServer(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -488,6 +508,8 @@ func TestGetYandexUserInfoWithMockServer(t *testing.T) {
 	}
 }
 
+// TestYandexCallbackHandlerWithDeps проверяет обработчик OAuth callback с мок зависимостями.
+// Тестирует полные сценарии авторизации включая регистрацию новых пользователей.
 func TestYandexCallbackHandlerWithDeps(t *testing.T) {
 	tests := []struct {
 		name              string
@@ -722,6 +744,8 @@ func TestYandexCallbackHandlerWithDeps(t *testing.T) {
 	}
 }
 
+// TestYandexCallbackHandlerEdgeCases проверяет обработчик OAuth callback в граничных случаях.
+// Тестирует безопасность и обработку нестандартных входных данных.
 func TestYandexCallbackHandlerEdgeCases(t *testing.T) {
 	tests := []struct {
 		name           string
