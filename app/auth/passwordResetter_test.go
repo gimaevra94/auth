@@ -1,4 +1,5 @@
 // Package auth предоставляет тесты для модуля аутентификации и авторизации.
+//
 // Файл тестирует функции GeneratePasswordResetLink и SetNewPassword.
 package auth
 

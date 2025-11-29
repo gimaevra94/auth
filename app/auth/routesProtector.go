@@ -1,3 +1,14 @@
+// Package auth предоставляет функции для аутентификации и авторизации.
+//
+// Файл содержит функции для защиты различных маршрутов приложения:
+//   - AuthGuardForSignUpAndSignInPath: защита маршрутов регистрации и входа
+//   - AuthGuardForServerAuthCodeSendPath: защита маршрута отправки кода авторизации сервера
+//   - ResetTokenGuard: защита маршрутов сброса пароля
+//   - AuthGuardForHomePath: защита домашней страницы
+//   - Logout: функция выхода из системы
+//
+// Каждый защитник проверяет различные условия аутентификации и выполняет
+// перенаправления или передает управление следующему обработчику.
 package auth
 
 import (
@@ -12,6 +23,11 @@ import (
 	"github.com/pkg/errors"
 )
 
+// AuthGuardForSignUpAndSignInPath защищает маршруты регистрации и входа.
+// Проверяет наличие и валидность temporaryId в cookie.
+// Если cookie отсутствует или temporaryId отменен - передает управление следующему обработчику.
+// Если temporaryId валиден - перенаправляет на домашнюю страницу.
+// При ошибках базы данных перенаправляет на страницу 500.
 var AuthGuardForSignUpAndSignInPath = func(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		Cookies, err := data.GetTemporaryIdFromCookies(r)
@@ -34,6 +50,10 @@ var AuthGuardForSignUpAndSignInPath = func(next http.Handler) http.Handler {
 	})
 }
 
+// AuthGuardForServerAuthCodeSendPath защищает маршрут отправки кода авторизации сервера.
+// Проверяет наличие пользовательской сессии и наличие ServerCode.
+// Если сессия отсутствует или ServerCode пуст - перенаправляет на страницу регистрации.
+// При успешной проверке передает управление следующему обработчику.
 func AuthGuardForServerAuthCodeSendPath(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -52,6 +72,10 @@ func AuthGuardForServerAuthCodeSendPath(next http.Handler) http.Handler {
 	})
 }
 
+// ResetTokenGuard защищает маршруты сброса пароля.
+// Проверяет наличие токена в параметрах запроса, его валидность и статус отмены.
+// Если токен отсутствует, невалиден или отменен - перенаправляет на страницу регистрации.
+// При успешной проверке передает управление следующему обработчику.
 func ResetTokenGuard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := r.URL.Query().Get("token")
@@ -78,6 +102,11 @@ func ResetTokenGuard(next http.Handler) http.Handler {
 	})
 }
 
+// AuthGuardForHomePath защищает домашнюю страницу.
+// Проверяет наличие temporaryId, получает permanentId и userAgent из базы данных.
+// Проверяет совпадение User-Agent с текущим запросом - при несовпадении отправляет уведомление и выполняет выход.
+// Проверяет наличие и валидность refresh токена - при отсутствии или невалидности выполняет выход.
+// При успешной проверке передает управление следующему обработчику.
 func AuthGuardForHomePath(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -129,6 +158,12 @@ func AuthGuardForHomePath(next http.Handler) http.Handler {
 	})
 }
 
+// Logout выполняет выход пользователя из системы.
+// Получает temporaryId из cookie, извлекает permanentId и userAgent из базы данных.
+// В транзакции отменяет temporaryId и refresh токены пользователя.
+// Очищает cookie и перенаправляет на страницу регистрации.
+// При ошибках базы данных перенаправляет на страницу 500.
+// При панике во время транзакции выполняет откат для сохранения целостности данных.
 func Logout(w http.ResponseWriter, r *http.Request) {
 
 	cookie, err := data.GetTemporaryIdFromCookies(r)
