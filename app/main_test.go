@@ -1,3 +1,6 @@
+// Package main предоставляет точку входа для веб-приложения аутентификации.
+//
+// Файл тестирует функции инициализации окружения, базы данных, роутера и запуска сервера.
 package main
 
 import (
@@ -14,24 +17,30 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// MockDbConn мок для подключения к базе данных.
 type MockDbConn struct {
 	mock.Mock
 }
 
+// Conn реализация метода мока для подключения к базе данных.
 func (m *MockDbConn) Conn() error {
 	args := m.Called()
 	return args.Error(0)
 }
 
+// MockHttpServer мок для HTTP сервера.
 type MockHttpServer struct {
 	mock.Mock
 }
 
+// ListenAndServe реализация метода мока для запуска HTTP сервера.
 func (m *MockHttpServer) ListenAndServe(addr string, handler http.Handler) error {
 	args := m.Called(addr, handler)
 	return args.Error(0)
 }
 
+// TestInitEnv проверяет инициализацию переменных окружения.
+// Ожидается: успешная инициализация при наличии всех необходимых переменных.
 func TestInitEnv(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -77,6 +86,8 @@ func TestInitEnv(t *testing.T) {
 	}
 }
 
+// TestInitDb проверяет инициализацию подключения к базе данных.
+// Ожидается: успешное подключение при наличии пароля или без него.
 func TestInitDb(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -118,6 +129,8 @@ func TestInitDb(t *testing.T) {
 	}
 }
 
+// TestInitRouter проверяет инициализацию роутера.
+// Ожидается: успешная регистрация основных маршрутов.
 func TestInitRouter(t *testing.T) {
 	r := initRouter()
 
@@ -143,6 +156,8 @@ func TestInitRouter(t *testing.T) {
 	}
 }
 
+// TestInitRouterMiddleware проверяет работу middleware роутера.
+// Ожидается: редирект для защищенных маршрутов без аутентификации.
 func TestInitRouterMiddleware(t *testing.T) {
 	r := initRouter()
 
@@ -154,6 +169,8 @@ func TestInitRouterMiddleware(t *testing.T) {
 	assert.Equal(t, http.StatusFound, rr.Code, "Protected route should redirect without auth")
 }
 
+// TestInitRouterStaticFiles проверяет обработку статических файлов.
+// Ожидается: успешная обработка запросов к статическим файлам.
 func TestInitRouterStaticFiles(t *testing.T) {
 	r := initRouter()
 
@@ -165,6 +182,8 @@ func TestInitRouterStaticFiles(t *testing.T) {
 	assert.NotEqual(t, http.StatusNotFound, rr.Code, "Static files should be handled")
 }
 
+// TestServerStart проверяет запуск сервера.
+// Ожидается: ошибка при невалидном порте.
 func TestServerStart(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -200,6 +219,8 @@ func TestServerStart(t *testing.T) {
 	}
 }
 
+// TestMainConstants проверяет значения констант URL.
+// Ожидается: соответствие фактических значений ожидаемым.
 func TestMainConstants(t *testing.T) {
 	expectedConstants := map[string]string{
 		"setUserInDbURL":                         "/set-user-in-db",
@@ -231,6 +252,8 @@ func TestMainConstants(t *testing.T) {
 	}
 }
 
+// TestInitRouterHandlerTypes проверяет типы обработчиков роутера.
+// Ожидается: корректный редирект с корневого маршрута.
 func TestInitRouterHandlerTypes(t *testing.T) {
 	r := initRouter()
 
@@ -245,6 +268,8 @@ func TestInitRouterHandlerTypes(t *testing.T) {
 	assert.Equal(t, consts.SignUpURL, location, "Root should redirect to signup")
 }
 
+// TestInitRouterWithMockHandlers проверяет работу роутера с мок обработчиками.
+// Ожидается: корректная обработка запросов через мок обработчики.
 func TestInitRouterWithMockHandlers(t *testing.T) {
 	originalAuthHandler := auth.CheckInDbAndValidateSignUpUserInput
 	originalTmplHandler := tmpls.SignUp
@@ -300,6 +325,8 @@ func TestInitRouterWithMockHandlers(t *testing.T) {
 	})
 }
 
+// TestMockDbConn проверяет работу мока подключения к базе данных.
+// Ожидается: успешный вызов мок метода без ошибок.
 func TestMockDbConn(t *testing.T) {
 	mockDb := new(MockDbConn)
 
@@ -311,6 +338,8 @@ func TestMockDbConn(t *testing.T) {
 	mockDb.AssertExpectations(t)
 }
 
+// TestMockHttpServer проверяет работу мока HTTP сервера.
+// Ожидается: успешный вызов мок метода без ошибок.
 func TestMockHttpServer(t *testing.T) {
 	mockServer := new(MockHttpServer)
 
