@@ -1,3 +1,7 @@
+// Package data предоставляет функции для работы с базой данных сессиями и cookie.
+//
+// Файл тестирует функции инициализации хранилищ сессий, установки и получения данных
+// аутентификации и капчи, а также завершения сессий.
 package data
 
 import (
@@ -10,6 +14,8 @@ import (
 	"github.com/gimaevra94/auth/app/structs"
 )
 
+// TestInitStore проверяет успешную инициализацию хранилищ сессий.
+// Ожидается: создание loginStore и captchaStore с правильными параметрами.
 func TestInitStore(t *testing.T) {
 	os.Setenv("LOGIN_STORE_SESSION_AUTH_KEY", "12345678901234567890123456789012")
 	os.Setenv("LOGIN_STORE_SESSION_ENCRYPTION_KEY", "12345678901234567890123456789012")
@@ -53,6 +59,8 @@ func TestInitStore(t *testing.T) {
 	}
 }
 
+// TestSetCaptchaDataInSession проверяет установку данных капчи в сессию.
+// Ожидается: успешное сохранение различных типов данных в сессию капчи.
 func TestSetCaptchaDataInSession(t *testing.T) {
 	os.Setenv("LOGIN_STORE_SESSION_AUTH_KEY", "12345678901234567890123456789012")
 	os.Setenv("LOGIN_STORE_SESSION_ENCRYPTION_KEY", "12345678901234567890123456789012")
@@ -107,6 +115,8 @@ func TestSetCaptchaDataInSession(t *testing.T) {
 	}
 }
 
+// TestSetAuthDataInSession проверяет установку данных аутентификации в сессию.
+// Ожидается: успешное сохранение пользовательских данных в сессию входа.
 func TestSetAuthDataInSession(t *testing.T) {
 	os.Setenv("LOGIN_STORE_SESSION_AUTH_KEY", "12345678901234567890123456789012")
 	os.Setenv("LOGIN_STORE_SESSION_ENCRYPTION_KEY", "12345678901234567890123456789012")
@@ -177,6 +187,8 @@ func TestSetAuthDataInSession(t *testing.T) {
 	}
 }
 
+// TestGetCaptchaCounterFromSession проверяет получение счётчика капчи из сессии.
+// Ожидается: корректное извлечение счётчика или ошибка при отсутствии.
 func TestGetCaptchaCounterFromSession(t *testing.T) {
 	os.Setenv("LOGIN_STORE_SESSION_AUTH_KEY", "12345678901234567890123456789012")
 	os.Setenv("LOGIN_STORE_SESSION_ENCRYPTION_KEY", "12345678901234567890123456789012")
@@ -239,6 +251,8 @@ func TestGetCaptchaCounterFromSession(t *testing.T) {
 	}
 }
 
+// TestGetShowCaptchaFromSession проверяет получение флага показа капчи из сессии.
+// Ожидается: корректное извлечение флага или ошибка при отсутствии.
 func TestGetShowCaptchaFromSession(t *testing.T) {
 	os.Setenv("LOGIN_STORE_SESSION_AUTH_KEY", "12345678901234567890123456789012")
 	os.Setenv("LOGIN_STORE_SESSION_ENCRYPTION_KEY", "12345678901234567890123456789012")
@@ -297,6 +311,8 @@ func TestGetShowCaptchaFromSession(t *testing.T) {
 	})
 }
 
+// TestGetAuthDataFromSession проверяет получение данных аутентификации из сессии.
+// Ожидается: корректное извлечение пользовательских данных или ошибка при отсутствии.
 func TestGetAuthDataFromSession(t *testing.T) {
 	os.Setenv("LOGIN_STORE_SESSION_AUTH_KEY", "12345678901234567890123456789012")
 	os.Setenv("LOGIN_STORE_SESSION_ENCRYPTION_KEY", "12345678901234567890123456789012")
@@ -421,6 +437,8 @@ func TestGetAuthDataFromSession(t *testing.T) {
 	}
 }
 
+// TestEndAuthAndCaptchaSessions проверяет завершение сессий аутентификации и капчи.
+// Ожидается: успешное завершение существующих сессий и очистка данных.
 func TestEndAuthAndCaptchaSessions(t *testing.T) {
 	os.Setenv("LOGIN_STORE_SESSION_AUTH_KEY", "12345678901234567890123456789012")
 	os.Setenv("LOGIN_STORE_SESSION_ENCRYPTION_KEY", "12345678901234567890123456789012")
@@ -536,6 +554,8 @@ func TestEndAuthAndCaptchaSessions(t *testing.T) {
 	})
 }
 
+// TestSessionIntegration проверяет полный цикл работы с сессиями.
+// Ожидается: корректная работа всех операций сессий в комплексе.
 func TestSessionIntegration(t *testing.T) {
 	os.Setenv("LOGIN_STORE_SESSION_AUTH_KEY", "12345678901234567890123456789012")
 	os.Setenv("LOGIN_STORE_SESSION_ENCRYPTION_KEY", "12345678901234567890123456789012")
