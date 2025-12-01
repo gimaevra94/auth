@@ -1,3 +1,7 @@
+// Package errs предоставляет утилиты для обработки ошибок.
+//
+// Файл тестирует функцию LogAndRedirectIfErrNotNill, которая логирует ошибки
+// и выполняет перенаправление пользователя на указанный URL.
 package errs
 
 import (
@@ -10,6 +14,8 @@ import (
 	"github.com/gimaevra94/auth/app/consts"
 )
 
+// TestLogAndRedirectIfErrNotNill проверяет основную функциональность обработки ошибок.
+// Ожидается: HTTP 302, редирект на соответствующий URL в зависимости от ошибки и параметров.
 func TestLogAndRedirectIfErrNotNill(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -156,6 +162,8 @@ func TestLogAndRedirectIfErrNotNill(t *testing.T) {
 	}
 }
 
+// TestLogAndRedirectIfErrNotNillWithDifferentHTTPMethods проверяет работу функции с различными HTTP методами.
+// Ожидается: HTTP 302 для всех методов, редирект на указанный URL.
 func TestLogAndRedirectIfErrNotNillWithDifferentHTTPMethods(t *testing.T) {
 	methods := []string{"GET", "POST", "PUT", "DELETE", "PATCH"}
 	err := &testError{msg: "тестовая ошибка"}
@@ -183,6 +191,8 @@ func TestLogAndRedirectIfErrNotNillWithDifferentHTTPMethods(t *testing.T) {
 	}
 }
 
+// TestLogAndRedirectIfErrNotNillWithDifferentErrorTypes проверяет работу функции с различными типами ошибок.
+// Ожидается: HTTP 302, редирект на указанный URL для всех типов ошибок.
 func TestLogAndRedirectIfErrNotNillWithDifferentErrorTypes(t *testing.T) {
 	errors := []struct {
 		name string
@@ -218,6 +228,8 @@ func TestLogAndRedirectIfErrNotNillWithDifferentErrorTypes(t *testing.T) {
 	}
 }
 
+// TestLogAndRedirectIfErrNotNillEdgeCases проверяет граничные случаи обработки ошибок.
+// Ожидается: HTTP 302, корректная обработка специальных символов и пустых URL.
 func TestLogAndRedirectIfErrNotNillEdgeCases(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -292,6 +304,8 @@ func TestLogAndRedirectIfErrNotNillEdgeCases(t *testing.T) {
 	}
 }
 
+// TestLogAndRedirectIfErrNotNillConcurrent проверяет работу функции при параллельных вызовах.
+// Ожидается: HTTP 302 для всех параллельных запросов, отсутствие гонок данных.
 func TestLogAndRedirectIfErrNotNillConcurrent(t *testing.T) {
 	t.Run("Параллельные вызовы", func(t *testing.T) {
 		t.Parallel()
@@ -324,10 +338,12 @@ func TestLogAndRedirectIfErrNotNillConcurrent(t *testing.T) {
 	})
 }
 
+// testError является тестовой реализацией интерфейса error для использования в тестах.
 type testError struct {
 	msg string
 }
 
+// Error возвращает сообщение об ошибке для тестовой реализации.
 func (e *testError) Error() string {
 	return e.msg
 }
