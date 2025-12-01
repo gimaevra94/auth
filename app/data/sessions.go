@@ -1,3 +1,13 @@
+// Package data предоставляет функции для работы с базой данных сессиями и cookie.
+//
+// Файл содержит функции для управления сессиями пользователей:
+//   - InitStore: инициализирует хранилища сессий для аутентификации и капчи
+//   - SetCaptchaDataInSession: сохраняет данные капчи в сессии
+//   - SetAuthDataInSession: сохраняет данные аутентификации в сессии
+//   - GetCaptchaCounterFromSession: получает счетчик попыток капчи из сессии
+//   - GetShowCaptchaFromSession: получает флаг отображения капчи из сессии
+//   - GetAuthDataFromSession: получает данные пользователя из сессии
+//   - EndAuthAndCaptchaSessions: завершает все сессии пользователя
 package data
 
 import (
@@ -13,6 +23,16 @@ import (
 var loginStore *sessions.CookieStore
 var captchaStore *sessions.CookieStore
 
+// InitStore инициализирует хранилища сессий для аутентификации и капчи.
+//
+// Создает два CookieStore:
+//   - loginStore: для сессий аутентификации (время жизни 30 минут)
+//   - captchaStore: для сессий капчи (время жизни 30 дней)
+//
+// Использует переменные окружения для ключей:
+//   - LOGIN_STORE_SESSION_AUTH_KEY: ключ аутентификации для сессий входа
+//   - LOGIN_STORE_SESSION_ENCRYPTION_KEY: ключ шифрования для сессий входа
+//   - CAPTCHA_STORE_SESSION_SECRET_KEY: секретный ключ для сессий капчи
 func InitStore() *sessions.CookieStore {
 	sessionAuthKey := []byte(os.Getenv("LOGIN_STORE_SESSION_AUTH_KEY"))
 	sessionEncryptionKey := []byte(os.Getenv("LOGIN_STORE_SESSION_ENCRYPTION_KEY"))
@@ -40,6 +60,16 @@ func InitStore() *sessions.CookieStore {
 	return nil
 }
 
+// SetCaptchaDataInSession сохраняет данные капчи в сессии.
+//
+// Сериализует переданные данные в JSON и сохраняет их в сессии капчи
+// под указанным ключом. При ошибке возвращает обернутое исключение.
+//
+// Параметры:
+//   - w: http.ResponseWriter для сохранения сессии
+//   - r: *http.Request для получения сессии
+//   - key: ключ для сохранения данных в сессии
+//   - consts: данные для сохранения (любой тип, сериализуемый в JSON)
 var SetCaptchaDataInSession = func(w http.ResponseWriter, r *http.Request, key string, consts any) error {
 	captchaSession, err := captchaStore.Get(r, "captchaStore")
 	if err != nil {
@@ -60,6 +90,15 @@ var SetCaptchaDataInSession = func(w http.ResponseWriter, r *http.Request, key s
 	return nil
 }
 
+// SetAuthDataInSession сохраняет данные аутентификации пользователя в сессии.
+//
+// Сериализует данные пользователя в JSON и сохраняет их в сессии входа
+// под ключом "user". При ошибке возвращает обернутое исключение.
+//
+// Параметры:
+//   - w: http.ResponseWriter для сохранения сессии
+//   - r: *http.Request для получения сессии
+//   - consts: данные пользователя для сохранения (любой тип, сериализуемый в JSON)
 var SetAuthDataInSession = func(w http.ResponseWriter, r *http.Request, consts any) error {
 	loginSession, err := loginStore.Get(r, "loginStore")
 	if err != nil {
@@ -79,6 +118,17 @@ var SetAuthDataInSession = func(w http.ResponseWriter, r *http.Request, consts a
 	return nil
 }
 
+// GetCaptchaCounterFromSession получает счетчик попыток капчи из сессии.
+//
+// Извлекает значение "captchaCounter" из сессии капчи, десериализует
+// из JSON и возвращает как int64. При ошибке возвращает обернутое исключение.
+//
+// Параметры:
+//   - r: *http.Request для получения сессии
+//
+// Возвращает:
+//   - int64: значение счетчика попыток капчи
+//   - error: ошибка, если счетчик отсутствует или произошла ошибка десериализации
 var GetCaptchaCounterFromSession = func(r *http.Request) (int64, error) {
 	session, err := captchaStore.Get(r, "captchaStore")
 	if err != nil {
@@ -99,6 +149,17 @@ var GetCaptchaCounterFromSession = func(r *http.Request) (int64, error) {
 	return intData, nil
 }
 
+// GetShowCaptchaFromSession получает флаг отображения капчи из сессии.
+//
+// Извлекает значение "showCaptcha" из сессии капчи, десериализует
+// из JSON и возвращает как bool. При ошибке возвращает обернутое исключение.
+//
+// Параметры:
+//   - r: *http.Request для получения сессии
+//
+// Возвращает:
+//   - bool: флаг, указывающий нужно ли отображать капчу
+//   - error: ошибка, если флаг отсутствует или произошла ошибка десериализации
 var GetShowCaptchaFromSession = func(r *http.Request) (bool, error) {
 	session, err := captchaStore.Get(r, "captchaStore")
 	if err != nil {
@@ -119,6 +180,17 @@ var GetShowCaptchaFromSession = func(r *http.Request) (bool, error) {
 	return boolData, nil
 }
 
+// GetAuthDataFromSession получает данные пользователя из сессии аутентификации.
+//
+// Извлекает значение "user" из сессии входа, десериализует
+// из JSON и возвращает как structs.User. При ошибке возвращает обернутое исключение.
+//
+// Параметры:
+//   - r: *http.Request для получения сессии
+//
+// Возвращает:
+//   - structs.User: данные пользователя из сессии
+//   - error: ошибка, если данные отсутствуют или произошла ошибка десериализации
 var GetAuthDataFromSession = func(r *http.Request) (structs.User, error) {
 	session, err := loginStore.Get(r, "loginStore")
 	if err != nil {
@@ -139,6 +211,17 @@ var GetAuthDataFromSession = func(r *http.Request) (structs.User, error) {
 	return userData, nil
 }
 
+// EndAuthAndCaptchaSessions завершает все сессии пользователя.
+//
+// Принудительно завершает сессии аутентификации и капчи путем установки
+// MaxAge = -1 и очистки всех значений. Используется для выхода пользователя.
+//
+// Параметры:
+//   - w: http.ResponseWriter для сохранения изменений сессии
+//   - r: *http.Request для получения сессий
+//
+// Возвращает:
+//   - error: ошибка при завершении сессий
 var EndAuthAndCaptchaSessions = func(w http.ResponseWriter, r *http.Request) error {
 	session, err := loginStore.Get(r, "loginStore")
 	if err != nil {
