@@ -1,3 +1,12 @@
+// Package tools предоставляет функции для валидации данных, геренации токенов и отправки email-уведомлений.
+//
+// Файл содержит функции для валидации различных типов данных:
+//   - InputValidate: проверяет корректность логина, email и пароля
+//   - RefreshTokenValidate: проверяет валидность refresh токена
+//   - CodeValidate: сравнивает клиентский и серверный коды
+//   - EmailValidate: проверяет корректность email
+//   - PasswordValidate: проверяет корректность пароля
+//   - ResetTokenValidate: проверяет и декодирует токен сброса пароля
 package tools
 
 import (
@@ -17,6 +26,10 @@ var (
 	passwordRegex = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ\d!@#$%^&*\-\)]{4,30}$`)
 )
 
+// InputValidate проверяет корректность введенных данных пользователя.
+//
+// Валидирует логин, пароль и email (только для регистрации).
+// Возвращает ключ ошибки при невалидных данных.
 var InputValidate = func(r *http.Request, login, email, password string, IsSignIn bool) (string, error) {
 	var errMsgKey string
 	if login == "" || !loginRegex.MatchString(login) {
@@ -42,6 +55,10 @@ var InputValidate = func(r *http.Request, login, email, password string, IsSignI
 	return errMsgKey, nil
 }
 
+// RefreshTokenValidate проверяет валидность refresh токена.
+//
+// Декодирует JWT токен и проверяет его подпись и срок действия.
+// Возвращает ошибку при невалидном токене.
 var RefreshTokenValidate = func(refreshToken string) error {
 	signedToken, err := jwt.ParseWithClaims(refreshToken, &jwt.StandardClaims{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok || t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
@@ -63,6 +80,10 @@ var RefreshTokenValidate = func(refreshToken string) error {
 	return nil
 }
 
+// CodeValidate сравнивает клиентский и серверный коды.
+//
+// Проверяет наличие клиентского кода и его соответствие серверному.
+// Используется для валидации кодов подтверждения (например, CAPTCHA).
 var CodeValidate = func(r *http.Request, clientCode, serverCode string) error {
 	if clientCode == "" {
 		err := errors.New("clientCode not exist")
@@ -76,6 +97,10 @@ var CodeValidate = func(r *http.Request, clientCode, serverCode string) error {
 	return nil
 }
 
+// EmailValidate проверяет корректность email адреса.
+//
+// Проверяет соответствие email формату с использованием регулярного выражения.
+// Возвращает ошибку при невалидном email.
 var EmailValidate = func(email string) error {
 	if email == "" || !emailRegex.MatchString(email) {
 		err := errors.New("email invalid")
@@ -84,6 +109,10 @@ var EmailValidate = func(email string) error {
 	return nil
 }
 
+// PasswordValidate проверяет корректность пароля.
+//
+// Проверяет соответствие пароля требованиям безопасности с использованием регулярного выражения.
+// Возвращает ошибку при невалидном пароле.
 var PasswordValidate = func(password string) error {
 	if password == "" || !passwordRegex.MatchString(password) {
 		err := errors.New("password invalid")
@@ -92,6 +121,10 @@ var PasswordValidate = func(password string) error {
 	return nil
 }
 
+// ResetTokenValidate проверяет и декодирует токен сброса пароля.
+//
+// Валидирует JWT токен и извлекает из него claims с email пользователя.
+// Возвращает структуру с данными токена при успешной валидации.
 var ResetTokenValidate = func(signedToken string) (*structs.PasswordResetTokenClaims, error) {
 	claims := &structs.PasswordResetTokenClaims{}
 
