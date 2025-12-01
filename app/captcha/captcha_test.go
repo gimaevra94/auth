@@ -1,4 +1,4 @@
-// Package captcha предоставляет тесты для модуля верификации CAPTCHA.
+// Package captcha предоставляет функции для проверки и управления Google reCAPTCHA.
 //
 // Файл тестирует функции ShowCaptcha, InitCaptchaState, UpdateCaptchaState и ShowCaptchaMsg.
 package captcha

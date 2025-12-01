@@ -1,3 +1,6 @@
+// Package data предоставляет функции для работы с базой данных сессиями и cookie.
+//
+// Файл тестирует функции SetTemporaryIdInCookies, GetTemporaryIdFromCookies, ClearTemporaryIdInCookies и ClearCookiesDev.
 package data
 
 import (
@@ -10,6 +13,8 @@ import (
 	"github.com/gimaevra94/auth/app/consts"
 )
 
+// TestSetTemporaryIdInCookies_WithRememberMe проверяет установку cookie с флагом rememberMe.
+// Ожидается: cookie с правильными свойствами и временем жизни 7 дней.
 func TestSetTemporaryIdInCookies_WithRememberMe(t *testing.T) {
 	w := httptest.NewRecorder()
 	value := "test-temp-id"
@@ -47,6 +52,8 @@ func TestSetTemporaryIdInCookies_WithRememberMe(t *testing.T) {
 	}
 }
 
+// TestSetTemporaryIdInCookies_WithoutRememberMe проверяет установку cookie без флага rememberMe.
+// Ожидается: cookie с временем жизни 24 часа.
 func TestSetTemporaryIdInCookies_WithoutRememberMe(t *testing.T) {
 	w := httptest.NewRecorder()
 	value := "test-temp-id"
@@ -67,6 +74,8 @@ func TestSetTemporaryIdInCookies_WithoutRememberMe(t *testing.T) {
 	}
 }
 
+// TestSetTemporaryIdInCookies_EmptyValue проверяет установку cookie с пустым значением.
+// Ожидается: cookie с пустым значением.
 func TestSetTemporaryIdInCookies_EmptyValue(t *testing.T) {
 	w := httptest.NewRecorder()
 	value := ""
@@ -86,6 +95,8 @@ func TestSetTemporaryIdInCookies_EmptyValue(t *testing.T) {
 	}
 }
 
+// TestSetTemporaryIdInCookies_ZeroExpiration проверяет установку cookie с нулевым временем жизни.
+// Ожидается: cookie с MaxAge равным 0.
 func TestSetTemporaryIdInCookies_ZeroExpiration(t *testing.T) {
 	w := httptest.NewRecorder()
 	value := "test-temp-id"
@@ -105,6 +116,8 @@ func TestSetTemporaryIdInCookies_ZeroExpiration(t *testing.T) {
 	}
 }
 
+// TestGetTemporaryIdFromCookies_Success проверяет успешное получение cookie.
+// Ожидается: успешное извлечение cookie с правильным значением.
 func TestGetTemporaryIdFromCookies_Success(t *testing.T) {
 	value := "test-temp-id"
 	req := httptest.NewRequest("GET", "/", nil)
@@ -128,6 +141,8 @@ func TestGetTemporaryIdFromCookies_Success(t *testing.T) {
 	}
 }
 
+// TestGetTemporaryIdFromCookies_CookieNotFound проверяет обработку отсутствующего cookie.
+// Ожидается: ошибка при отсутствии cookie.
 func TestGetTemporaryIdFromCookies_CookieNotFound(t *testing.T) {
 	req := httptest.NewRequest("GET", "/", nil)
 
@@ -143,6 +158,8 @@ func TestGetTemporaryIdFromCookies_CookieNotFound(t *testing.T) {
 	}
 }
 
+// TestGetTemporaryIdFromCookies_EmptyValue проверяет обработку cookie с пустым значением.
+// Ожидается: ошибка при пустом значении cookie.
 func TestGetTemporaryIdFromCookies_EmptyValue(t *testing.T) {
 	req := httptest.NewRequest("GET", "/", nil)
 	req.AddCookie(&http.Cookie{
@@ -162,6 +179,8 @@ func TestGetTemporaryIdFromCookies_EmptyValue(t *testing.T) {
 	}
 }
 
+// TestGetTemporaryIdFromCookies_WrongCookieName проверяет обработку cookie с неверным именем.
+// Ожидается: ошибка при неверном имени cookie.
 func TestGetTemporaryIdFromCookies_WrongCookieName(t *testing.T) {
 	req := httptest.NewRequest("GET", "/", nil)
 	req.AddCookie(&http.Cookie{
@@ -178,6 +197,8 @@ func TestGetTemporaryIdFromCookies_WrongCookieName(t *testing.T) {
 	}
 }
 
+// TestGetTemporaryIdFromCookies_MultipleCookies проверяет получение нужного cookie из нескольких.
+// Ожидается: успешное извлечение правильного cookie.
 func TestGetTemporaryIdFromCookies_MultipleCookies(t *testing.T) {
 	value := "test-temp-id"
 	req := httptest.NewRequest("GET", "/", nil)
@@ -203,6 +224,8 @@ func TestGetTemporaryIdFromCookies_MultipleCookies(t *testing.T) {
 	}
 }
 
+// TestClearTemporaryIdInCookies проверяет очистку cookie.
+// Ожидается: cookie с MaxAge -1 для удаления.
 func TestClearTemporaryIdInCookies(t *testing.T) {
 	w := httptest.NewRecorder()
 
@@ -234,6 +257,8 @@ func TestClearTemporaryIdInCookies(t *testing.T) {
 	}
 }
 
+// TestClearTemporaryIdInCookies_MultipleCalls проверяет многократные вызовы очистки.
+// Ожидается: несколько cookie с MaxAge -1.
 func TestClearTemporaryIdInCookies_MultipleCalls(t *testing.T) {
 	w := httptest.NewRecorder()
 
@@ -255,6 +280,8 @@ func TestClearTemporaryIdInCookies_MultipleCalls(t *testing.T) {
 	}
 }
 
+// TestClearCookiesDev_Success проверяет успешную очистку всех cookie в режиме разработки.
+// Ожидается: HTTP 302, редирект на страницу регистрации.
 func TestClearCookiesDev_Success(t *testing.T) {
 	os.Setenv("LOGIN_STORE_SESSION_AUTH_KEY", "test-auth-key")
 	os.Setenv("LOGIN_STORE_SESSION_ENCRYPTION_KEY", "test-encryption-key")
@@ -293,6 +320,8 @@ func TestClearCookiesDev_Success(t *testing.T) {
 	}
 }
 
+// TestClearCookiesDev_SessionError проверяет обработку ошибок сессии при очистке.
+// Ожидается: HTTP 302, редирект на страницу регистрации.
 func TestClearCookiesDev_SessionError(t *testing.T) {
 	os.Setenv("LOGIN_STORE_SESSION_AUTH_KEY", "test-auth-key")
 	os.Setenv("LOGIN_STORE_SESSION_ENCRYPTION_KEY", "test-encryption-key")
@@ -319,6 +348,8 @@ func TestClearCookiesDev_SessionError(t *testing.T) {
 	}
 }
 
+// TestClearCookiesDev_WithExistingCookies проверяет очистку при существующих cookie.
+// Ожидается: HTTP 302, редирект на страницу регистрации.
 func TestClearCookiesDev_WithExistingCookies(t *testing.T) {
 	os.Setenv("LOGIN_STORE_SESSION_AUTH_KEY", "test-auth-key")
 	os.Setenv("LOGIN_STORE_SESSION_ENCRYPTION_KEY", "test-encryption-key")
@@ -349,6 +380,8 @@ func TestClearCookiesDev_WithExistingCookies(t *testing.T) {
 	}
 }
 
+// TestSetTemporaryIdInCookies_CookieProperties проверяет свойства устанавливаемого cookie.
+// Ожидается: корректные свойства cookie без домена и даты истечения.
 func TestSetTemporaryIdInCookies_CookieProperties(t *testing.T) {
 	w := httptest.NewRecorder()
 	value := "test-value"
@@ -371,6 +404,8 @@ func TestSetTemporaryIdInCookies_CookieProperties(t *testing.T) {
 	}
 }
 
+// TestGetTemporaryIdFromCookies_CookieProperties проверяет свойства получаемого cookie.
+// Ожидается: корректные свойства cookie.
 func TestGetTemporaryIdFromCookies_CookieProperties(t *testing.T) {
 	req := httptest.NewRequest("GET", "/", nil)
 	testCookie := &http.Cookie{
@@ -391,6 +426,8 @@ func TestGetTemporaryIdFromCookies_CookieProperties(t *testing.T) {
 	}
 }
 
+// TestClearTemporaryIdInCookies_CookieProperties проверяет свойства очищаемого cookie.
+// Ожидается: cookie с пустыми значениями для удаления.
 func TestClearTemporaryIdInCookies_CookieProperties(t *testing.T) {
 	w := httptest.NewRecorder()
 
