@@ -1,3 +1,7 @@
+// Package data предоставляет функции для работы с базой данных сессиями и cookie.
+//
+// Файл тестирует функции подключения к базе данных, выполнения запросов,
+// а также транзакционные операции с пользовательскими данными.
 package data
 
 import (
@@ -12,19 +16,18 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// TestDbConn проверяет установку соединения с базой данных.
+// Ожидается: успешное подключение при валидных данных, обработка ошибок при невалидных.
 func TestDbConn(t *testing.T) {
 	t.Run("successful connection", func(t *testing.T) {
 		os.Setenv("DB_PASSWORD", "testpass")
 
-		// Создаем мок базы данных
 		db, mock, err := sqlmock.New()
 		require.NoError(t, err)
 		defer db.Close()
 
-		// Мокируем успешный ping
 		mock.ExpectPing()
 
-		// Устанавливаем мок в глобальную переменную Db
 		originalDb := Db
 		Db = db
 		defer func() {
@@ -34,39 +37,34 @@ func TestDbConn(t *testing.T) {
 			}
 		}()
 
-		// Проверяем что Db установлена и работает
 		err = Db.Ping()
 		assert.NoError(t, err)
 		assert.NotNil(t, Db)
 
-		// Проверяем что все моки были вызваны
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 
 	t.Run("connection error", func(t *testing.T) {
 		os.Setenv("DB_PASSWORD", "")
 
-		// Сохраняем оригинальную Db
 		originalDb := Db
 		defer func() { Db = originalDb }()
 
-		// Устанавливаем nil для имитации ошибки подключения
 		Db = nil
 
-		// Проверяем что Db.Ping() вызовет ошибку
 		if Db != nil {
 			err := Db.Ping()
 			assert.Error(t, err)
 		} else {
-			// Db nil, что имитирует ошибку подключения
 			assert.True(t, true)
 		}
 	})
 }
 
+// TestDbClose проверяет закрытие соединения с базой данных.
+// Ожидается: корректное закрытие существующего соединения и обработка nil-соединения.
 func TestDbClose(t *testing.T) {
 	t.Run("close existing connection", func(t *testing.T) {
-		// Создаем реальную базу данных для теста
 		db, _, err := sqlmock.New()
 		require.NoError(t, err)
 
@@ -82,6 +80,8 @@ func TestDbClose(t *testing.T) {
 	})
 }
 
+// TestGetPermanentIdFromDbByEmail проверяет получение permanent ID по email.
+// Ожидается: успешное получение ID, обработка отсутствия записи и ошибок базы данных.
 func TestGetPermanentIdFromDbByEmail(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
@@ -125,6 +125,8 @@ func TestGetPermanentIdFromDbByEmail(t *testing.T) {
 	})
 }
 
+// TestGetPermanentIdFromDbByLogin проверяет получение permanent ID по логину.
+// Ожидается: успешное получение ID и обработка ошибок базы данных.
 func TestGetPermanentIdFromDbByLogin(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
@@ -156,6 +158,8 @@ func TestGetPermanentIdFromDbByLogin(t *testing.T) {
 	})
 }
 
+// TestGetUniqueUserAgentsFromDb проверяет получение уникальных user agents.
+// Ожидается: успешное получение списка агентов, пустой результат и обработка ошибок.
 func TestGetUniqueUserAgentsFromDb(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
@@ -202,6 +206,8 @@ func TestGetUniqueUserAgentsFromDb(t *testing.T) {
 	})
 }
 
+// TestGetTemporaryIdKeysFromDb проверяет получение ключей по временному ID.
+// Ожидается: успешное получение permanent ID и user agent, обработка ошибок базы данных.
 func TestGetTemporaryIdKeysFromDb(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
@@ -237,6 +243,8 @@ func TestGetTemporaryIdKeysFromDb(t *testing.T) {
 	})
 }
 
+// TestGetEmailFromDb проверяет получение email по permanent ID.
+// Ожидается: успешное получение email и обработка ошибок базы данных.
 func TestGetEmailFromDb(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
@@ -268,6 +276,8 @@ func TestGetEmailFromDb(t *testing.T) {
 	})
 }
 
+// TestGetRefreshTokenFromDb проверяет получение refresh токена.
+// Ожидается: успешное получение токена и обработка ошибок базы данных.
 func TestGetRefreshTokenFromDb(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
@@ -299,6 +309,8 @@ func TestGetRefreshTokenFromDb(t *testing.T) {
 	})
 }
 
+// TestSetLoginInDbTx проверяет установку логина в транзакции.
+// Ожидается: успешная транзакция, обработка ошибок при update и insert операциях.
 func TestSetLoginInDbTx(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
@@ -362,6 +374,8 @@ func TestSetLoginInDbTx(t *testing.T) {
 	})
 }
 
+// TestSetEmailInDbTx проверяет установку email в транзакции.
+// Ожидается: успешная транзакция, обработка ошибок при update и insert операциях.
 func TestSetEmailInDbTx(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
@@ -425,6 +439,8 @@ func TestSetEmailInDbTx(t *testing.T) {
 	})
 }
 
+// TestSetEmailInDb проверяет установку email без транзакции.
+// Ожидается: успешная операция, обработка ошибок при update и insert операциях.
 func TestSetEmailInDb(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
@@ -469,6 +485,8 @@ func TestSetEmailInDb(t *testing.T) {
 	})
 }
 
+// TestSetPasswordInDbTx проверяет установку пароля в транзакции.
+// Ожидается: успешная транзакция, обработка ошибок bcrypt, update и insert операций.
 func TestSetPasswordInDbTx(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
@@ -537,6 +555,8 @@ func TestSetPasswordInDbTx(t *testing.T) {
 	})
 }
 
+// TestSetTemporaryIdInDbTx проверяет установку временного ID в транзакции.
+// Ожидается: успешная транзакция, обработка ошибок при update и insert операциях.
 func TestSetTemporaryIdInDbTx(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
@@ -600,6 +620,8 @@ func TestSetTemporaryIdInDbTx(t *testing.T) {
 	})
 }
 
+// TestSetRefreshTokenInDbTx проверяет установку refresh токена в транзакции.
+// Ожидается: успешная транзакция, обработка ошибок при update и insert операциях.
 func TestSetRefreshTokenInDbTx(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
@@ -663,6 +685,8 @@ func TestSetRefreshTokenInDbTx(t *testing.T) {
 	})
 }
 
+// TestSetTemporaryIdCancelledInDbTx проверяет отмену временного ID в транзакции.
+// Ожидается: успешная операция и обработка ошибок базы данных.
 func TestSetTemporaryIdCancelledInDbTx(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
@@ -703,6 +727,8 @@ func TestSetTemporaryIdCancelledInDbTx(t *testing.T) {
 	})
 }
 
+// TestSetRefreshTokenCancelledInDbTx проверяет отмену refresh токена в транзакции.
+// Ожидается: успешная операция и обработка ошибок базы данных.
 func TestSetRefreshTokenCancelledInDbTx(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
@@ -743,6 +769,8 @@ func TestSetRefreshTokenCancelledInDbTx(t *testing.T) {
 	})
 }
 
+// TestSetPasswordResetTokenInDb проверяет установку токена сброса пароля.
+// Ожидается: успешная операция и обработка ошибок базы данных.
 func TestSetPasswordResetTokenInDb(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
@@ -767,10 +795,11 @@ func TestSetPasswordResetTokenInDb(t *testing.T) {
 
 		err := SetPasswordResetTokenInDb("errortoken")
 		assert.Error(t, err)
-		// Не проверяем ExpectationsWereMet, так как ошибка происходит до вызова мока
 	})
 }
 
+// TestIsTemporaryIdCancelled проверяет, отменен ли временный ID.
+// Ожидается: корректная проверка статуса и обработка ошибок базы данных.
 func TestIsTemporaryIdCancelled(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
@@ -810,6 +839,8 @@ func TestIsTemporaryIdCancelled(t *testing.T) {
 	})
 }
 
+// TestIsPasswordResetTokenCancelled проверяет, отменен ли токен сброса пароля.
+// Ожидается: корректная проверка статуса и обработка ошибок базы данных.
 func TestIsPasswordResetTokenCancelled(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
@@ -849,6 +880,8 @@ func TestIsPasswordResetTokenCancelled(t *testing.T) {
 	})
 }
 
+// TestIsOKPasswordHashInDb проверяет валидность пароля.
+// Ожидается: успешная проверка валидного пароля, ошибка при неверном пароле.
 func TestIsOKPasswordHashInDb(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
@@ -895,6 +928,8 @@ func TestIsOKPasswordHashInDb(t *testing.T) {
 	})
 }
 
+// TestConstants проверяет, что все константы запросов не пустые.
+// Ожидается: все SQL константы определены.
 func TestConstants(t *testing.T) {
 	assert.NotEmpty(t, PermanentIdByEmailSelectQuery)
 	assert.NotEmpty(t, PermanentIdByLoginSelectQuery)
@@ -920,6 +955,8 @@ func TestConstants(t *testing.T) {
 	assert.NotEmpty(t, TemporaryIdCancelledSelectQuery)
 }
 
+// TestVariableDeclarations проверяет, что все функции объявлены.
+// Ожидается: все тестируемые функции доступны.
 func TestVariableDeclarations(t *testing.T) {
 	assert.NotNil(t, GetPermanentIdFromDbByEmail)
 	assert.NotNil(t, GetPermanentIdFromDbByLogin)
