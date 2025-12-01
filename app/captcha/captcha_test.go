@@ -1,3 +1,6 @@
+// Package captcha предоставляет тесты для модуля верификации CAPTCHA.
+//
+// Файл тестирует функции ShowCaptcha, InitCaptchaState, UpdateCaptchaState и ShowCaptchaMsg.
 package captcha
 
 import (
@@ -13,7 +16,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// roundTripFunc implements http.RoundTripper
+// roundTripFunc реализует интерфейс http.RoundTripper для мокирования HTTP запросов.
 type roundTripFunc struct {
 	rt func(req *http.Request) (*http.Response, error)
 }
@@ -22,6 +25,9 @@ func (r *roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return r.rt(req)
 }
 
+// TestShowCaptcha проверяет функцию верификации CAPTCHA токена.
+// Тестирует различные сценарии: отсутствие токена, валидный токен, невалидный ответ,
+// некорректный JSON и ошибки HTTP запроса.
 func TestShowCaptcha(t *testing.T) {
 	t.Run("Отсутствует токен капчи", func(t *testing.T) {
 		r := httptest.NewRequest("POST", "/", nil)
@@ -46,15 +52,12 @@ func TestShowCaptcha(t *testing.T) {
 		}))
 		defer server.Close()
 
-		// Создаем кастомный HTTP клиент который перенаправляет запросы на наш тестовый сервер
 		originalClient := httpClient
 		defer func() { httpClient = originalClient }()
 
-		// Создаем custom RoundTripper
 		customTransport := &roundTripFunc{
 			rt: func(req *http.Request) (*http.Response, error) {
 				if req.URL.String() == "https://www.google.com/recaptcha/api/siteverify" {
-					// Перенаправляем на наш тестовый сервер
 					newReq, err := http.NewRequest("POST", server.URL, req.Body)
 					if err != nil {
 						return nil, err
@@ -91,7 +94,6 @@ func TestShowCaptcha(t *testing.T) {
 		originalClient := httpClient
 		defer func() { httpClient = originalClient }()
 
-		// Создаем custom RoundTripper
 		customTransport := &roundTripFunc{
 			rt: func(req *http.Request) (*http.Response, error) {
 				if req.URL.String() == "https://www.google.com/recaptcha/api/siteverify" {
@@ -132,7 +134,6 @@ func TestShowCaptcha(t *testing.T) {
 		originalClient := httpClient
 		defer func() { httpClient = originalClient }()
 
-		// Создаем custom RoundTripper
 		customTransport := &roundTripFunc{
 			rt: func(req *http.Request) (*http.Response, error) {
 				if req.URL.String() == "https://www.google.com/recaptcha/api/siteverify" {
@@ -165,7 +166,6 @@ func TestShowCaptcha(t *testing.T) {
 		originalClient := httpClient
 		defer func() { httpClient = originalClient }()
 
-		// Создаем custom RoundTripper
 		customTransport := &roundTripFunc{
 			rt: func(req *http.Request) (*http.Response, error) {
 				return nil, errors.New("network error")
@@ -185,6 +185,9 @@ func TestShowCaptcha(t *testing.T) {
 	})
 }
 
+// TestInitCaptchaState проверяет инициализацию состояния CAPTCHA.
+// Тестирует создание новой сессии, загрузку существующих значений,
+// обработку ошибок сессии и сохранение данных.
 func TestInitCaptchaState(t *testing.T) {
 	os.Setenv("CAPTCHA_STORE_SESSION_SECRET_KEY", "test-secret-key")
 	defer os.Unsetenv("CAPTCHA_STORE_SESSION_SECRET_KEY")
@@ -290,6 +293,9 @@ func TestInitCaptchaState(t *testing.T) {
 	})
 }
 
+// TestUpdateCaptchaState проверяет обновление состояния CAPTCHA.
+// Тестирует изменение счетчика, активацию CAPTCHA при низких значениях счетчика,
+// обработку ошибок сохранения в сессии.
 func TestUpdateCaptchaState(t *testing.T) {
 	os.Setenv("CAPTCHA_STORE_SESSION_SECRET_KEY", "test-secret-key")
 	defer os.Unsetenv("CAPTCHA_STORE_SESSION_SECRET_KEY")
@@ -396,6 +402,9 @@ func TestUpdateCaptchaState(t *testing.T) {
 	})
 }
 
+// TestShowCaptchaMsg проверяет функцию отображения сообщения CAPTCHA.
+// Тестирует различные сценарии: showCaptcha=false, отсутствие токена,
+// валидный токен, невалидный ответ, ошибки HTTP и JSON.
 func TestShowCaptchaMsg(t *testing.T) {
 	t.Run("ShowCaptcha false", func(t *testing.T) {
 		r := httptest.NewRequest("GET", "/", nil)
@@ -565,6 +574,8 @@ func TestShowCaptchaMsg(t *testing.T) {
 	})
 }
 
+// TestInitCaptchaStateIntegration проверяет интеграционную работу InitCaptchaState.
+// Тестирует полный цикл сохранения и загрузки состояния между запросами.
 func TestInitCaptchaStateIntegration(t *testing.T) {
 	os.Setenv("CAPTCHA_STORE_SESSION_SECRET_KEY", "test-secret-key")
 	defer os.Unsetenv("CAPTCHA_STORE_SESSION_SECRET_KEY")
@@ -599,6 +610,8 @@ func TestInitCaptchaStateIntegration(t *testing.T) {
 	})
 }
 
+// TestUpdateCaptchaStateIntegration проверяет интеграционную работу UpdateCaptchaState.
+// Тестирует уменьшение счетчика и автоматическую активацию CAPTCHA.
 func TestUpdateCaptchaStateIntegration(t *testing.T) {
 	os.Setenv("CAPTCHA_STORE_SESSION_SECRET_KEY", "test-secret-key")
 	defer os.Unsetenv("CAPTCHA_STORE_SESSION_SECRET_KEY")
