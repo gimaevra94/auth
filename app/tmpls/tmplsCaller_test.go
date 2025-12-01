@@ -1,3 +1,6 @@
+// Package tmpls предоставляет HTTP-обработчики для отображения HTML-шаблонов.
+//
+// Файл тестирует функции рендеринга HTML-шаблонов и обработчики ошибок.
 package tmpls
 
 import (
@@ -12,8 +15,11 @@ import (
 	"github.com/gimaevra94/auth/app/structs"
 )
 
+// MockTmplsRenderer имитирует функцию рендеринга шаблонов для тестирования.
 type MockTmplsRenderer func(w http.ResponseWriter, tmpl *template.Template, templateName string, data interface{}) error
 
+// TestSignUp проверяет рендеринг страницы регистрации.
+// Ожидается: HTTP 200 при успехе, HTTP 302 при ошибке рендеринга.
 func TestSignUp(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -74,6 +80,8 @@ func TestSignUp(t *testing.T) {
 	}
 }
 
+// TestSignIn проверяет рендеринг страницы входа.
+// Ожидается: HTTP 200 при успехе, HTTP 302 при ошибке рендеринга.
 func TestSignIn(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -134,6 +142,8 @@ func TestSignIn(t *testing.T) {
 	}
 }
 
+// TestServerAuthCodeSend проверяет рендеринг страницы отправки кода авторизации сервера.
+// Ожидается: HTTP 200 при успехе, HTTP 302 при ошибке рендеринга.
 func TestServerAuthCodeSend(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -194,6 +204,8 @@ func TestServerAuthCodeSend(t *testing.T) {
 	}
 }
 
+// TestHome проверяет рендеринг домашней страницы.
+// Ожидается: HTTP 200 при успехе, HTTP 302 при ошибке рендеринга.
 func TestHome(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -254,6 +266,8 @@ func TestHome(t *testing.T) {
 	}
 }
 
+// TestLogout проверяет рендеринг страницы выхода.
+// Ожидается: HTTP 200 при успехе, HTTP 302 при ошибке рендеринга.
 func TestLogout(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -314,6 +328,8 @@ func TestLogout(t *testing.T) {
 	}
 }
 
+// TestGeneratePasswordResetLink проверяет рендеринг страницы генерации ссылки сброса пароля.
+// Ожидается: HTTP 200 при успехе, HTTP 302 при ошибке рендеринга, корректная обработка параметров.
 func TestGeneratePasswordResetLink(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -397,6 +413,8 @@ func TestGeneratePasswordResetLink(t *testing.T) {
 	}
 }
 
+// TestSetNewPassword проверяет рендеринг страницы установки нового пароля.
+// Ожидается: HTTP 200 при успехе, HTTP 302 при ошибке рендеринга, корректная обработка параметров.
 func TestSetNewPassword(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -510,6 +528,8 @@ func TestSetNewPassword(t *testing.T) {
 	}
 }
 
+// TestErr500 проверяет обработку ошибки 500.
+// Ожидается: попытка обслужить файл 500.html.
 func TestErr500(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -536,6 +556,8 @@ func TestErr500(t *testing.T) {
 	}
 }
 
+// TestConcurrentRequests проверяет обработку одновременных запросов.
+// Ожидается: корректная обработка всех запросов без гонок данных.
 func TestConcurrentRequests(t *testing.T) {
 	originalRenderer := TmplsRenderer
 	defer func() { TmplsRenderer = originalRenderer }()
@@ -576,6 +598,8 @@ func TestConcurrentRequests(t *testing.T) {
 	}
 }
 
+// TestErrorHandlingBehavior проверяет поведение при обработке ошибок рендеринга.
+// Ожидается: редирект на страницу 500 при ошибке рендеринга.
 func TestErrorHandlingBehavior(t *testing.T) {
 	originalRenderer := TmplsRenderer
 	defer func() { TmplsRenderer = originalRenderer }()
@@ -601,6 +625,8 @@ func TestErrorHandlingBehavior(t *testing.T) {
 	}
 }
 
+// TestDifferentHTTPMethods проверяет обработку различных HTTP-методов.
+// Ожидается: корректная обработка GET-запросов для всех функций.
 func TestDifferentHTTPMethods(t *testing.T) {
 	originalRenderer := TmplsRenderer
 	defer func() { TmplsRenderer = originalRenderer }()
