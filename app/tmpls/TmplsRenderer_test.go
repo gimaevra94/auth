@@ -1,3 +1,7 @@
+// Package tmpls предоставляет функции и шаблоны для рендеринга HTML-страниц.
+//
+// Файл тестирует функции Must и TmplsRenderer, а также корректность
+// компиляции и выполнения всех шаблонов приложения.
 package tmpls
 
 import (
@@ -9,6 +13,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+// TestMust проверяет работу вспомогательной функции Must.
+// Ожидается: успешное создание шаблона или паника при ошибке.
 func TestMust(t *testing.T) {
 	tests := []struct {
 		name string
@@ -17,6 +23,8 @@ func TestMust(t *testing.T) {
 		{
 			name: "successful template creation",
 			test: func(t *testing.T) {
+				// TestMust_SuccessfulTemplateCreation проверяет успешное создание шаблона.
+				// Ожидается: функция возвращает валидный шаблон без ошибок.
 				tmpl, err := template.New("test").Parse("{{.}}")
 				if err != nil {
 					t.Fatalf("unexpected error: %v", err)
@@ -31,6 +39,8 @@ func TestMust(t *testing.T) {
 		{
 			name: "panic on error",
 			test: func(t *testing.T) {
+				// TestMust_PanicOnError проверяет панику при невалидном синтаксисе шаблона.
+				// Ожидается: функция вызывает панику при ошибке парсинга.
 				defer func() {
 					if r := recover(); r == nil {
 						t.Error("expected panic")
@@ -48,11 +58,15 @@ func TestMust(t *testing.T) {
 	}
 }
 
+// TestBaseTmplCompilation проверяет корректность компиляции базового шаблона.
+// Ожидается: BaseTmpl не nil и все дочерние шаблоны доступны.
 func TestBaseTmplCompilation(t *testing.T) {
+	// Проверяем, что базовый шаблон успешно скомпилирован
 	if BaseTmpl == nil {
 		t.Error("BaseTmpl should not be nil")
 	}
 
+	// Список всех шаблонов, которые должны быть включены в BaseTmpl
 	templates := []string{
 		"signUp",
 		"signIn",
@@ -62,8 +76,11 @@ func TestBaseTmplCompilation(t *testing.T) {
 		"setNewPassword",
 	}
 
+	// Проверяем наличие каждого шаблона в базовом шаблоне
 	for _, tmplName := range templates {
 		t.Run("template_exists_"+tmplName, func(t *testing.T) {
+			// TestBaseTmplCompilation_TemplateExists проверяет наличие конкретного шаблона.
+			// Ожидается: шаблон найден в BaseTmpl.
 			tmpl := BaseTmpl.Lookup(tmplName)
 			if tmpl == nil {
 				t.Errorf("template %s should exist in BaseTmpl", tmplName)
@@ -72,6 +89,8 @@ func TestBaseTmplCompilation(t *testing.T) {
 	}
 }
 
+// TestTmplsRenderer проверяет основную функцию рендеринга шаблонов.
+// Ожидается: успешный рендеринг существующих шаблонов и ошибка для несуществующих.
 func TestTmplsRenderer(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -88,7 +107,7 @@ func TestTmplsRenderer(t *testing.T) {
 		{
 			name:         "render signIn template with data",
 			templateName: "signIn",
-			data:         nil, 
+			data:         nil,
 			expectError:  false,
 		},
 		{
@@ -112,6 +131,8 @@ func TestTmplsRenderer(t *testing.T) {
 			err := TmplsRenderer(w, BaseTmpl, tt.templateName, tt.data)
 
 			if tt.expectError {
+				// TestTmplsRenderer_NonExistentTemplate проверяет обработку несуществующего шаблона.
+				// Ожидается: ошибка, обёрнутая в errors.WithStack.
 				if err == nil {
 					t.Error("expected error but got none")
 				}
@@ -123,6 +144,8 @@ func TestTmplsRenderer(t *testing.T) {
 					}
 				}
 			} else {
+				// TestTmplsRenderer_SuccessfulRender проверяет успешный рендеринг шаблона.
+				// Ожидается: HTML-контент и правильный Content-Type.
 				if err != nil {
 					t.Errorf("unexpected error: %v", err)
 				}
@@ -141,6 +164,8 @@ func TestTmplsRenderer(t *testing.T) {
 	}
 }
 
+// TestTmplsRendererWithData проверяет рендеринг шаблонов с передачей данных.
+// Ожидается: корректное отображение переданных данных в HTML.
 func TestTmplsRendererWithData(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -177,6 +202,8 @@ func TestTmplsRendererWithData(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// TestTmplsRendererWithData_DataInjection проверяет корректную вставку данных.
+			// Ожидается: переданный текст содержится в сгенерированном HTML.
 			w := httptest.NewRecorder()
 
 			err := TmplsRenderer(w, BaseTmpl, tt.templateName, tt.data)
@@ -192,6 +219,8 @@ func TestTmplsRendererWithData(t *testing.T) {
 	}
 }
 
+// TestEmailTemplates проверяет работу email-шаблонов.
+// Ожидается: все email-шаблоны существуют и генерируют корректный HTML.
 func TestEmailTemplates(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -222,12 +251,16 @@ func TestEmailTemplates(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run("email_template_"+tt.name, func(t *testing.T) {
+			// TestEmailTemplates_TemplateExistence проверяет наличие email-шаблона.
+			// Ожидается: шаблон найден в BaseTmpl.
 			tmpl := BaseTmpl.Lookup(tt.templateName)
 			if tmpl == nil {
 				t.Errorf("email template %s should exist", tt.templateName)
 				return
 			}
 
+			// TestEmailTemplates_Rendering проверяет рендеринг email-шаблона.
+			// Ожидается: успешное создание HTML с правильной структурой.
 			w := httptest.NewRecorder()
 			err := TmplsRenderer(w, BaseTmpl, tt.templateName, tt.data)
 			if err != nil {
