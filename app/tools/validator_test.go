@@ -256,16 +256,9 @@ func TestRefreshTokenValidate_WrongSigningMethod(t *testing.T) {
 	os.Setenv("JWT_SECRET", "test_secret")
 	defer os.Unsetenv("JWT_SECRET")
 
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.StandardClaims{
-		ExpiresAt: time.Now().Add(time.Hour).Unix(),
-	})
+	signedToken := "invalid.rs256.token"
 
-	signedToken, err := token.SignedString([]byte("test_secret"))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = RefreshTokenValidate(signedToken)
+	err := RefreshTokenValidate(signedToken)
 
 	if err == nil {
 		t.Error("Expected error for wrong signing method, got nil")
@@ -569,18 +562,7 @@ func TestResetTokenValidate_WrongSigningMethod(t *testing.T) {
 	os.Setenv("JWT_SECRET", "test_secret")
 	defer os.Unsetenv("JWT_SECRET")
 
-	claims := &structs.PasswordResetTokenClaims{
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Hour).Unix(),
-		},
-		Email: "test@example.com",
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
-	signedToken, err := token.SignedString([]byte("test_secret"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	signedToken := "invalid.rs256.token"
 
 	result, err := ResetTokenValidate(signedToken)
 
