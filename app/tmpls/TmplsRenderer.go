@@ -1,3 +1,9 @@
+// Package tmpls предоставляет функции и шаблоны для рендеринга HTML-страниц.
+//
+// Файл содержит:
+//   - Must: вспомогательная функция для обработки шаблонов
+//   - TmplsRenderer: основная функция для рендеринга шаблонов
+//   - BaseTmpl и другие шаблоны: набор HTML-шаблонов для различных страниц приложения
 package tmpls
 
 import (
@@ -7,10 +13,17 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Must обрабатывает шаблон и паникует в случае ошибки.
+//
+// Является обёрткой над template.Must для удобства использования.
 func Must(t *template.Template, err error) *template.Template {
 	return template.Must(t, err)
 }
 
+// Объявление глобальных переменных для хранения скомпилированных шаблонов.
+//
+// BaseTmpl: базовый шаблон, используемый как основа для всех страниц
+// Остальные шаблоны: специфичные шаблоны для различных страниц приложения
 var (
 	BaseTmpl = Must(template.New("base").Parse(baseTMPL))
 	_        = Must(BaseTmpl.Parse(signUpTMPL))
@@ -25,6 +38,15 @@ var (
 	_        = Must(BaseTmpl.Parse(emailMsgAboutNewDeviceLoginEmailTMPL))
 )
 
+// TmplsRenderer выполняет рендеринг HTML-шаблона и записывает результат в ResponseWriter.
+//
+// Принимает:
+//   - w: ResponseWriter для записи результата
+//   - tmpl: скомпилированный шаблон
+//   - templateName: имя шаблона для выполнения
+//   - data: данные для передачи в шаблон
+//
+// Возвращает ошибку, обёрнутую в стек вызовов для удобной отладки.
 var TmplsRenderer = func(w http.ResponseWriter, tmpl *template.Template, templateName string, data interface{}) error {
 	if err := tmpl.ExecuteTemplate(w, templateName, data); err != nil {
 		return errors.WithStack(err)
