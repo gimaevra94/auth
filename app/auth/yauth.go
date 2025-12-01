@@ -1,3 +1,10 @@
+// Package auth предоставляет функции для аутентификации и авторизации.
+//
+// Файл содержит HTTP-обработчики для аутентификации через Яндекс OAuth:
+//   - YandexAuthHandler: перенаправляет пользователя на страницу авторизации Яндекса
+//   - YandexCallbackHandler: обрабатывает callback от Яндекса после авторизации
+//   - getAccessToken: получает access token по коду авторизации
+//   - getYandexUserInfo: получает информацию о пользователе из Яндекса
 package auth
 
 import (
@@ -25,6 +32,9 @@ const (
 	YandexCallbackFullURL = "http://localhost:8080/ya_callback"
 )
 
+// YandexAuthHandler перенаправляет пользователя на страницу авторизации Яндекса.
+//
+// Формирует URL с параметрами OAuth и выполняет перенаправление.
 func YandexAuthHandler(w http.ResponseWriter, r *http.Request) {
 	authParams := url.Values{
 		"response_type": {"code"},
@@ -36,6 +46,11 @@ func YandexAuthHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, authUrlWithParams, http.StatusFound)
 }
 
+// YandexCallbackHandler обрабатывает callback от Яндекса после авторизации.
+//
+// Получает код авторизации, обменивает его на access token, получает информацию
+// о пользователе, создаёт или обновляет запись в БД, устанавливает cookies
+// и перенаправляет на главную страницу.
 func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	yauthCode := r.URL.Query().Get("code")
 	if yauthCode == "" {
@@ -133,6 +148,9 @@ func YandexCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, consts.HomeURL, http.StatusFound)
 }
 
+// getAccessToken получает access token Яндекса по коду авторизации.
+//
+// Обменивает код авторизации на access token через API Яндекса.
 func getAccessToken(yauthCode string) (string, error) {
 	tokenParams := url.Values{
 		"grant_type":    {"authorization_code"},
@@ -167,6 +185,9 @@ func getAccessToken(yauthCode string) (string, error) {
 	return accessToken, nil
 }
 
+// getYandexUserInfo получает информацию о пользователе из Яндекса.
+//
+// Использует access token для запроса информации о пользователе через API Яндекса.
 func getYandexUserInfo(accessToken string) (structs.User, error) {
 	userInfoURLWithParams := userInfoURL + "?format=json&with_openId_Identity=1&with_email=1"
 
