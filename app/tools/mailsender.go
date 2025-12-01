@@ -9,10 +9,11 @@ package tools
 
 import (
 	"bytes"
-	"math/rand"
+	"crypto/rand"
+	mathrand "math/rand"
+	"math/big"
 	"net/smtp"
 	"os"
-
 	"strconv"
 	"time"
 
@@ -25,16 +26,31 @@ var (
 	suspiciousLoginSubject = "Suspicious login alert!"
 	newDeviceLoginSubject  = "New device login"
 	passwordResetSubject   = "Password reset request"
+	
+	// sendMailFunc позволяет подменить функцию отправки для тестов
+	sendMailFunc = smtp.SendMail
 )
 
 // serverAuthCodeGenerate генерирует случайный 4-значный код аутентификации.
 //
 // Возвращает строку с кодом для серверной аутентификации.
 func serverAuthCodeGenerate() string {
-	randomState := rand.New(rand.NewSource(time.Now().UnixNano()))
-	AuthServerCodeItn := randomState.Intn(9000) + 1000
+	// Используем криптографически безопасный генератор случайных чисел
+	randomNum, err := rand.Int(rand.Reader, big.NewInt(9000))
+	if err != nil {
+		// В случае ошибки используем fallback на math/rand
+		randomState := mathrand.New(mathrand.NewSource(time.Now().UnixNano()))
+		AuthServerCodeItn := randomState.Intn(9000) + 1000
+		return strconv.Itoa(AuthServerCodeItn)
+	}
+	AuthServerCodeItn := int(randomNum.Int64()) + 1000
 	AuthServerCode := strconv.Itoa(AuthServerCodeItn)
 	return AuthServerCode
+}
+
+// init инициализирует генератор случайных чисел для лучшей уникальности
+func init() {
+	mathrand.Seed(time.Now().UnixNano())
 }
 
 // SendNewDeviceLoginEmail отправляет уведомление о входе с нового устройства.
@@ -43,6 +59,13 @@ func serverAuthCodeGenerate() string {
 // Формирует и отправляет email с информацией о входе.
 var SendNewDeviceLoginEmail = func(login, userEmail, userAgent string) error {
 	serverEmail := os.Getenv("SERVER_EMAIL")
+	if serverEmail == "" {
+		return errors.New("SERVER_EMAIL environment variable is not set")
+	}
+	if userEmail == "" {
+		return nil // Не отправляем email если отсутствует email пользователя
+	}
+	
 	sMTPServerAuthSubject, sMTPServerAddr := sMTPServerAuth(serverEmail)
 	data := struct {
 		login     string
@@ -76,10 +99,14 @@ func sMTPServerAuth(serverEmail string) (smtp.Auth, string) {
 // Принимает email отправителя, получателя, данные аутентификации, адрес сервера и сообщение.
 // Выполняет отправку письма.
 func mailSend(serverEmail, userEmail string, sMTPServerAuthSubject smtp.Auth, sMTPServerAddr string, msg []byte) error {
+	if serverEmail == "" {
+		return errors.New("server email cannot be empty")
+	}
+	
 	from := serverEmail
 	to := []string{userEmail}
 	addr := sMTPServerAddr + ":587"
-	if err := smtp.SendMail(addr, sMTPServerAuthSubject, from, to, msg); err != nil {
+	if err := sendMailFunc(addr, sMTPServerAuthSubject, from, to, msg); err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
@@ -133,6 +160,13 @@ func executeTmpl(serverEmail, userEmail, emailSubject string, data any) ([]byte,
 // Формирует и отправляет email с предупреждением о подозрительной активности.
 var SuspiciousLoginEmailSend = func(userEmail, userAgent string) error {
 	serverEmail := os.Getenv("SERVER_EMAIL")
+	if serverEmail == "" {
+		return errors.New("SERVER_EMAIL environment variable is not set")
+	}
+	if userEmail == "" {
+		return nil // Не отправляем email если отсутствует email пользователя
+	}
+	
 	sMTPServerAuthSubject, sMTPServerAddr := sMTPServerAuth(serverEmail)
 	data := struct {
 		UserAgent string
@@ -155,15 +189,22 @@ var SuspiciousLoginEmailSend = func(userEmail, userAgent string) error {
 // Формирует и отправляет email с инструкциями по сбросу пароля.
 var PasswordResetEmailSend = func(userEmail, resetLink string) error {
 	serverEmail := os.Getenv("SERVER_EMAIL")
+	if serverEmail == "" {
+		return errors.New("SERVER_EMAIL environment variable is not set")
+	}
+	if userEmail == "" {
+		return nil // Не отправляем email если отсутствует email пользователя
+	}
+	
 	sMTPServerAuthSubject, sMTPServerAddr := sMTPServerAuth(serverEmail)
 	data := struct{ ResetLink string }{ResetLink: resetLink}
 
 	msg, err := executeTmpl(serverEmail, userEmail, passwordResetSubject, data)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	if err := mailSend(serverEmail, userEmail, sMTPServerAuthSubject, sMTPServerAddr, msg); err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	return nil
@@ -175,8 +216,15 @@ var PasswordResetEmailSend = func(userEmail, resetLink string) error {
 // Генерирует код и отправляет его на указанный email.
 // Возвращает сгенерированный код и ошибку, если она возникла.
 var ServerAuthCodeSend = func(userEmail string) (string, error) {
-	authServerCode := serverAuthCodeGenerate()
 	serverEmail := os.Getenv("SERVER_EMAIL")
+	if serverEmail == "" {
+		return "", errors.New("SERVER_EMAIL environment variable is not set")
+	}
+	if userEmail == "" {
+		return "", nil // Не отправляем email если отсутствует email пользователя
+	}
+	
+	authServerCode := serverAuthCodeGenerate()
 	sMTPServerAuthSubject, sMTPServerAddr := sMTPServerAuth(serverEmail)
 	data_ := struct{ Code string }{Code: authServerCode}
 

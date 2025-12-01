@@ -115,6 +115,9 @@ func TestExecuteTmpl(t *testing.T) {
 	if !strings.Contains(msgStr, "Content-Type: text/html; charset=\"UTF-8\"") {
 		t.Error("Missing Content-Type header")
 	}
+	if !strings.Contains(msgStr, "1234") {
+		t.Error("Auth code 1234 not found in email body")
+	}
 
 	data2 := struct{ UserAgent string }{UserAgent: "Mozilla/5.0"}
 	msg, err = executeTmpl(serverEmail, userEmail, suspiciousLoginSubject, data2)
@@ -124,6 +127,9 @@ func TestExecuteTmpl(t *testing.T) {
 
 	if !strings.Contains(string(msg), "Subject: "+suspiciousLoginSubject) {
 		t.Error("Wrong subject in suspicious login email")
+	}
+	if !strings.Contains(string(msg), "Mozilla/5.0") {
+		t.Error("User-Agent Mozilla/5.0 not found in suspicious login email body")
 	}
 
 	data3 := struct {
@@ -139,6 +145,14 @@ func TestExecuteTmpl(t *testing.T) {
 		t.Error("Wrong subject in new device login email")
 	}
 
+	if !strings.Contains(string(msg), "new device") {
+		t.Error("New device login information not found in email body")
+	}
+
+	if !strings.Contains(string(msg), "login") {
+		t.Error("Login information not found in new device login email body")
+	}
+
 	data4 := struct{ ResetLink string }{ResetLink: "https://example.com/reset"}
 	msg, err = executeTmpl(serverEmail, userEmail, passwordResetSubject, data4)
 	if err != nil {
@@ -147,6 +161,9 @@ func TestExecuteTmpl(t *testing.T) {
 
 	if !strings.Contains(string(msg), "Subject: "+passwordResetSubject) {
 		t.Error("Wrong subject in password reset email")
+	}
+	if !strings.Contains(string(msg), "https://example.com/reset") {
+		t.Error("Reset link https://example.com/reset not found in password reset email body")
 	}
 
 	_, err = executeTmpl(serverEmail, userEmail, "Unknown Subject", data)
@@ -161,10 +178,14 @@ func TestExecuteTmpl(t *testing.T) {
 }
 
 func TestMailSend(t *testing.T) {
+	originalSendMailFunc := sendMailFunc
+	defer func() { sendMailFunc = originalSendMailFunc }()
+	sendMailFunc = mockSendMail
+	
 	serverEmail := "server@example.com"
 	userEmail := "user@example.com"
 	auth := smtp.PlainAuth("", serverEmail, "password", "smtp.example.com")
-	addr := "smtp.example.com:587"
+	addr := "smtp.example.com"
 	msg := []byte("Test message")
 
 	mockClient.shouldFail = false
@@ -180,6 +201,10 @@ func TestMailSend(t *testing.T) {
 }
 
 func TestSendNewDeviceLoginEmail(t *testing.T) {
+	originalSendMailFunc := sendMailFunc
+	defer func() { sendMailFunc = originalSendMailFunc }()
+	sendMailFunc = mockSendMail
+	
 	os.Setenv("SERVER_EMAIL", "server@example.com")
 	os.Setenv("SERVER_EMAIL_PASSWORD", "password")
 	defer func() {
@@ -191,6 +216,7 @@ func TestSendNewDeviceLoginEmail(t *testing.T) {
 	userEmail := "user@example.com"
 	userAgent := "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
 
+	mockClient.shouldFail = false
 	err := SendNewDeviceLoginEmail(login, userEmail, userAgent)
 	if err != nil {
 		t.Errorf("Unexpected error in SendNewDeviceLoginEmail: %v", err)
@@ -208,6 +234,10 @@ func TestSendNewDeviceLoginEmail(t *testing.T) {
 }
 
 func TestSuspiciousLoginEmailSend(t *testing.T) {
+	originalSendMailFunc := sendMailFunc
+	defer func() { sendMailFunc = originalSendMailFunc }()
+	sendMailFunc = mockSendMail
+	
 	os.Setenv("SERVER_EMAIL", "server@example.com")
 	os.Setenv("SERVER_EMAIL_PASSWORD", "password")
 	defer func() {
@@ -218,6 +248,7 @@ func TestSuspiciousLoginEmailSend(t *testing.T) {
 	userEmail := "user@example.com"
 	userAgent := "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
 
+	mockClient.shouldFail = false
 	err := SuspiciousLoginEmailSend(userEmail, userAgent)
 	if err != nil {
 		t.Errorf("Unexpected error in SuspiciousLoginEmailSend: %v", err)
@@ -235,6 +266,10 @@ func TestSuspiciousLoginEmailSend(t *testing.T) {
 }
 
 func TestPasswordResetEmailSend(t *testing.T) {
+	originalSendMailFunc := sendMailFunc
+	defer func() { sendMailFunc = originalSendMailFunc }()
+	sendMailFunc = mockSendMail
+	
 	os.Setenv("SERVER_EMAIL", "server@example.com")
 	os.Setenv("SERVER_EMAIL_PASSWORD", "password")
 	defer func() {
@@ -245,6 +280,7 @@ func TestPasswordResetEmailSend(t *testing.T) {
 	userEmail := "user@example.com"
 	resetLink := "https://example.com/reset?token=abc123"
 
+	mockClient.shouldFail = false
 	err := PasswordResetEmailSend(userEmail, resetLink)
 	if err != nil {
 		t.Errorf("Unexpected error in PasswordResetEmailSend: %v", err)
@@ -262,6 +298,10 @@ func TestPasswordResetEmailSend(t *testing.T) {
 }
 
 func TestServerAuthCodeSend(t *testing.T) {
+	originalSendMailFunc := sendMailFunc
+	defer func() { sendMailFunc = originalSendMailFunc }()
+	sendMailFunc = mockSendMail
+	
 	os.Setenv("SERVER_EMAIL", "server@example.com")
 	os.Setenv("SERVER_EMAIL_PASSWORD", "password")
 	defer func() {
@@ -271,6 +311,7 @@ func TestServerAuthCodeSend(t *testing.T) {
 
 	userEmail := "user@example.com"
 
+	mockClient.shouldFail = false
 	code, err := ServerAuthCodeSend(userEmail)
 	if err != nil {
 		t.Errorf("Unexpected error in ServerAuthCodeSend: %v", err)
@@ -461,6 +502,28 @@ func TestTemplateIntegration(t *testing.T) {
 
 			if !strings.Contains(msgStr, "\r\n\r\n") {
 				t.Errorf("Email body appears to be empty in %s", tc.name)
+			}
+			
+			switch tc.name {
+			case "AuthCode":
+				if !strings.Contains(msgStr, "1234") {
+					t.Errorf("Auth code 1234 not found in %s email body", tc.name)
+				}
+			case "SuspiciousLogin":
+				if !strings.Contains(msgStr, "Test Browser") {
+					t.Errorf("User-Agent Test Browser not found in %s email body", tc.name)
+				}
+			case "NewDeviceLogin":
+				if !strings.Contains(msgStr, "new device") {
+					t.Errorf("New device login information not found in %s email body", tc.name)
+				}
+				if !strings.Contains(msgStr, "login") {
+					t.Errorf("Login information not found in %s email body", tc.name)
+				}
+			case "PasswordReset":
+				if !strings.Contains(msgStr, "https://example.com/reset") {
+					t.Errorf("Reset link not found in %s email body", tc.name)
+				}
 			}
 		})
 	}

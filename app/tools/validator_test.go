@@ -533,7 +533,7 @@ func TestResetTokenValidate_ExpiredToken(t *testing.T) {
 	}
 
 	if result != nil {
-		t.Error("Expected nil result for expired token, got %v", result)
+		t.Errorf("Expected nil result for expired token, got %v", result)
 	}
 }
 
@@ -561,7 +561,7 @@ func TestResetTokenValidate_InvalidSignature(t *testing.T) {
 	}
 
 	if result != nil {
-		t.Error("Expected nil result for invalid signature, got %v", result)
+		t.Errorf("Expected nil result for invalid signature, got %v", result)
 	}
 }
 
@@ -589,7 +589,7 @@ func TestResetTokenValidate_WrongSigningMethod(t *testing.T) {
 	}
 
 	if result != nil {
-		t.Error("Expected nil result for wrong signing method, got %v", result)
+		t.Errorf("Expected nil result for wrong signing method, got %v", result)
 	}
 }
 
@@ -604,7 +604,7 @@ func TestResetTokenValidate_EmptyToken(t *testing.T) {
 	}
 
 	if result != nil {
-		t.Error("Expected nil result for empty token, got %v", result)
+		t.Errorf("Expected nil result for empty token, got %v", result)
 	}
 }
 
@@ -619,7 +619,7 @@ func TestResetTokenValidate_MalformedToken(t *testing.T) {
 	}
 
 	if result != nil {
-		t.Error("Expected nil result for malformed token, got %v", result)
+		t.Errorf("Expected nil result for malformed token, got %v", result)
 	}
 }
 
