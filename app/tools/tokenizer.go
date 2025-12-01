@@ -20,6 +20,11 @@ import (
 // Если флаг установлен в false, использует время жизни 24 часа по умолчанию.
 // Возвращает подписанный JWT токен или ошибку.
 var GenerateRefreshToken = func(refreshTokenExp int, rememberMe bool) (string, error) {
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		return "", errors.New("JWT_SECRET environment variable is not set")
+	}
+
 	refreshTokenExp24Hours := 24 * 60 * 60
 	if !rememberMe {
 		refreshTokenExp = refreshTokenExp24Hours
@@ -33,8 +38,7 @@ var GenerateRefreshToken = func(refreshTokenExp int, rememberMe bool) (string, e
 	}
 
 	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, standardClaims)
-	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
-	signedrefreshToken, err := refreshToken.SignedString(jwtSecret)
+	signedrefreshToken, err := refreshToken.SignedString([]byte(jwtSecret))
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
@@ -48,6 +52,11 @@ var GenerateRefreshToken = func(refreshTokenExp int, rememberMe bool) (string, e
 // Создает токен со сроком действия 15 минут, содержащий email.
 // Возвращает полную ссылку для сброса пароля или ошибку.
 var GeneratePasswordResetLink = func(email, baseURL string) (string, error) {
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		return "", errors.New("JWT_SECRET environment variable is not set")
+	}
+
 	passwordResetTokenExp15Minutes := time.Now().Add(15 * time.Minute)
 	passwordResetTokenExp15MinutesExpiresAt := passwordResetTokenExp15Minutes.Unix()
 	passwordResetTokenExp15MinutesIssuedAt := time.Now().Unix()
@@ -60,8 +69,7 @@ var GeneratePasswordResetLink = func(email, baseURL string) (string, error) {
 	}
 
 	resetToken := jwt.NewWithClaims(jwt.SigningMethodHS256, passwordResetTokenClaims)
-	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
-	signedPasswordResetToken, err := resetToken.SignedString(jwtSecret)
+	signedPasswordResetToken, err := resetToken.SignedString([]byte(jwtSecret))
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
