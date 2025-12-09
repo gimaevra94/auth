@@ -12,7 +12,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 
 	"github.com/gimaevra94/auth/app/auth"
 	"github.com/gimaevra94/auth/app/consts"
@@ -54,9 +53,7 @@ func main() {
 //
 // В случае отсутствия переменных выводит предупреждение в лог.
 func initEnv() {
-	// Try to load .env file, but don't fail if it doesn't exist (useful for tests)
-	if err := godotenv.Load("../public/.env"); err != nil {
-		// In production, this might be an error, but in tests we use env vars directly
+	if err := godotenv.Load(".env"); err != nil {
 		log.Printf("Could not load .env file: %+v", errors.WithStack(err))
 	}
 
@@ -71,6 +68,9 @@ func initEnv() {
 		"GOOGLE_CAPTCHA_SECRET",
 		"clientId",
 		"clientSecret",
+		"DB_SSL_CA",
+		"DB_SSL_CERT",
+		"DB_SSL_KEY",
 	}
 
 	missingVars := []string{}
@@ -136,19 +136,14 @@ func initRouter() *chi.Mux {
 	return r
 }
 
-// serverStart запускает HTTP-сервер на указанном порту.
+// serverStart запускает HTTPS сервер на указанном порту.
 //
-// Использует порт из переменной окружения PORT или порт 8080 по умолчанию.
+// Для HTTPS используются сертификаты из certs/app_cert/.
 // Возвращает ошибку в случае неудачного запуска сервера.
 func serverStart(r *chi.Mux) error {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = ":8080"
-	} else if !strings.HasPrefix(port, ":") {
-		port = ":" + port
-	}
-
-	if err := http.ListenAndServe(port, r); err != nil {
+	certFile := "/app/cert/app-cert.pem"
+	keyFile := "/app/cert/app-key.pem"
+	if err := http.ListenAndServeTLS(":443", certFile, keyFile, r); err != nil {
 		return errors.WithStack(err)
 	}
 	return nil

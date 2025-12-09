@@ -1,16 +1,17 @@
 name: auth
+
 services:
   db:
     container_name: db
-    image: gimaevra94/Db:latest
+    image: gimaevra94/db:latest
     environment:
-       MYSQL_ROOT_PASSWORD_FILE: /run/secrets/Db_password
-       MYSQL_DATABASE: db
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_password
+      MYSQL_DATABASE: db
     volumes:
       - db:/var/lib/mysql
-      - C:/Users/gimaevra94/Documents/git/auth/certs/mysql_cert:/etc/mysql/certs:ro
-    ports: 
-      - 3306:3306
+      - C:/Users/gimaevra94/Documents/git/auth/certs/db_cert:/etc/mysql/cert:ro
+    ports:
+      - "3306:3306"
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
@@ -18,38 +19,46 @@ services:
       retries: 3
     restart: unless-stopped
     secrets:
-      - Db_password
-    #command: >
-      # --ssl-ca=/etc/mysql/certs/ca.pem
-      # --ssl-cert=/etc/mysql/certs/Db-cert.pem
-      # --ssl-key=/etc/mysql/certs/Db-key.pem
-      # --require_secure_transport=ON
+      - db_password
+    command: >
+      --ssl-ca=/etc/mysql/cert/ca.pem
+      --ssl-cert=/etc/mysql/cert/db-cert.pem
+      --ssl-key=/etc/mysql/cert/db-key.pem
+      --require_secure_transport=ON
 
-    #app:
-    # image: gimaevra94/app:latest
-    #environment:
-    # Db_PASSWORD_FILE: /run/secrets/Db_password
-    #Db_USER: root
-    #volumes:
-    #  - /c/Users/gimaevra94/Documents/git/auth/public:/app/public
-    #ports: 8000:8000
-    #healthcheck: 
-    #  test: ["CMD-SHELL", "wget -q http://localhost:8000/health || exit 1"]
-    #  interval: 30s
-    #  timeout: 10s
-    #  retries: 3
-    #  start_period: 5s
-    #restart: unless-stopped
-    #secrets:
-    #  - Db_password
-    #depends_on:
-    #  Db:
-    #    condition: service_healthy
-
+  app:
+    container_name: app
+    image: gimaevra94/app:latest
+    environment:
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      DB_USER: root
+      DB_SSL_CA: /app/cert/ca.pem
+      DB_SSL_CERT: /app/cert/app-cert.pem
+      DB_SSL_KEY: /app/cert/app-key.pem
+    volumes:
+      - C:/Users/gimaevra94/Documents/git/auth/public/.env:/app/.env:ro
+      - C:/Users/gimaevra94/Documents/git/auth/public:/app/public:ro
+      - C:/Users/gimaevra94/Documents/git/auth/certs/app_cert/app-cert.pem:/app/cert/app-cert.pem:ro
+      - C:/Users/gimaevra94/Documents/git/auth/certs/app_cert/app-key.pem:/app/cert/app-key.pem:ro
+      - C:/Users/gimaevra94/Documents/git/auth/certs/app_cert/ca.pem:/app/cert/ca.pem:ro
+    ports:
+      - "443:443"
+    healthcheck:
+      test: ["CMD", "wget", "--no-check-certificate", "-q", "https://localhost/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    secrets:
+      - db_password
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   db:
 
 secrets:
-  Db_password: 
+  db_password:
     environment: DB_PASSWORD

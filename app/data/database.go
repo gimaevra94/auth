@@ -16,6 +16,8 @@
 package data
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
 	"os"
 
@@ -57,18 +59,52 @@ var Db *sql.DB
 //
 // Использует переменные окружения для подключения:
 //   - DB_PASSWORD: пароль пользователя root
+//   - DB_SSL_CA: путь к файлу корневого сертификата (обязательно)
+//   - DB_SSL_CERT: путь к файлу клиентского сертификата (опционально)
+//   - DB_SSL_KEY: путь к файлу клиентского ключа (опционально)
+//
+// Если DB_SSL_CERT и DB_SSL_KEY не заданы, используется только проверка сертификата сервера (односторонняя аутентификация).
+// Если заданы, используется mutual TLS (двусторонняя аутентификация).
 //
 // Возвращает ошибку, если не удалось установить соединение.
 func DbConn() error {
+	caCertPath := os.Getenv("DB_SSL_CA")
+	rootCertPool := x509.NewCertPool()
+	pem, err := os.ReadFile(caCertPath)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if ok := rootCertPool.AppendCertsFromPEM(pem); !ok {
+		return errors.New("failed to append PEM.")
+	}
+
+	tlsConfig := &tls.Config{
+		RootCAs: rootCertPool,
+	}
+
+	// Проверяем, заданы ли переменные для клиентского сертификата и ключа
+	clientCertPath := os.Getenv("DB_SSL_CERT")
+	clientKeyPath := os.Getenv("DB_SSL_KEY")
+
+	if clientCertPath != "" && clientKeyPath != "" {
+		cert, err := tls.LoadX509KeyPair(clientCertPath, clientKeyPath)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		tlsConfig.Certificates = []tls.Certificate{cert}
+	}
+
+	mysql.RegisterTLSConfig("custom", tlsConfig)
 	DbPassword := []byte(os.Getenv("DB_PASSWORD"))
 	cfg := mysql.Config{
-		User:   "root",
-		Passwd: string(DbPassword),
-		Net:    "tcp",
-		Addr:   "localhost:3306",
-		DBName: "db",
+		User:      "root",
+		Passwd:    string(DbPassword),
+		Net:       "tcp",
+		Addr:      "db:3306",
+		DBName:    "db",
+		TLSConfig: "custom",
 	}
-	var err error
 
 	Db, err = sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
@@ -89,13 +125,8 @@ func DbClose() {
 	}
 }
 
-// GetPermanentIdFromDbByEmail получает permanentId пользователя по email.
-//
-// Параметры:
-//   - email: электронная почта пользователя
-//   - yauth: флаг авторизации через Yandex ID
-//
-// Возвращает permanentId и ошибку, если пользователь не найден или произошла ошибка БД.
+// --- Остальная часть кода остается без изменений ---
+
 var GetPermanentIdFromDbByEmail = func(email string, yauth bool) (string, error) {
 	var permanentId string
 	row := Db.QueryRow(PermanentIdByEmailSelectQuery, email, yauth)
@@ -109,12 +140,6 @@ var GetPermanentIdFromDbByEmail = func(email string, yauth bool) (string, error)
 	return permanentId, nil
 }
 
-// GetPermanentIdFromDbByLogin получает permanentId пользователя по логину.
-//
-// Параметры:
-//   - login: логин пользователя
-//
-// Возвращает permanentId и ошибку, если пользователь не найден или произошла ошибка БД.
 var GetPermanentIdFromDbByLogin = func(login string) (string, error) {
 	row := Db.QueryRow(PermanentIdByLoginSelectQuery, login)
 	var permanentId string
@@ -125,12 +150,6 @@ var GetPermanentIdFromDbByLogin = func(login string) (string, error) {
 	return permanentId, nil
 }
 
-// GetUniqueUserAgentsFromDb получает список уникальных user agents для пользователя.
-//
-// Параметры:
-//   - permanentId: постоянный идентификатор пользователя
-//
-// Возвращает срез строк с user agents и ошибку, если произошла ошибка БД.
 var GetUniqueUserAgentsFromDb = func(permanentId string) ([]string, error) {
 	rows, err := Db.Query(UniqueUserAgentsSelectQuery, permanentId)
 	if err != nil {
@@ -149,12 +168,6 @@ var GetUniqueUserAgentsFromDb = func(permanentId string) ([]string, error) {
 	return uniqueUserAgents, nil
 }
 
-// GetTemporaryIdKeysFromDb получает permanentId и userAgent по временному идентификатору.
-//
-// Параметры:
-//   - temporaryId: временный идентификатор сессии
-//
-// Возвращает permanentId, userAgent и ошибку, если временный ID не найден или произошла ошибка БД.
 func GetTemporaryIdKeysFromDb(temporaryId string) (string, string, error) {
 	row := Db.QueryRow(TemporaryIdSelectQuery, temporaryId)
 	var permanentId, userAgent string
@@ -165,12 +178,6 @@ func GetTemporaryIdKeysFromDb(temporaryId string) (string, string, error) {
 	return permanentId, userAgent, nil
 }
 
-// GetEmailFromDb получает email пользователя по permanentId.
-//
-// Параметры:
-//   - permamentId: постоянный идентификатор пользователя
-//
-// Возвращает email и ошибку, если пользователь не найден или произошла ошибка БД.
 func GetEmailFromDb(permamentId string) (string, error) {
 	row := Db.QueryRow(EmailSelectQuery, permamentId)
 	var email string
@@ -181,13 +188,6 @@ func GetEmailFromDb(permamentId string) (string, error) {
 	return email, nil
 }
 
-// GetRefreshTokenFromDb получает refresh token пользователя.
-//
-// Параметры:
-//   - permamentId: постоянный идентификатор пользователя
-//   - userAgent: идентификатор пользовательского агента
-//
-// Возвращает refresh token и ошибку, если токен не найден или произошла ошибка БД.
 func GetRefreshTokenFromDb(permamentId, userAgent string) (string, error) {
 	row := Db.QueryRow(RefreshTokenSelectQuery, permamentId, userAgent)
 	var token string
@@ -198,16 +198,6 @@ func GetRefreshTokenFromDb(permamentId, userAgent string) (string, error) {
 	return token, nil
 }
 
-// SetLoginInDbTx обновляет логин пользователя в рамках транзакции.
-//
-// Сначала аннулирует старый логин (cancelled = true), затем вставляет новую запись.
-//
-// Параметры:
-//   - tx: транзакция базы данных
-//   - permanentId: постоянный идентификатор пользователя
-//   - login: новый логин пользователя
-//
-// Возвращает ошибку, если операция не удалась.
 var SetLoginInDbTx = func(tx *sql.Tx, permanentId, login string) error {
 	_, err := tx.Exec(LoginUpdateQuery, permanentId)
 	if err != nil {
@@ -220,17 +210,6 @@ var SetLoginInDbTx = func(tx *sql.Tx, permanentId, login string) error {
 	return nil
 }
 
-// SetEmailInDbTx обновляет email пользователя в рамках транзакции.
-//
-// Сначала аннулирует старый email (cancelled = true), затем вставляет новую запись.
-//
-// Параметры:
-//   - tx: транзакция базы данных
-//   - permanentId: постоянный идентификатор пользователя
-//   - email: новый email пользователя
-//   - yauth: флаг авторизации через Yandex ID
-//
-// Возвращает ошибку, если операция не удалась.
 var SetEmailInDbTx = func(tx *sql.Tx, permanentId, email string, yauth bool) error {
 	_, err := tx.Exec(EmailUpdateQuery, permanentId, yauth)
 	if err != nil {
@@ -243,16 +222,6 @@ var SetEmailInDbTx = func(tx *sql.Tx, permanentId, email string, yauth bool) err
 	return nil
 }
 
-// SetEmailInDb обновляет email пользователя без транзакции.
-//
-// Сначала аннулирует старый email (cancelled = true), затем вставляет новую запись.
-//
-// Параметры:
-//   - permanentId: постоянный идентификатор пользователя
-//   - email: новый email пользователя
-//   - yauth: флаг авторизации через Yandex ID
-//
-// Возвращает ошибку, если операция не удалась.
 var SetEmailInDb = func(permanentId, email string, yauth bool) error {
 	_, err := Db.Exec(EmailUpdateQuery, permanentId, yauth)
 	if err != nil {
@@ -265,17 +234,6 @@ var SetEmailInDb = func(permanentId, email string, yauth bool) error {
 	return nil
 }
 
-// SetPasswordInDbTx обновляет пароль пользователя в рамках транзакции.
-//
-// Хеширует пароль с использованием bcrypt, аннулирует старый пароль,
-// затем вставляет новую запись с хешем.
-//
-// Параметры:
-//   - tx: транзакция базы данных
-//   - permanentId: постоянный идентификатор пользователя
-//   - password: новый пароль пользователя
-//
-// Возвращает ошибку, если операция не удалась.
 var SetPasswordInDbTx = func(tx *sql.Tx, permanentId, password string) error {
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -292,18 +250,6 @@ var SetPasswordInDbTx = func(tx *sql.Tx, permanentId, password string) error {
 	return nil
 }
 
-// SetTemporaryIdInDbTx устанавливает временный идентификатор сессии в рамках транзакции.
-//
-// Сначала аннулирует старый временный ID, затем вставляет новую запись.
-//
-// Параметры:
-//   - tx: транзакция базы данных
-//   - permanentId: постоянный идентификатор пользователя
-//   - temporaryId: временный идентификатор сессии
-//   - userAgent: идентификатор пользовательского агента
-//   - yauth: флаг авторизации через Yandex ID
-//
-// Возвращает ошибку, если операция не удалась.
 var SetTemporaryIdInDbTx = func(tx *sql.Tx, permanentId, temporaryId, userAgent string, yauth bool) error {
 	_, err := tx.Exec(TemporaryIdUpdateQuery, permanentId, userAgent, yauth)
 	if err != nil {
@@ -316,18 +262,6 @@ var SetTemporaryIdInDbTx = func(tx *sql.Tx, permanentId, temporaryId, userAgent 
 	return nil
 }
 
-// SetRefreshTokenInDbTx устанавливает refresh token в рамках транзакции.
-//
-// Сначала аннулирует старый токен, затем вставляет новую запись.
-//
-// Параметры:
-//   - tx: транзакция базы данных
-//   - permanentId: постоянный идентификатор пользователя
-//   - refreshToken: refresh token
-//   - userAgent: идентификатор пользовательского агента
-//   - yauth: флаг авторизации через Yandex ID
-//
-// Возвращает ошибку, если операция не удалась.
 var SetRefreshTokenInDbTx = func(tx *sql.Tx, permanentId, refreshToken, userAgent string, yauth bool) error {
 	_, err := tx.Exec(RefreshTokenUpdateQuery, permanentId, userAgent, yauth)
 	if err != nil {
@@ -340,14 +274,6 @@ var SetRefreshTokenInDbTx = func(tx *sql.Tx, permanentId, refreshToken, userAgen
 	return nil
 }
 
-// SetTemporaryIdCancelledInDbTx аннулирует временный идентификатор сессии в рамках транзакции.
-//
-// Параметры:
-//   - tx: транзакция базы данных
-//   - permanentId: постоянный идентификатор пользователя
-//   - userAgent: идентификатор пользовательского агента
-//
-// Возвращает ошибку, если операция не удалась.
 var SetTemporaryIdCancelledInDbTx = func(tx *sql.Tx, permanentId, userAgent string) error {
 	_, err := tx.Exec(TemporaryIdCancelledUpdateQuery, permanentId, userAgent)
 	if err != nil {
@@ -356,14 +282,6 @@ var SetTemporaryIdCancelledInDbTx = func(tx *sql.Tx, permanentId, userAgent stri
 	return nil
 }
 
-// SetRefreshTokenCancelledInDbTx аннулирует refresh token в рамках транзакции.
-//
-// Параметры:
-//   - tx: транзакция базы данных
-//   - permanentId: постоянный идентификатор пользователя
-//   - userAgent: идентификатор пользовательского агента
-//
-// Возвращает ошибку, если операция не удалась.
 var SetRefreshTokenCancelledInDbTx = func(tx *sql.Tx, permanentId, userAgent string) error {
 	_, err := tx.Exec(RefreshTokenCancelledUpdateQuery, permanentId, userAgent)
 	if err != nil {
@@ -372,12 +290,6 @@ var SetRefreshTokenCancelledInDbTx = func(tx *sql.Tx, permanentId, userAgent str
 	return nil
 }
 
-// SetPasswordResetTokenInDb сохраняет токен сброса пароля в базе данных.
-//
-// Параметры:
-//   - token: токен сброса пароля
-//
-// Возвращает ошибку, если операция не удалась.
 var SetPasswordResetTokenInDb = func(token string) error {
 	_, err := Db.Exec(PasswordResetTokenInsertQuery, token, false)
 	if err != nil {
@@ -386,12 +298,6 @@ var SetPasswordResetTokenInDb = func(token string) error {
 	return nil
 }
 
-// IsTemporaryIdCancelled проверяет, аннулирован ли временный идентификатор.
-//
-// Параметры:
-//   - temporaryId: временный идентификатор сессии
-//
-// Возвращает ошибку, если временный ID аннулирован или не найден.
 func IsTemporaryIdCancelled(temporaryId string) error {
 	row := Db.QueryRow(TemporaryIdCancelledSelectQuery, temporaryId)
 	var cancelled bool
@@ -407,12 +313,6 @@ func IsTemporaryIdCancelled(temporaryId string) error {
 	return nil
 }
 
-// IsPasswordResetTokenCancelled проверяет, аннулирован ли токен сброса пароля.
-//
-// Параметры:
-//   - token: токен сброса пароля
-//
-// Возвращает ошибку, если токен аннулирован или не найден.
 var IsPasswordResetTokenCancelled = func(token string) error {
 	row := Db.QueryRow(PasswordResetTokenCancelledSelectQuery, token)
 	var cancelled bool
@@ -428,13 +328,6 @@ var IsPasswordResetTokenCancelled = func(token string) error {
 	return nil
 }
 
-// IsOKPasswordHashInDb проверяет соответствие пароля хешу в базе данных.
-//
-// Параметры:
-//   - permanentId: постоянный идентификатор пользователя
-//   - password: пароль для проверки
-//
-// Возвращает ошибку, если пароль неверный или пользователь не найден.
 var IsOKPasswordHashInDb = func(permanentId, password string) error {
 	row := Db.QueryRow(IsOKPasswordHashInDbSelectQuery, permanentId)
 	var passwordHash string
