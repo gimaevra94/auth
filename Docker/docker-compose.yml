@@ -37,7 +37,8 @@ services:
       DB_SSL_KEY: /app/cert/app-key.pem
     volumes:
       - C:/Users/gimaevra94/Documents/git/auth/public/.env:/app/.env:ro
-      - C:/Users/gimaevra94/Documents/git/auth/public:/app/public:ro
+      - C:/Users/gimaevra94/Documents/git/auth/public/styles.css:/app/styles.css:ro
+      - C:/Users/gimaevra94/Documents/git/auth/public/500.html:/app/500.html:ro
       - C:/Users/gimaevra94/Documents/git/auth/certs/app_cert/app-cert.pem:/app/cert/app-cert.pem:ro
       - C:/Users/gimaevra94/Documents/git/auth/certs/app_cert/app-key.pem:/app/cert/app-key.pem:ro
       - C:/Users/gimaevra94/Documents/git/auth/certs/app_cert/ca.pem:/app/cert/ca.pem:ro
