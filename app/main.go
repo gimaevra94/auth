@@ -104,7 +104,15 @@ func initDb() {
 func initRouter() *chi.Mux {
 	r := chi.NewRouter()
 
-	r.Handle("/public/*", http.StripPrefix("/public/", http.FileServer(http.Dir("../public"))))
+	r.Get("/public/styles.css", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/css; charset=utf-8")
+		http.ServeFile(w, r, "/app/styles.css")
+	})
+
+	r.Get("/public/500", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		http.ServeFile(w, r, "/app/500.html")
+	})
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, consts.SignUpURL, http.StatusFound)
