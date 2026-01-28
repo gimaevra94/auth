@@ -125,8 +125,6 @@ func DbClose() {
 	}
 }
 
-// --- Остальная часть кода остается без изменений ---
-
 var GetPermanentIdFromDbByEmail = func(email string, yauth bool) (string, error) {
 	var permanentId string
 	row := Db.QueryRow(PermanentIdByEmailSelectQuery, email, yauth)
