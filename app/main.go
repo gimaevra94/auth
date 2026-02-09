@@ -55,6 +55,7 @@ func main() {
 func initEnv() {
 	if err := godotenv.Load(".env"); err != nil {
 		log.Printf("Could not load .env file: %+v", errors.WithStack(err))
+		return
 	}
 
 	envVars := []string{
